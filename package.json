@@ -1,11 +1,26 @@
 {
   "name": "ticketeer",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "A comprehensive ticket sales management system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "tickets",
+    "sales",
+    "events",
+    "management"
+  ],
+  "author": "Rodrigo Cesar Silva Lima",
   "license": "MIT",
   "dependencies": {
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.8",
+    "express": "^5.1.0",
+    "express-openid-connect": "^2.19.2",
     "sqlite3": "^5.1.7"
   }
 }
