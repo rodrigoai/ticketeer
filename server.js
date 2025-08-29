@@ -1,29 +1,27 @@
 const express = require('express');
 const path = require('path');
-const jwt = require('jsonwebtoken');
 const { auth, requiresAuth } = require('express-openid-connect');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Auth0 Configuration
+// Auth0 Configuration for express-openid-connect
 const config = {
   authRequired: false,
   auth0Logout: true,
-  secret: process.env.AUTH0_CLIENT_SECRET || 'your-long-random-string-for-development',
+  secret: process.env.AUTH0_CLIENT_SECRET || 'qlByYcSCiSr8zYCHL5-P-NjP5cYu6YeItjQRDWdi5WWxNFuwOL4YgvhCx97cGsz0',
   baseURL: process.env.BASE_URL || `http://localhost:${PORT}`,
-  clientID: process.env.AUTH0_CLIENT_ID || 'your-client-id',
-  issuerBaseURL: process.env.AUTH0_DOMAIN ? `https://${process.env.AUTH0_DOMAIN}` : 'https://your-domain.auth0.com',
-  clientSecret: process.env.AUTH0_CLIENT_SECRET || 'your-client-secret',
+  clientID: process.env.AUTH0_CLIENT_ID || '1PlShClpoRxkSeKWZtgq4vVnUxLg40F4',
+  issuerBaseURL: process.env.AUTH0_DOMAIN ? `https://${process.env.AUTH0_DOMAIN}` : 'https://novamoney.us.auth0.com',
   routes: {
-    login: false, // We'll handle login through SPA
-    logout: '/auth/logout',
-    callback: '/auth/callback'
+    login: '/login',
+    logout: '/logout',
+    callback: '/callback'
   }
 };
 
-// Auth router attaches authentication routes
+// Auth router attaches /login, /logout, and /callback routes to the baseURL
 app.use(auth(config));
 
 // Middleware to serve static files (HTML, CSS, JS, images, etc.)
@@ -33,40 +31,17 @@ app.use(express.static(path.join(__dirname)));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// JWT verification middleware for API endpoints
-const verifyApiToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-  
-  const token = authHeader.substring(7);
-  
-  // In production, you should verify the JWT against Auth0's public key
-  // For development, we'll do basic validation
-  try {
-    const decoded = jwt.decode(token, { complete: true });
-    if (!decoded) {
-      throw new Error('Invalid token format');
-    }
-    req.user = decoded.payload;
-    next();
-  } catch (error) {
-    console.error('Token verification error:', error);
-    return res.status(401).json({ error: 'Invalid access token' });
-  }
-};
-
 // Route for the main page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Route for the callback page
-app.get('/callback', (req, res) => {
-  res.sendFile(path.join(__dirname, 'callback.html'));
+// Dashboard route (protected)
+app.get('/dashboard', requiresAuth(), (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
+
+// Note: /login, /logout, and /callback routes are handled by express-openid-connect automatically
 
 // Authentication status endpoint
 app.get('/api/auth/status', (req, res) => {
