@@ -108,3 +108,5 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+/generated/prisma

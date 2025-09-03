@@ -1,0 +1,29 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id                Int      @id @default(autoincrement())
+  name              String
+  promotional_image String?
+  opening_datetime  DateTime
+  closing_datetime  DateTime
+  map_image         String?
+  description       String?
+  venue             String?
+  created_by        String   // Auth0 user ID
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  status            String   @default("active") // active, inactive, cancelled
+
+  @@map("events")
+}

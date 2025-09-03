@@ -19,6 +19,7 @@
   "dependencies": {
     "@auth0/auth0-spa-js": "^2.3.0",
     "@popperjs/core": "^2.11.8",
+    "@prisma/client": "^6.15.0",
     "auth0": "^4.28.0",
     "bootstrap": "^5.3.8",
     "dotenv": "^17.2.1",
@@ -27,6 +28,9 @@
     "express-oauth-server": "^2.0.0",
     "express-openid-connect": "^2.19.2",
     "jsonwebtoken": "^9.0.2",
-    "sqlite3": "^5.1.7"
+    "multer": "^2.0.2",
+    "prisma": "^6.15.0",
+    "sqlite3": "^5.1.7",
+    "uuid": "^11.1.0"
   }
 }

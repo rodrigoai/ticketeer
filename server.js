@@ -41,6 +41,11 @@ app.get('/dashboard', requiresAuth(), (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
+// Events page route (protected)
+app.get('/events', requiresAuth(), (req, res) => {
+  res.sendFile(path.join(__dirname, 'events.html'));
+});
+
 // Note: /login, /logout, and /callback routes are handled by express-openid-connect automatically
 
 // Authentication status endpoint
@@ -59,6 +64,13 @@ app.get('/api/auth/profile', requiresAuth(), (req, res) => {
   });
 });
 
+// Import Event service and upload middleware
+const eventService = require('./services/eventService');
+const { eventImageUpload, handleUploadErrors, getFilePaths } = require('./middleware/upload');
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // API Routes for future development
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -72,21 +84,216 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Protected API endpoints for ticket management (require authentication)
-app.get('/api/events', requiresAuth(), (req, res) => {
-  res.json({ 
-    events: [],
-    message: 'Events endpoint - ready for implementation',
-    user: req.oidc.user?.email || 'Unknown user'
-  });
+// Event CRUD API endpoints (protected)
+
+// GET /api/events - List all events for the authenticated user
+app.get('/api/events', requiresAuth(), async (req, res) => {
+  try {
+    const userId = req.oidc.user.sub; // Auth0 user ID
+    const { status, upcoming } = req.query;
+    
+    const filters = {
+      created_by: userId,
+      status: status || 'active',
+      upcoming: upcoming === 'true'
+    };
+    
+    const events = await eventService.getEvents(filters);
+    
+    res.json({
+      success: true,
+      events,
+      count: events.length,
+      user: req.oidc.user?.email
+    });
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch events',
+      message: error.message
+    });
+  }
 });
 
-app.post('/api/events', requiresAuth(), (req, res) => {
-  res.json({ 
-    message: 'Create event endpoint - ready for implementation',
-    user: req.oidc.user?.email || 'Unknown user',
-    eventData: req.body
-  });
+// GET /api/events/:id - Get a specific event
+app.get('/api/events/:id', requiresAuth(), async (req, res) => {
+  try {
+    const userId = req.oidc.user.sub;
+    const { id } = req.params;
+    
+    const event = await eventService.getEventById(id, userId);
+    
+    res.json({
+      success: true,
+      event,
+      user: req.oidc.user?.email
+    });
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    const statusCode = error.message.includes('not found') ? 404 : 500;
+    res.status(statusCode).json({
+      success: false,
+      error: 'Failed to fetch event',
+      message: error.message
+    });
+  }
+});
+
+// POST /api/events - Create a new event
+app.post('/api/events', requiresAuth(), eventImageUpload, async (req, res) => {
+  try {
+    const userId = req.oidc.user.sub;
+    const {
+      name,
+      opening_datetime,
+      closing_datetime,
+      description,
+      venue
+    } = req.body;
+    
+    // Validate required fields
+    if (!name || !opening_datetime || !closing_datetime) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'Event name, opening date/time, and closing date/time are required'
+      });
+    }
+    
+    // Validate dates
+    const openDate = new Date(opening_datetime);
+    const closeDate = new Date(closing_datetime);
+    
+    if (openDate >= closeDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid dates',
+        message: 'Opening date must be before closing date'
+      });
+    }
+    
+    // Get file paths from uploaded files
+    const filePaths = getFilePaths(req.files || {});
+    
+    const eventData = {
+      name,
+      opening_datetime,
+      closing_datetime,
+      description,
+      venue,
+      created_by: userId,
+      ...filePaths
+    };
+    
+    const event = await eventService.createEvent(eventData);
+    
+    res.status(201).json({
+      success: true,
+      event,
+      message: 'Event created successfully',
+      user: req.oidc.user?.email
+    });
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create event',
+      message: error.message
+    });
+  }
+});
+
+// PUT /api/events/:id - Update an existing event
+app.put('/api/events/:id', requiresAuth(), eventImageUpload, async (req, res) => {
+  try {
+    const userId = req.oidc.user.sub;
+    const { id } = req.params;
+    const {
+      name,
+      opening_datetime,
+      closing_datetime,
+      description,
+      venue,
+      status
+    } = req.body;
+    
+    // Validate dates if provided
+    if (opening_datetime && closing_datetime) {
+      const openDate = new Date(opening_datetime);
+      const closeDate = new Date(closing_datetime);
+      
+      if (openDate >= closeDate) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid dates',
+          message: 'Opening date must be before closing date'
+        });
+      }
+    }
+    
+    // Get file paths from uploaded files (only update if new files uploaded)
+    const filePaths = getFilePaths(req.files || {});
+    
+    const eventData = {
+      name,
+      opening_datetime,
+      closing_datetime,
+      description,
+      venue,
+      status,
+      ...filePaths
+    };
+    
+    // Remove undefined values to avoid overwriting with undefined
+    Object.keys(eventData).forEach(key => {
+      if (eventData[key] === undefined) {
+        delete eventData[key];
+      }
+    });
+    
+    const event = await eventService.updateEvent(id, eventData, userId);
+    
+    res.json({
+      success: true,
+      event,
+      message: 'Event updated successfully',
+      user: req.oidc.user?.email
+    });
+  } catch (error) {
+    console.error('Error updating event:', error);
+    const statusCode = error.message.includes('not found') ? 404 : 500;
+    res.status(statusCode).json({
+      success: false,
+      error: 'Failed to update event',
+      message: error.message
+    });
+  }
+});
+
+// DELETE /api/events/:id - Delete an event
+app.delete('/api/events/:id', requiresAuth(), async (req, res) => {
+  try {
+    const userId = req.oidc.user.sub;
+    const { id } = req.params;
+    
+    const event = await eventService.deleteEvent(id, userId);
+    
+    res.json({
+      success: true,
+      message: 'Event deleted successfully',
+      deletedEvent: event,
+      user: req.oidc.user?.email
+    });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    const statusCode = error.message.includes('not found') ? 404 : 500;
+    res.status(statusCode).json({
+      success: false,
+      error: 'Failed to delete event',
+      message: error.message
+    });
+  }
 });
 
 app.get('/api/sales', requiresAuth(), (req, res) => {
@@ -98,15 +305,26 @@ app.get('/api/sales', requiresAuth(), (req, res) => {
   });
 });
 
-app.get('/api/stats', requiresAuth(), (req, res) => {
-  res.json({
-    totalEvents: 0,
-    ticketsSold: 0,
-    revenue: 0,
-    activeEvents: 0,
-    message: 'Stats endpoint - ready for implementation',
-    user: req.oidc.user?.email || 'Unknown user'
-  });
+app.get('/api/stats', requiresAuth(), async (req, res) => {
+  try {
+    const userId = req.oidc.user.sub;
+    const stats = await eventService.getEventStats(userId);
+    
+    res.json({
+      success: true,
+      ...stats,
+      ticketsSold: 0, // TODO: Implement when ticket system is added
+      revenue: 0, // TODO: Implement when payment system is added
+      user: req.oidc.user?.email
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch statistics',
+      message: error.message
+    });
+  }
 });
 
 // Public API endpoints (no authentication required)
@@ -141,6 +359,9 @@ app.use((req, res) => {
     message: 'The requested endpoint does not exist'
   });
 });
+
+// Upload error handling middleware
+app.use(handleUploadErrors);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
