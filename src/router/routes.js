@@ -1,0 +1,30 @@
+import Profile from "../views/Profile.vue";
+import Dashboard from '@/views/Dashboard.vue'
+import Events from '@/views/Events.vue'
+
+import { createAuthGuard } from "@auth0/auth0-vue";
+// Export function that takes app instance to create routes with auth guards
+export const createRoutes = (app) => {
+  
+  const authGuard = createAuthGuard(app);
+
+  return [
+    {
+      path: '/',
+      name: 'Dashboard',
+      component: Dashboard
+    },
+    {
+      path: '/events',
+      name: 'Events',
+      component: Events,
+      beforeEnter: authGuard
+    },
+    {
+      path: '/profile',
+      name: 'Profile',
+      component: Profile,
+      beforeEnter: authGuard
+    }
+  ];
+}

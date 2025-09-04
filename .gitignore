@@ -110,3 +110,7 @@ Thumbs.db
 *~
 
 /generated/prisma
+
+# Example applications
+login_example_app/
+Ticketeer/
