@@ -127,6 +127,12 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 
+// Import Bootstrap for modal functionality
+import { Modal } from 'bootstrap'
+if (typeof window !== 'undefined' && !window.bootstrap) {
+  window.bootstrap = { Modal }
+}
+
 // API composable
 const { isLoading, error, get, post, put, delete: deleteApi } = useApi()
 
@@ -149,9 +155,13 @@ const loadEvents = async () => {
   try {
     const data = await get('/api/events')
     events.value = data.events || []
+    
+    // Clear any previous errors
+    error.value = null
   } catch (err) {
     console.error('Failed to load events:', err)
     events.value = []
+    error.value = err.message || 'Failed to load events'
   }
 }
 
@@ -160,7 +170,8 @@ const showCreateModal = () => {
   isEditing.value = false
   currentEventId.value = null
   resetForm()
-  const modal = new bootstrap.Modal(document.getElementById('eventModal'))
+  const modalElement = document.getElementById('eventModal')
+  const modal = new Modal(modalElement)
   modal.show()
 }
 
@@ -168,38 +179,67 @@ const showCreateModal = () => {
 const editEvent = (event) => {
   isEditing.value = true
   currentEventId.value = event.id
-  Object.assign(eventForm, event)
-  const modal = new bootstrap.Modal(document.getElementById('eventModal'))
+  
+  // Map database fields to form fields
+  Object.assign(eventForm, {
+    title: event.title || event.name,
+    description: event.description || '',
+    date: event.date ? formatDateForInput(event.date) : '',
+    venue: event.venue || '',
+    price: event.price || 0
+  })
+  
+  const modalElement = document.getElementById('eventModal')
+  const modal = new Modal(modalElement)
   modal.show()
 }
 
 // Save event
 const saveEvent = async () => {
+  if (!eventForm.title || !eventForm.date || !eventForm.venue) {
+    error.value = 'Please fill in all required fields'
+    return
+  }
+  
   try {
     if (isEditing.value) {
-      await put(`/api/events/${currentEventId.value}`, eventForm)
+      const result = await put(`/api/events/${currentEventId.value}`, eventForm)
+      console.log('Event updated:', result)
     } else {
-      await post('/api/events', eventForm)
+      const result = await post('/api/events', eventForm)
+      console.log('Event created:', result)
     }
     
     // Close modal and reload events
-    const modal = bootstrap.Modal.getInstance(document.getElementById('eventModal'))
+    const modalElement = document.getElementById('eventModal')
+    const modal = Modal.getInstance(modalElement) || new Modal(modalElement)
     modal.hide()
+    resetForm()
     await loadEvents()
+    
+    // Clear any error
+    error.value = null
   } catch (err) {
     console.error('Failed to save event:', err)
+    error.value = err.message || `Failed to ${isEditing.value ? 'update' : 'create'} event`
   }
 }
 
 // Delete event
 const deleteEvent = async (eventId) => {
-  if (!confirm('Are you sure you want to delete this event?')) return
+  if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) return
   
   try {
-    await deleteApi(`/api/events/${eventId}`)
+    const result = await deleteApi(`/api/events/${eventId}`)
+    console.log('Event deleted:', result)
+    
     await loadEvents()
+    
+    // Clear any error
+    error.value = null
   } catch (err) {
     console.error('Failed to delete event:', err)
+    error.value = err.message || 'Failed to delete event'
   }
 }
 
@@ -216,7 +256,15 @@ const resetForm = () => {
 
 // Format date for display
 const formatDate = (dateString) => {
+  if (!dateString) return 'No date'
   return new Date(dateString).toLocaleString()
+}
+
+// Format date for input field (datetime-local)
+const formatDateForInput = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:MM
 }
 
 // Load events on component mount

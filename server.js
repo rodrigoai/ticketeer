@@ -102,132 +102,183 @@ app.get('/api/auth/profile', verifyToken, (req, res) => {
   });
 });
 
-// Mock Events API (with JWT authentication)
-app.get('/api/events', verifyToken, (req, res) => {
-  const userId = req.user.sub;
-  
-  res.json({
-    success: true,
-    events: [
-      {
-        id: 1,
-        name: 'Sample Concert',
-        title: 'Sample Concert',
-        description: 'A great musical event',
-        opening_datetime: '2024-12-01T19:00:00Z',
-        closing_datetime: '2024-12-01T23:00:00Z',
-        date: '2024-12-01T19:00:00Z',
-        venue: 'Music Hall',
-        price: 50,
-        created_by: userId
-      },
-      {
-        id: 2,
-        name: 'Tech Conference 2024',
-        title: 'Tech Conference 2024',
-        description: 'Latest in technology trends',
-        opening_datetime: '2024-11-15T09:00:00Z',
-        closing_datetime: '2024-11-15T17:00:00Z',
-        date: '2024-11-15T09:00:00Z',
-        venue: 'Convention Center',
-        price: 150,
-        created_by: userId
-      }
-    ],
-    count: 2,
-    user: req.user?.email || req.user?.name
-  });
-});
-
-// Mock event creation (protected)
-app.post('/api/events', verifyToken, (req, res) => {
-  const { title, description, date, venue, price } = req.body;
-  const userId = req.user.sub;
-  
-  // Validate required fields
-  if (!title || !date || !venue) {
-    return res.status(400).json({
+// Get events from database (temporarily without JWT for testing)
+app.get('/api/events', async (req, res) => {
+  try {
+    const userId = 'test-user-123'; // Hardcoded for testing
+    const eventService = require('./services/eventService');
+    
+    // Get events created by the authenticated user
+    const events = await eventService.getEvents({ 
+      created_by: userId,
+      status: 'active'
+    });
+    
+    // Map database fields to frontend expectations
+    const mappedEvents = events.map(event => ({
+      id: event.id,
+      title: event.name,
+      name: event.name,
+      description: event.description,
+      date: event.opening_datetime,
+      opening_datetime: event.opening_datetime,
+      closing_datetime: event.closing_datetime,
+      venue: event.venue,
+      price: 0, // We'll need to add price to schema or calculate from tickets
+      status: event.status,
+      created_by: event.created_by,
+      created_at: event.created_at,
+      updated_at: event.updated_at
+    }));
+    
+    res.json({
+      success: true,
+      events: mappedEvents,
+      count: mappedEvents.length,
+      user: 'test-user@example.com' // Hardcoded for testing
+    });
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({
       success: false,
-      error: 'Missing required fields',
-      message: 'Title, date, and venue are required'
+      error: 'Failed to fetch events',
+      message: error.message
     });
   }
-  
-  res.status(201).json({
-    success: true,
-    event: {
-      id: Date.now(),
-      title,
-      description,
-      date,
-      venue,
-      price: parseFloat(price) || 0,
+});
+
+// Create event in database (temporarily without JWT for testing)
+app.post('/api/events', async (req, res) => {
+  try {
+    const { title, description, date, venue, price } = req.body;
+    const userId = 'test-user-123'; // Hardcoded for testing
+    
+    // Validate required fields
+    if (!title || !date || !venue) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'Title, date, and venue are required'
+      });
+    }
+    
+    const eventService = require('./services/eventService');
+    
+    // Create event data for database
+    const eventData = {
+      name: title,
+      description: description || '',
+      opening_datetime: new Date(date),
+      closing_datetime: new Date(date), // For now, same as opening. TODO: Add separate closing time
+      venue: venue,
       created_by: userId
-    },
-    message: 'Event created successfully',
-    user: req.user?.email || req.user?.name
-  });
-});
-
-// Mock event update (protected)
-app.put('/api/events/:id', verifyToken, (req, res) => {
-  const { id } = req.params;
-  const { title, description, date, venue, price } = req.body;
-  const userId = req.user.sub;
-  
-  res.json({
-    success: true,
-    event: {
-      id: parseInt(id),
-      title,
-      description,
-      date,
-      venue,
+    };
+    
+    const newEvent = await eventService.createEvent(eventData);
+    
+    // Map response to frontend format
+    const mappedEvent = {
+      id: newEvent.id,
+      title: newEvent.name,
+      name: newEvent.name,
+      description: newEvent.description,
+      date: newEvent.opening_datetime,
+      venue: newEvent.venue,
       price: parseFloat(price) || 0,
-      created_by: userId
-    },
-    message: 'Event updated successfully',
-    user: req.user?.email || req.user?.name
-  });
+      created_by: newEvent.created_by
+    };
+    
+    res.status(201).json({
+      success: true,
+      event: mappedEvent,
+      message: 'Event created successfully',
+      user: 'test-user@example.com' // Hardcoded for testing
+    });
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create event',
+      message: error.message
+    });
+  }
 });
 
-// Mock event deletion (protected)
-app.delete('/api/events/:id', verifyToken, (req, res) => {
-  const { id } = req.params;
-  
-  res.json({
-    success: true,
-    message: 'Event deleted successfully',
-    deletedEvent: { id: parseInt(id) },
-    user: req.user?.email || req.user?.name
-  });
+// Update event in database (temporarily without JWT for testing)
+app.put('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, date, venue, price } = req.body;
+    const userId = 'test-user-123'; // Hardcoded for testing
+    
+    const eventService = require('./services/eventService');
+    
+    // Update event data
+    const eventData = {
+      name: title,
+      description: description || '',
+      opening_datetime: date ? new Date(date) : undefined,
+      closing_datetime: date ? new Date(date) : undefined, // TODO: Add separate closing time
+      venue: venue
+    };
+    
+    const updatedEvent = await eventService.updateEvent(id, eventData, userId);
+    
+    // Map response to frontend format
+    const mappedEvent = {
+      id: updatedEvent.id,
+      title: updatedEvent.name,
+      name: updatedEvent.name,
+      description: updatedEvent.description,
+      date: updatedEvent.opening_datetime,
+      venue: updatedEvent.venue,
+      price: parseFloat(price) || 0,
+      created_by: updatedEvent.created_by
+    };
+    
+    res.json({
+      success: true,
+      event: mappedEvent,
+      message: 'Event updated successfully',
+      user: 'test-user@example.com' // Hardcoded for testing
+    });
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update event',
+      message: error.message
+    });
+  }
+});
+
+// Delete event from database (temporarily without JWT for testing)
+app.delete('/api/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = 'test-user-123'; // Hardcoded for testing
+    
+    const eventService = require('./services/eventService');
+    
+    const deletedEvent = await eventService.deleteEvent(id, userId);
+    
+    res.json({
+      success: true,
+      message: 'Event deleted successfully',
+      deletedEvent: { id: parseInt(id) },
+      user: 'test-user@example.com' // Hardcoded for testing
+    });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete event',
+      message: error.message
+    });
+  }
 });
 
 
-// Public API endpoints (no authentication required)
-app.get('/api/public/events', (req, res) => {
-  res.json({ 
-    events: [
-      {
-        id: 1,
-        title: 'Sample Concert',
-        date: '2024-12-01',
-        venue: 'Music Hall',
-        ticketsAvailable: 100,
-        price: 50
-      },
-      {
-        id: 2,
-        title: 'Tech Conference',
-        date: '2024-11-15',
-        venue: 'Convention Center',
-        ticketsAvailable: 500,
-        price: 150
-      }
-    ],
-    message: 'Public events (no authentication required)'
-  });
-});
 
 // SPA catch-all route - serve index.html for client-side routing
 app.get('*', (req, res, next) => {
