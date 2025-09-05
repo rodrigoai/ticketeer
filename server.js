@@ -1,66 +1,37 @@
 const express = require('express');
 const path = require('path');
-const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
+const { auth } = require('express-oauth2-jwt-bearer');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Auth0 configuration for JWT validation
-const AUTH0_DOMAIN = 'novamoney.us.auth0.com';
-const AUTH0_AUDIENCE = 'https://ticket.nova.money';
+const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || 'novamoney.us.auth0.com';
+const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE || 'https://ticket.nova.money';
 
-// Create JWKS client for Auth0
-const client = jwksClient({
-  jwksUri: `https://${AUTH0_DOMAIN}/.well-known/jwks.json`
+// JWT verification middleware
+const jwtCheck = auth({
+  audience: AUTH0_AUDIENCE,
+  issuerBaseURL: `https://${AUTH0_DOMAIN}/`,
+  tokenSigningAlg: 'RS256'
 });
 
-// Function to get signing key
-function getKey(header, callback) {
-  client.getSigningKey(header.kid, (err, key) => {
+// Wrapper middleware with proper error handling
+const requiresAuth = (req, res, next) => {
+  jwtCheck(req, res, (err) => {
     if (err) {
-      return callback(err);
+      console.error('JWT Auth Error:', err.message);
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Valid JWT token required',
+        details: err.message
+      });
     }
-    const signingKey = key.publicKey || key.rsaPublicKey;
-    callback(null, signingKey);
-  });
-}
-
-// Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
-  jwt.verify(token, getKey, {
-    audience: AUTH0_AUDIENCE,
-    issuer: `https://${AUTH0_DOMAIN}/`,
-    algorithms: ['RS256']
-  }, (err, decoded) => {
-    if (err) {
-      console.error('JWT verification error:', err);
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    
-    req.user = decoded;
     next();
   });
 };
 
-// Optional middleware - only verify if token is present
-const optionalAuth = (req, res, next) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token) {
-    req.user = null;
-    return next();
-  }
-  
-  verifyToken(req, res, next);
-};
 
 // Middleware to parse JSON requests
 app.use(express.json());
@@ -87,25 +58,43 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Authentication status endpoint (client-side auth, no server session)
-app.get('/api/auth/status', optionalAuth, (req, res) => {
+// Simple test endpoint (no JWT required)
+app.get('/api/test/simple', (req, res) => {
   res.json({
-    isAuthenticated: !!req.user,
-    user: req.user || null
+    success: true,
+    message: 'Simple test endpoint working!',
+    timestamp: new Date().toISOString()
   });
 });
 
-// User profile endpoint (for JWT authenticated users)
-app.get('/api/auth/profile', verifyToken, (req, res) => {
-  res.json({
-    user: req.user
-  });
-});
-
-// Get events from database (temporarily without JWT for testing)
-app.get('/api/events', async (req, res) => {
+// Test endpoint for JWT authentication (protected)
+app.get('/api/test/protected', requiresAuth, (req, res) => {
   try {
-    const userId = 'test-user-123'; // Hardcoded for testing
+    res.json({
+      success: true,
+      message: 'JWT authentication is working!',
+      user: {
+        sub: req.auth?.sub || 'N/A',
+        email: req.auth?.email || 'N/A',
+        name: req.auth?.name || 'N/A',
+        picture: req.auth?.picture || 'N/A'
+      },
+      scope: req.auth?.scope || 'N/A',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error in protected endpoint:', error);
+    res.status(500).json({
+      error: 'Failed to process request',
+      message: error.message
+    });
+  }
+});
+
+// Get events from database (JWT authenticated)
+app.get('/api/events', requiresAuth, async (req, res) => {
+  try {
+    const userId = req.auth.sub; // Get user ID from JWT token
     const eventService = require('./services/eventService');
     
     // Get events created by the authenticated user
@@ -135,7 +124,7 @@ app.get('/api/events', async (req, res) => {
       success: true,
       events: mappedEvents,
       count: mappedEvents.length,
-      user: 'test-user@example.com' // Hardcoded for testing
+      user: req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -147,11 +136,11 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-// Create event in database (temporarily without JWT for testing)
-app.post('/api/events', async (req, res) => {
+// Create event in database (JWT authenticated)
+app.post('/api/events', requiresAuth, async (req, res) => {
   try {
     const { title, description, date, venue, price } = req.body;
-    const userId = 'test-user-123'; // Hardcoded for testing
+    const userId = req.auth.sub; // Get user ID from JWT token
     
     // Validate required fields
     if (!title || !date || !venue) {
@@ -192,7 +181,7 @@ app.post('/api/events', async (req, res) => {
       success: true,
       event: mappedEvent,
       message: 'Event created successfully',
-      user: 'test-user@example.com' // Hardcoded for testing
+      user: req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error creating event:', error);
@@ -204,12 +193,12 @@ app.post('/api/events', async (req, res) => {
   }
 });
 
-// Update event in database (temporarily without JWT for testing)
-app.put('/api/events/:id', async (req, res) => {
+// Update event in database (JWT authenticated)
+app.put('/api/events/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, date, venue, price } = req.body;
-    const userId = 'test-user-123'; // Hardcoded for testing
+    const userId = req.auth.sub; // Get user ID from JWT token
     
     const eventService = require('./services/eventService');
     
@@ -240,7 +229,7 @@ app.put('/api/events/:id', async (req, res) => {
       success: true,
       event: mappedEvent,
       message: 'Event updated successfully',
-      user: 'test-user@example.com' // Hardcoded for testing
+      user: req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error updating event:', error);
@@ -252,11 +241,11 @@ app.put('/api/events/:id', async (req, res) => {
   }
 });
 
-// Delete event from database (temporarily without JWT for testing)
-app.delete('/api/events/:id', async (req, res) => {
+// Delete event from database (JWT authenticated)
+app.delete('/api/events/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = 'test-user-123'; // Hardcoded for testing
+    const userId = req.auth.sub; // Get user ID from JWT token
     
     const eventService = require('./services/eventService');
     
@@ -266,7 +255,7 @@ app.delete('/api/events/:id', async (req, res) => {
       success: true,
       message: 'Event deleted successfully',
       deletedEvent: { id: parseInt(id) },
-      user: 'test-user@example.com' // Hardcoded for testing
+      user: req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error deleting event:', error);
