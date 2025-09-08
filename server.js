@@ -74,10 +74,10 @@ app.get('/api/test/protected', requiresAuth, (req, res) => {
       success: true,
       message: 'JWT authentication is working!',
       user: {
-        sub: req.auth?.sub || 'N/A',
-        email: req.auth?.email || 'N/A',
-        name: req.auth?.name || 'N/A',
-        picture: req.auth?.picture || 'N/A'
+        sub: req.auth?.payload?.sub || req.auth?.sub || 'N/A',
+        email: req.auth?.payload?.email || req.auth?.email || 'N/A',
+        name: req.auth?.payload?.name || req.auth?.name || 'N/A',
+        picture: req.auth?.payload?.picture || req.auth?.picture || 'N/A'
       },
       scope: req.auth?.scope || 'N/A',
       timestamp: new Date().toISOString()
@@ -94,7 +94,7 @@ app.get('/api/test/protected', requiresAuth, (req, res) => {
 // Get events from database (JWT authenticated)
 app.get('/api/events', requiresAuth, async (req, res) => {
   try {
-    const userId = req.auth.sub; // Get user ID from JWT token
+    const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
     const eventService = require('./services/eventService');
     
     // Get events created by the authenticated user
@@ -124,7 +124,7 @@ app.get('/api/events', requiresAuth, async (req, res) => {
       success: true,
       events: mappedEvents,
       count: mappedEvents.length,
-      user: req.auth.email || req.auth.sub
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -139,11 +139,18 @@ app.get('/api/events', requiresAuth, async (req, res) => {
 // Create event in database (JWT authenticated)
 app.post('/api/events', requiresAuth, async (req, res) => {
   try {
+    console.log('🔍 DEBUG: Event creation request received');
+    console.log('📥 Request body:', req.body);
+    console.log('👤 Auth data:', req.auth);
+    
     const { title, description, date, venue, price } = req.body;
-    const userId = req.auth.sub; // Get user ID from JWT token
+    const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
+    
+    console.log('🎯 Extracted data:', { title, description, date, venue, price, userId });
     
     // Validate required fields
     if (!title || !date || !venue) {
+      console.log('❌ Validation failed - missing required fields');
       return res.status(400).json({
         success: false,
         error: 'Missing required fields',
@@ -151,6 +158,7 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       });
     }
     
+    console.log('🛠️ Loading event service...');
     const eventService = require('./services/eventService');
     
     // Create event data for database
@@ -163,7 +171,10 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       created_by: userId
     };
     
+    console.log('📄 Event data for Prisma:', eventData);
+    console.log('⚡ Calling eventService.createEvent...');
     const newEvent = await eventService.createEvent(eventData);
+    console.log('✅ Event created successfully via service:', newEvent);
     
     // Map response to frontend format
     const mappedEvent = {
@@ -181,7 +192,7 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       success: true,
       event: mappedEvent,
       message: 'Event created successfully',
-      user: req.auth.email || req.auth.sub
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error creating event:', error);
@@ -198,7 +209,7 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, date, venue, price } = req.body;
-    const userId = req.auth.sub; // Get user ID from JWT token
+    const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
     
     const eventService = require('./services/eventService');
     
@@ -229,7 +240,7 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
       success: true,
       event: mappedEvent,
       message: 'Event updated successfully',
-      user: req.auth.email || req.auth.sub
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error updating event:', error);
@@ -245,7 +256,7 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
 app.delete('/api/events/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.auth.sub; // Get user ID from JWT token
+    const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
     
     const eventService = require('./services/eventService');
     
@@ -255,7 +266,7 @@ app.delete('/api/events/:id', requiresAuth, async (req, res) => {
       success: true,
       message: 'Event deleted successfully',
       deletedEvent: { id: parseInt(id) },
-      user: req.auth.email || req.auth.sub
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error deleting event:', error);

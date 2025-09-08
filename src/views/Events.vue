@@ -3,16 +3,27 @@
     <div class="row">
       <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
-          <h2>Events Management</h2>
-          <button class="btn btn-primary" @click="showCreateModal">
+          <div>
+            <h2>Events Management</h2>
+            <small class="text-muted" v-if="isAuthenticated">
+              <i class="fas fa-user"></i> {{ userName }} ({{ userEmail }}) {{userId}}
+            </small>
+          </div>
+          <button class="btn btn-primary" @click="showCreateModal" v-if="isAuthenticated">
             <i class="fas fa-plus"></i> Create Event
           </button>
         </div>
       </div>
     </div>
+    
+    <!-- Authentication Warning -->
+    <div v-if="!isAuthenticated && !isLoading" class="alert alert-warning" role="alert">
+      <i class="fas fa-exclamation-triangle"></i>
+      <strong>Please log in</strong> to view and manage your events.
+    </div>
 
     <!-- Events List -->
-    <div class="row">
+    <div class="row" v-if="isAuthenticated">
       <div class="col-12">
         <div v-if="isLoading" class="text-center">
           <div class="spinner-border" role="status">
@@ -20,7 +31,7 @@
           </div>
         </div>
 
-        <div v-else-if="events.length === 0" class="text-center py-5">
+        <div v-else-if="events.length === 0 && isAuthenticated" class="text-center py-5">
           <div class="mb-4">
             <span class="display-1">🎪</span>
           </div>
@@ -115,6 +126,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi'
+import { useUser } from '@/composables/useUser'
+
 
 // Import Bootstrap for modal functionality
 import { Modal } from 'bootstrap'
@@ -124,6 +137,9 @@ if (typeof window !== 'undefined' && !window.bootstrap) {
 
 // API composable
 const { isLoading, error, get, post, put, delete: deleteApi } = useApi()
+
+// User composable
+const { userId, user, userName, userEmail, isAuthenticated } = useUser()
 
 // Events data
 const events = ref([])
@@ -173,7 +189,8 @@ const editEvent = (event) => {
     title: event.title || event.name,
     description: event.description || '',
     date: event.date ? formatDateForInput(event.date) : '',
-    venue: event.venue || ''
+    venue: event.venue || '',
+    createdBy: userId
   })
   
   const modalElement = document.getElementById('eventModal')
@@ -188,11 +205,17 @@ const saveEvent = async () => {
     return
   }
   
+  if (!isAuthenticated.value) {
+    error.value = 'You must be logged in to create events'
+    return
+  }
+  
   try {
     if (isEditing.value) {
       const result = await put(`/api/events/${currentEventId.value}`, eventForm)
       console.log('Event updated:', result)
     } else {
+      // Note: created_by is automatically set by the server from JWT token
       const result = await post('/api/events', eventForm)
       console.log('Event created:', result)
     }
