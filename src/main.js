@@ -3,12 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { createAuth0 } from '@auth0/auth0-vue'
 import App from './App.vue'
 import { createRoutes } from './router/routes.js'
-
-// Auth0 configuration
-const authConfig = {
-  domain: 'novamoney.us.auth0.com',
-  clientId: '1PlShClpoRxkSeKWZtgq4vVnUxLg40F4'
-}
+import { auth0Config } from './config/auth0.js'
 
 // Import Bootstrap CSS
 import 'bootstrap/dist/css/bootstrap.min.css'
@@ -17,17 +12,8 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 // Create Vue app instance
 const app = createApp(App)
 
-// Setup Auth0
-app.use(
-    createAuth0({
-      domain: authConfig.domain,
-      clientId: authConfig.clientId,
-      authorizationParams: {
-        redirect_uri: window.location.origin,
-        audience: 'https://ticket.nova.money'
-      }
-    })
-);
+// Setup Auth0 with centralized configuration
+app.use(createAuth0(auth0Config));
 
 // Create router instance with auth guards
 const routes = createRoutes(app);

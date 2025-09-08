@@ -135,8 +135,7 @@ const eventForm = reactive({
   title: '',
   description: '',
   date: '',
-  venue: '',
-  price: 0
+  venue: ''
 })
 
 // Load events

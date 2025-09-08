@@ -105,13 +105,13 @@
 </template>
 
 <script lang="ts">
-import { useUser } from '@/composables/useUser';
+import { useAuth0 } from '@auth0/auth0-vue';
 import { ref, onMounted, onUnmounted } from 'vue';
 
 export default {
   name: "NavBar",
   setup() {
-    const { isAuthenticated, isLoading, user, login, logout } = useUser();
+    const auth0 = useAuth0();
     const isDropdownOpen = ref(false);
     
     // Toggle dropdown function
@@ -127,7 +127,11 @@ export default {
     // Handle logout and close dropdown
     const handleLogout = () => {
       closeDropdown();
-      logout();
+      auth0.logout({
+        logoutParams: {
+          returnTo: window.location.origin
+        }
+      });
     };
     
     // Close dropdown when clicking outside
@@ -153,15 +157,23 @@ export default {
     });
     
     return {
-      isAuthenticated,
-      isLoading,
-      user,
+      isAuthenticated: auth0.isAuthenticated,
+      isLoading: auth0.isLoading,
+      user: auth0.user,
       isDropdownOpen,
       toggleDropdown,
       closeDropdown,
       handleLogout,
-      login,
-      logout
+      login() {
+        auth0.loginWithRedirect();
+      },
+      logout() {
+        auth0.logout({
+          logoutParams: {
+            returnTo: window.location.origin
+          }
+        });
+      }
     }
   }
 };

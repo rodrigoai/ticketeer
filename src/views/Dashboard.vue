@@ -15,9 +15,9 @@
         </div>
       </div>
     </div>
-<div v-if="isAuthenticated" class="nav-item">
-            <b>Autenticado</b>
-</div>
+    <div v-if="isAuthenticated" class="nav-item">
+      Autenticado: <b>{{ user.email }} - {{ user.sub }}</b>
+    </div>
     <!-- Feature Cards -->
     <div class="row g-4 justify-content-center">
       <div class="col-md-6 col-lg-4">

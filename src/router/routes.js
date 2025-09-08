@@ -1,6 +1,7 @@
 import Profile from "../views/Profile.vue";
 import Dashboard from '@/views/Dashboard.vue'
 import Events from '@/views/Events.vue'
+import Newpro from '@/views/Newpro.vue'
 
 import { createAuthGuard } from "@auth0/auth0-vue";
 // Export function that takes app instance to create routes with auth guards
@@ -24,6 +25,12 @@ export const createRoutes = (app) => {
       path: '/profile',
       name: 'Profile',
       component: Profile,
+      beforeEnter: authGuard
+    },
+    {
+      path: '/newpro',
+      name: 'NewPro',
+      component: Newpro,
       beforeEnter: authGuard
     }
   ];
