@@ -45,11 +45,6 @@
                     <i class="fas fa-map-marker-alt"></i> {{ event.venue }}
                   </small>
                 </div>
-                <div class="mb-3">
-                  <small class="text-muted">
-                    <i class="fas fa-dollar-sign"></i> ${{ event.price }}
-                  </small>
-                </div>
               </div>
               <div class="card-footer">
                 <div class="btn-group w-100" role="group">
@@ -92,16 +87,10 @@
                 <textarea class="form-control" id="eventDescription" rows="3" v-model="eventForm.description"></textarea>
               </div>
               <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-12">
                   <div class="mb-3">
                     <label for="eventDate" class="form-label">Date</label>
                     <input type="datetime-local" class="form-control" id="eventDate" v-model="eventForm.date" required>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="eventPrice" class="form-label">Price</label>
-                    <input type="number" step="0.01" class="form-control" id="eventPrice" v-model="eventForm.price" required>
                   </div>
                 </div>
               </div>
@@ -185,8 +174,7 @@ const editEvent = (event) => {
     title: event.title || event.name,
     description: event.description || '',
     date: event.date ? formatDateForInput(event.date) : '',
-    venue: event.venue || '',
-    price: event.price || 0
+    venue: event.venue || ''
   })
   
   const modalElement = document.getElementById('eventModal')
@@ -249,8 +237,7 @@ const resetForm = () => {
     title: '',
     description: '',
     date: '',
-    venue: '',
-    price: 0
+    venue: ''
   })
 }
 

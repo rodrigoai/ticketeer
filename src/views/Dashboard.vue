@@ -4,7 +4,7 @@
       <div class="col-12">
         <!-- Hero Section -->
         <div class="jumbotron bg-light p-5 rounded-3 text-center mb-5">
-          <h1 class="display-4 fw-bold text-primary">Hello, {{ user?.name }}</h1>
+          <h1 class="display-4 fw-bold text-primary">Hello, {{ userName }}</h1>
           <p class="lead">Finalmenteeeebbbbbbb</p>
           <hr class="my-4">
           <p class="mb-4">Welcome to Ticketeer! We're excited to have you on board.</p>
@@ -15,7 +15,9 @@
         </div>
       </div>
     </div>
-
+<div v-if="isAuthenticated" class="nav-item">
+            <b>Autenticado</b>
+</div>
     <!-- Feature Cards -->
     <div class="row g-4 justify-content-center">
       <div class="col-md-6 col-lg-4">
@@ -37,10 +39,10 @@
 </template>
 
 <script setup>
-import { useAuth0 } from '@auth0/auth0-vue';
+import { useUser } from '@/composables/useUser'
 
-// Get user from Auth0
-const { user } = useAuth0();
+// Get user from centralized user state
+const { user, isAuthenticated, userName } = useUser()
 </script>
 
 <style scoped>

@@ -112,48 +112,33 @@
 </template>
 
 <script lang="ts">
-import { useAuth0 } from '@auth0/auth0-vue';
+import { useUser } from '@/composables/useUser';
 import { ref, onMounted } from 'vue';
 
 export default {
   name: "profile-view",
   setup() {
-    const auth0 = useAuth0();
+    const {
+      user, 
+      isAuthenticated, 
+      isLoading, 
+      accessToken, 
+      isLoadingToken, 
+      tokenError, 
+      getAccessToken, 
+      refreshAccessToken 
+    } = useUser();
     
-    // Reactive state for access token
-    const accessToken = ref<string | null>(null);
-    const isLoadingToken = ref(false);
-    const tokenError = ref<string | null>(null);
     const testResult = ref<any>(null);
     
-    // Get access token function
+    // Get token function (wrapper around centralized function)
     const getToken = async () => {
-      try {
-        isLoadingToken.value = true;
-        tokenError.value = null;
-        
-        // Get access token silently
-        const token = await auth0.getAccessTokenSilently({
-          authorizationParams: {
-            audience: 'https://ticket.nova.money',
-            scope: 'read:events write:events delete:events'
-          }
-        });
-        
-        accessToken.value = token;
-        console.log('Access token retrieved:', token);
-      } catch (error: any) {
-        console.error('Error getting access token:', error);
-        tokenError.value = error.message || 'Failed to get access token';
-      } finally {
-        isLoadingToken.value = false;
-      }
+      return await getAccessToken();
     };
     
-    // Refresh token function
+    // Refresh token function (wrapper around centralized function)
     const refreshToken = async () => {
-      accessToken.value = null;
-      await getToken();
+      return await refreshAccessToken();
     };
     
     // Copy token to clipboard
@@ -200,13 +185,13 @@ export default {
     
     // Automatically get token on component mount if user is authenticated
     onMounted(() => {
-      if (auth0.isAuthenticated.value && !auth0.isLoading.value) {
+      if (isAuthenticated.value && !isLoading.value) {
         getToken();
       }
     });
     
     return {
-      user: auth0.user,
+      user,
       accessToken,
       isLoadingToken,
       tokenError,

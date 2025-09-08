@@ -1,10 +1,10 @@
 import { ref } from 'vue'
-import { useAuth0 } from '@auth0/auth0-vue'
+import { useUser } from './useUser'
 
 export function useApi() {
   const isLoading = ref(false)
   const error = ref(null)
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0()
+  const { isAuthenticated, getAccessToken } = useUser()
 
   // Generic API request function
   const request = async (url, options = {}) => {
@@ -21,8 +21,10 @@ export function useApi() {
       // Add Authorization header if user is authenticated
       if (isAuthenticated.value) {
         try {
-          const token = await getAccessTokenSilently()
-          headers['Authorization'] = `Bearer ${token}`
+          const token = await getAccessToken()
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`
+          }
         } catch (authError) {
           console.warn('Failed to get access token:', authError)
           // Continue without token for public endpoints

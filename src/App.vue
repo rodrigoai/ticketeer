@@ -46,11 +46,11 @@
 
 
 <script setup lang="ts">
-import { useAuth0 } from '@auth0/auth0-vue'
+import { useUser } from './composables/useUser'
 import NavBar from "./components/NavBar.vue";
 
-// Use Auth0 Vue composable for profile modal
-const { user, isAuthenticated } = useAuth0()
+// Use centralized user state for profile modal
+const { user, isAuthenticated } = useUser()
 
 // View user profile function
 const viewProfile = () => {
