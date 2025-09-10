@@ -43,6 +43,7 @@ model Ticket {
   order                  String?  // Optional
   buyer                  String?  // Optional
   buyerDocument          String?  // Optional
+  buyerEmail             String?  // Optional
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt
 

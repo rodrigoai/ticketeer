@@ -17,7 +17,8 @@ class TicketService {
         price,
         order,
         buyer,
-        buyerDocument
+        buyerDocument,
+        buyerEmail
       } = ticketData;
 
       // Validate required fields
@@ -67,7 +68,8 @@ class TicketService {
             price: priceDecimal.toString(),
             order: order || null,
             buyer: buyer || null,
-            buyerDocument: buyerDocument || null
+            buyerDocument: buyerDocument || null,
+            buyerEmail: buyerEmail || null
           }
         });
       });
@@ -95,7 +97,8 @@ class TicketService {
         price,
         order,
         buyer,
-        buyerDocument
+        buyerDocument,
+        buyerEmail
       } = ticketData;
 
       // Validate required fields
@@ -145,7 +148,8 @@ class TicketService {
             price: priceDecimal.toString(),
             order: order || null,
             buyer: buyer || null,
-            buyerDocument: buyerDocument || null
+            buyerDocument: buyerDocument || null,
+            buyerEmail: buyerEmail || null
           });
         }
 
@@ -239,7 +243,8 @@ class TicketService {
         price,
         order,
         buyer,
-        buyerDocument
+        buyerDocument,
+        buyerEmail
       } = ticketData;
 
       // Get existing ticket and verify ownership
@@ -262,6 +267,7 @@ class TicketService {
       if (order !== undefined) updateData.order = order || null;
       if (buyer !== undefined) updateData.buyer = buyer || null;
       if (buyerDocument !== undefined) updateData.buyerDocument = buyerDocument || null;
+      if (buyerEmail !== undefined) updateData.buyerEmail = buyerEmail || null;
 
       const updatedTicket = await prisma.ticket.update({
         where: { id: parseInt(ticketId) },

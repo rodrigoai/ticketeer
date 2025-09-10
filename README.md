@@ -182,22 +182,30 @@ ticketeer/
 ### Protected API Endpoints
 
 ```bash
-# Authentication
-GET    /api/auth/status      # Check authentication status
-GET    /api/auth/profile     # Get user profile (protected)
+# Health & Test Endpoints
+GET    /api/health                      # Server health check (public)
+GET    /api/test/simple                 # Basic connectivity test (public)
+GET    /api/test/protected              # JWT authentication test (protected)
 
-# Events (Protected)
-GET    /api/events          # Get user events
-POST   /api/events          # Create new event
+# Event Management (Protected)
+GET    /api/events                      # List all user events
+GET    /api/events/:id                  # Get event by ID
+POST   /api/events                      # Create new event
+PUT    /api/events/:id                  # Update event
+DELETE /api/events/:id                  # Delete event
 
-# Sales (Protected) 
-GET    /api/sales           # Get sales data
-GET    /api/stats           # Get analytics
-
-# Public Endpoints
-GET    /api/health          # Server health check
-GET    /api/public/events   # Public events (no auth required)
+# Ticket Management (Protected)
+GET    /api/events/:eventId/tickets     # List event tickets
+GET    /api/events/:eventId/tickets/stats # Get ticket statistics
+POST   /api/events/:eventId/tickets     # Create single ticket
+POST   /api/events/:eventId/tickets/batch # Create batch tickets
+GET    /api/tickets/:id                 # Get ticket by ID
+PUT    /api/tickets/:id                 # Update ticket
+DELETE /api/tickets/:id                 # Delete single ticket
+DELETE /api/tickets/batch               # Delete multiple tickets
 ```
+
+**📚 For detailed API documentation, request/response examples, and Postman collection, see [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)**
 
 ## 🧪 Testing Authentication
 
@@ -307,6 +315,11 @@ DEBUG=express-openid-connect:*
 
 ## 📚 Documentation
 
+### API Documentation
+- **[Complete API Documentation](docs/API_DOCUMENTATION.md)** - Comprehensive API documentation with Postman collection
+- **[Postman Collection](docs/ticketeer-api.postman_collection.json)** - Ready-to-use Postman collection for all API endpoints
+
+### External Documentation
 - [Auth0 Documentation](https://auth0.com/docs)
 - [Express.js Guide](https://expressjs.com/)
 - [Bootstrap 5 Documentation](https://getbootstrap.com/docs/5.3/)

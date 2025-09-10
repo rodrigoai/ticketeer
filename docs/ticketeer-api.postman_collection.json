@@ -1,0 +1,1314 @@
+{
+  "info": {
+    "name": "Ticketeer API Collection",
+    "description": "Comprehensive API documentation for the Ticketeer ticket sales management system. This collection includes authentication methods, request/response examples, and detailed parameter documentation for all endpoints.\n\n## Authentication\nMost endpoints require Auth0 JWT authentication. Include a valid JWT token in the Authorization header as Bearer token.\n\n## Base URL\n`http://localhost:3000` (development)\n\n## Last Updated\nSeptember 10, 2025 - v1.0.0\n\n## Features Covered\n- Health Check & Test Endpoints\n- Event Management (CRUD)\n- Ticket Management (CRUD)\n- Batch Operations\n- Statistics & Analytics",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "author": "Ticketeer Development Team"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Base URL for the Ticketeer API"
+    },
+    {
+      "key": "auth_token",
+      "value": "{{AUTH0_JWT_TOKEN}}",
+      "type": "string",
+      "description": "Auth0 JWT Bearer token for authentication"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health & Test Endpoints",
+      "description": "System health checks and authentication testing endpoints",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Check if the server is running and get system information including Auth0 configuration."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/health",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": \"OK\",\n  \"message\": \"Ticketeer SPA server is running!\",\n  \"timestamp\": \"2025-09-10T18:30:00.000Z\",\n  \"auth\": {\n    \"domain\": \"novamoney.us.auth0.com\",\n    \"audience\": \"https://ticket.nova.money\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Simple Test (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/test/simple",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "test", "simple"]
+            },
+            "description": "Test endpoint that doesn't require authentication. Used for basic connectivity testing."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/test/simple",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "test", "simple"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Simple test endpoint working!\",\n  \"timestamp\": \"2025-09-10T18:30:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Protected Test (Auth Required)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/test/protected",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "test", "protected"]
+            },
+            "description": "Test endpoint that requires JWT authentication. Used to verify Auth0 integration is working."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/test/protected",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "test", "protected"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"JWT authentication is working!\",\n  \"user\": {\n    \"sub\": \"auth0|123456789\",\n    \"email\": \"user@example.com\",\n    \"name\": \"John Doe\",\n    \"picture\": \"https://example.com/avatar.jpg\"\n  },\n  \"scope\": \"read:events write:events\",\n  \"timestamp\": \"2025-09-10T18:30:00.000Z\"\n}"
+            },
+            {
+              "name": "Unauthorized Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/test/protected",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "test", "protected"]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Valid JWT token required\",\n  \"details\": \"No authorization token was found\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Event Management",
+      "description": "Complete CRUD operations for events including creation, retrieval, updates, and deletion",
+      "item": [
+        {
+          "name": "Get All Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events"]
+            },
+            "description": "Retrieve all events created by the authenticated user. Returns only active events owned by the current user."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"events\": [\n    {\n      \"id\": 1,\n      \"title\": \"Summer Concert 2025\",\n      \"name\": \"Summer Concert 2025\",\n      \"description\": \"Annual summer concert featuring local artists\",\n      \"date\": \"2025-07-15T19:00:00.000Z\",\n      \"opening_datetime\": \"2025-07-15T19:00:00.000Z\",\n      \"closing_datetime\": \"2025-07-15T23:00:00.000Z\",\n      \"venue\": \"Central Park Amphitheater\",\n      \"price\": 0,\n      \"status\": \"active\",\n      \"created_by\": \"auth0|123456789\",\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    }\n  ],\n  \"count\": 1,\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Event by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/:eventId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "1",
+                  "description": "Unique identifier of the event"
+                }
+              ]
+            },
+            "description": "Retrieve a specific event by its ID. User must be the owner of the event."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"event\": {\n    \"id\": 1,\n    \"title\": \"Summer Concert 2025\",\n    \"name\": \"Summer Concert 2025\",\n    \"description\": \"Annual summer concert featuring local artists\",\n    \"date\": \"2025-07-15T19:00:00.000Z\",\n    \"opening_datetime\": \"2025-07-15T19:00:00.000Z\",\n    \"closing_datetime\": \"2025-07-15T23:00:00.000Z\",\n    \"venue\": \"Central Park Amphitheater\",\n    \"status\": \"active\",\n    \"created_by\": \"auth0|123456789\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n  },\n  \"user\": \"user@example.com\"\n}"
+            },
+            {
+              "name": "Event Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/999",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "999"]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Failed to fetch event\",\n  \"message\": \"Event not found or access denied\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Summer Concert 2025\",\n  \"description\": \"Annual summer concert featuring local artists\",\n  \"date\": \"2025-07-15T19:00:00.000Z\",\n  \"venue\": \"Central Park Amphitheater\",\n  \"price\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events"]
+            },
+            "description": "Create a new event. The authenticated user becomes the owner of the event.\n\n**Required Fields:**\n- title (string): Event name/title\n- date (ISO string): Event date and time\n- venue (string): Event location/venue\n\n**Optional Fields:**\n- description (string): Event description\n- price (number): Base price (defaults to 0)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Summer Concert 2025\",\n  \"description\": \"Annual summer concert featuring local artists\",\n  \"date\": \"2025-07-15T19:00:00.000Z\",\n  \"venue\": \"Central Park Amphitheater\",\n  \"price\": 0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/events",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"event\": {\n    \"id\": 1,\n    \"title\": \"Summer Concert 2025\",\n    \"name\": \"Summer Concert 2025\",\n    \"description\": \"Annual summer concert featuring local artists\",\n    \"date\": \"2025-07-15T19:00:00.000Z\",\n    \"venue\": \"Central Park Amphitheater\",\n    \"price\": 0,\n    \"created_by\": \"auth0|123456789\"\n  },\n  \"message\": \"Event created successfully\",\n  \"user\": \"user@example.com\"\n}"
+            },
+            {
+              "name": "Validation Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"\",\n  \"description\": \"Event without required fields\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/events",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Missing required fields\",\n  \"message\": \"Title, date, and venue are required\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Summer Concert 2025 - Updated\",\n  \"description\": \"Updated description for the summer concert\",\n  \"date\": \"2025-07-16T19:00:00.000Z\",\n  \"venue\": \"Madison Square Garden\",\n  \"price\": 50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/events/:eventId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "1",
+                  "description": "Unique identifier of the event to update"
+                }
+              ]
+            },
+            "description": "Update an existing event. Only the event owner can update the event. All fields are optional."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Summer Concert 2025 - Updated\",\n  \"description\": \"Updated description for the summer concert\",\n  \"date\": \"2025-07-16T19:00:00.000Z\",\n  \"venue\": \"Madison Square Garden\",\n  \"price\": 50\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"event\": {\n    \"id\": 1,\n    \"title\": \"Summer Concert 2025 - Updated\",\n    \"name\": \"Summer Concert 2025 - Updated\",\n    \"description\": \"Updated description for the summer concert\",\n    \"date\": \"2025-07-16T19:00:00.000Z\",\n    \"venue\": \"Madison Square Garden\",\n    \"price\": 50,\n    \"created_by\": \"auth0|123456789\"\n  },\n  \"message\": \"Event updated successfully\",\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/:eventId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "1",
+                  "description": "Unique identifier of the event to delete"
+                }
+              ]
+            },
+            "description": "Delete an event. Only the event owner can delete the event. This will also delete all associated tickets."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Event deleted successfully\",\n  \"deletedEvent\": {\n    \"id\": 1\n  },\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ticket Management",
+      "description": "Complete CRUD operations for tickets including individual and batch operations",
+      "item": [
+        {
+          "name": "Get All Tickets for Event",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/:eventId/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ":eventId", "tickets"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "1",
+                  "description": "Unique identifier of the event"
+                }
+              ]
+            },
+            "description": "Retrieve all tickets for a specific event. User must be the owner of the event."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 1,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 1,\n      \"location\": \"Main Floor\",\n      \"table\": 5,\n      \"price\": 25.00,\n      \"order\": \"ORDER-001\",\n      \"buyer\": \"John Doe\",\n      \"buyerDocument\": \"123456789\",\n      \"buyerEmail\": \"john.doe@example.com\",\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    }\n  ],\n  \"count\": 1,\n  \"eventId\": 1,\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Ticket Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/:eventId/tickets/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ":eventId", "tickets", "stats"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "1",
+                  "description": "Unique identifier of the event"
+                }
+              ]
+            },
+            "description": "Get statistical information about tickets for an event including total count, revenue, and price range."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets/stats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets", "stats"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"stats\": {\n    \"totalTickets\": 10,\n    \"totalRevenue\": 250.00,\n    \"averagePrice\": 25.00,\n    \"minPrice\": 15.00,\n    \"maxPrice\": 50.00\n  },\n  \"eventId\": 1,\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Single Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"VIP Ticket\",\n  \"location\": \"VIP Section\",\n  \"table\": 1,\n  \"price\": 75.50,\n  \"order\": \"VIP-001\",\n  \"buyer\": \"Jane Smith\",\n  \"buyerDocument\": \"987654321\",\n  \"buyerEmail\": \"jane.smith@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/events/:eventId/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ":eventId", "tickets"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "1",
+                  "description": "Unique identifier of the event"
+                }
+              ]
+            },
+            "description": "Create a single ticket for an event. The ticket will be assigned a sequential identification number automatically.\n\n**Required Fields:**\n- description (string): Ticket description\n- price (number): Ticket price (must be >= 0)\n\n**Optional Fields:**\n- location (string): Ticket location/section\n- table (number): Table number\n- order (string): Order reference\n- buyer (string): Buyer name\n- buyerDocument (string): Buyer document/ID\n- buyerEmail (string): Buyer email address"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"VIP Ticket\",\n  \"location\": \"VIP Section\",\n  \"table\": 1,\n  \"price\": 75.50,\n  \"order\": \"VIP-001\",\n  \"buyer\": \"Jane Smith\",\n  \"buyerDocument\": \"987654321\",\n  \"buyerEmail\": \"jane.smith@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket\",\n    \"identificationNumber\": 1,\n    \"location\": \"VIP Section\",\n    \"table\": 1,\n    \"price\": 75.50,\n    \"order\": \"VIP-001\",\n    \"buyer\": \"Jane Smith\",\n    \"buyerDocument\": \"987654321\",\n    \"buyerEmail\": \"jane.smith@example.com\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n  },\n  \"message\": \"Ticket created successfully\",\n  \"user\": \"user@example.com\"\n}"
+            },
+            {
+              "name": "Validation Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"\",\n  \"price\": -10\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Validation failed\",\n  \"message\": \"Description and price are required\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Batch Tickets",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"General Admission\",\n  \"location\": \"Main Floor\",\n  \"table\": null,\n  \"price\": 25.00,\n  \"order\": \"BATCH-001\",\n  \"buyer\": \"Group Purchase\",\n  \"buyerDocument\": \"GROUP123\",\n  \"buyerEmail\": \"group@example.com\",\n  \"quantity\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/events/:eventId/tickets/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ":eventId", "tickets", "batch"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "1",
+                  "description": "Unique identifier of the event"
+                }
+              ]
+            },
+            "description": "Create multiple tickets with identical information for an event. Each ticket will be assigned sequential identification numbers.\n\n**Required Fields:**\n- description (string): Ticket description\n- price (number): Ticket price (must be >= 0)\n- quantity (number): Number of tickets to create (1-100)\n\n**Optional Fields:**\n- location (string): Ticket location/section\n- table (number): Table number\n- order (string): Order reference\n- buyer (string): Buyer name\n- buyerDocument (string): Buyer document/ID\n- buyerEmail (string): Buyer email address"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"General Admission\",\n  \"location\": \"Main Floor\",\n  \"price\": 25.00,\n  \"quantity\": 3\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets/batch",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets", "batch"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 2,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 2,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": null,\n      \"buyer\": null,\n      \"buyerDocument\": null,\n      \"buyerEmail\": null,\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    },\n    {\n      \"id\": 3,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 3,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": null,\n      \"buyer\": null,\n      \"buyerDocument\": null,\n      \"buyerEmail\": null,\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    },\n    {\n      \"id\": 4,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 4,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": null,\n      \"buyer\": null,\n      \"buyerDocument\": null,\n      \"buyerEmail\": null,\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    }\n  ],\n  \"count\": 3,\n  \"message\": \"3 tickets created successfully\",\n  \"user\": \"user@example.com\"\n}"
+            },
+            {
+              "name": "Quantity Validation Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"General Admission\",\n  \"price\": 25.00,\n  \"quantity\": 150\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets/batch",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets", "batch"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Validation failed\",\n  \"message\": \"Quantity must be between 1 and 100\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Ticket by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/:ticketId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tickets", ":ticketId"],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "1",
+                  "description": "Unique identifier of the ticket"
+                }
+              ]
+            },
+            "description": "Retrieve a specific ticket by its ID. User must be the owner of the event that the ticket belongs to."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/tickets/1",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tickets", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket\",\n    \"identificationNumber\": 1,\n    \"location\": \"VIP Section\",\n    \"table\": 1,\n    \"price\": 75.50,\n    \"order\": \"VIP-001\",\n    \"buyer\": \"Jane Smith\",\n    \"buyerDocument\": \"987654321\",\n    \"buyerEmail\": \"jane.smith@example.com\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n  },\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Ticket",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"VIP Ticket - Updated\",\n  \"location\": \"Premium VIP Section\",\n  \"table\": 2,\n  \"price\": 85.00,\n  \"order\": \"VIP-001-UPDATED\",\n  \"buyer\": \"Jane Smith Updated\",\n  \"buyerDocument\": \"987654321-NEW\",\n  \"buyerEmail\": \"jane.smith.updated@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/:ticketId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tickets", ":ticketId"],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "1",
+                  "description": "Unique identifier of the ticket to update"
+                }
+              ]
+            },
+            "description": "Update a ticket. Only the event owner can update tickets. All fields are optional. The identification number cannot be changed.\n\n**Note:** The identificationNumber is automatically assigned and cannot be modified."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"VIP Ticket - Updated\",\n  \"price\": 85.00,\n  \"buyer\": \"Jane Smith Updated\",\n  \"buyerEmail\": \"jane.smith.updated@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tickets/1",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tickets", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket - Updated\",\n    \"identificationNumber\": 1,\n    \"location\": \"Premium VIP Section\",\n    \"table\": 2,\n    \"price\": 85.00,\n    \"order\": \"VIP-001-UPDATED\",\n    \"buyer\": \"Jane Smith Updated\",\n    \"buyerDocument\": \"987654321-NEW\",\n    \"buyerEmail\": \"jane.smith.updated@example.com\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:31:00.000Z\"\n  },\n  \"message\": \"Ticket updated successfully\",\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Single Ticket",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/:ticketId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tickets", ":ticketId"],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "1",
+                  "description": "Unique identifier of the ticket to delete"
+                }
+              ]
+            },
+            "description": "Delete a single ticket. Only the event owner can delete tickets."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/tickets/1",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tickets", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Ticket deleted successfully\",\n  \"deletedTicket\": {\n    \"id\": 1\n  },\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Multiple Tickets (Batch)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketIds\": [2, 3, 4]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tickets", "batch"]
+            },
+            "description": "Delete multiple tickets at once. Only the event owner can delete tickets.\n\n**Required Fields:**\n- ticketIds (array of numbers): Array of ticket IDs to delete (must not be empty)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ticketIds\": [2, 3, 4]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tickets/batch",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tickets", "batch"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"3 tickets deleted successfully\",\n  \"deletedCount\": 3,\n  \"user\": \"user@example.com\"\n}"
+            },
+            {
+              "name": "Validation Error",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ticketIds\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/tickets/batch",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tickets", "batch"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Validation failed\",\n  \"message\": \"ticketIds array is required and must not be empty\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set baseUrl if not already set",
+          "if (!pm.collectionVariables.get('baseUrl')) {",
+          "    pm.collectionVariables.set('baseUrl', 'http://localhost:3000');",
+          "}",
+          "",
+          "// Check if auth token is present for protected routes",
+          "const isProtectedRoute = pm.request.url.getPath().some(segment => ",
+          "    ['events', 'tickets'].includes(segment) || ",
+          "    pm.request.url.getPath().includes('protected')",
+          ");",
+          "",
+          "if (isProtectedRoute && !pm.request.headers.has('Authorization')) {",
+          "    console.warn('⚠️ This is a protected route that requires Auth0 JWT token');",
+          "    console.warn('💡 Set the auth_token collection variable with your JWT token');",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Common response validation",
+          "pm.test('Status code is successful', function () {",
+          "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+          "});",
+          "",
+          "pm.test('Response has JSON content type', function () {",
+          "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});",
+          "",
+          "pm.test('Response has success field', function () {",
+          "    const responseJson = pm.response.json();",
+          "    pm.expect(responseJson).to.have.property('success');",
+          "});",
+          "",
+          "// Log response for debugging",
+          "if (pm.response.code >= 400) {",
+          "    console.log('❌ Request failed:', pm.response.json());",
+          "} else {",
+          "    console.log('✅ Request successful');",
+          "}"
+        ]
+      }
+    }
+  ]
+}

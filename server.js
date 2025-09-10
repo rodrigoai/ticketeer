@@ -345,6 +345,7 @@ app.get('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       order: ticket.order,
       buyer: ticket.buyer,
       buyerDocument: ticket.buyerDocument,
+      buyerEmail: ticket.buyerEmail,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
@@ -413,7 +414,8 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       price,
       order,
       buyer,
-      buyerDocument
+      buyerDocument,
+      buyerEmail
     } = req.body;
     
     // Validate required fields
@@ -442,7 +444,8 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       price: parseFloat(price),
       order,
       buyer,
-      buyerDocument
+      buyerDocument,
+      buyerEmail
     };
     
     const newTicket = await ticketService.createTicket(eventId, ticketData, userId);
@@ -459,6 +462,7 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       order: newTicket.order,
       buyer: newTicket.buyer,
       buyerDocument: newTicket.buyerDocument,
+      buyerEmail: newTicket.buyerEmail,
       created_at: newTicket.created_at,
       updated_at: newTicket.updated_at
     };
@@ -492,6 +496,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       order,
       buyer,
       buyerDocument,
+      buyerEmail,
       quantity
     } = req.body;
     
@@ -529,7 +534,8 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       price: parseFloat(price),
       order,
       buyer,
-      buyerDocument
+      buyerDocument,
+      buyerEmail
     };
     
     const newTickets = await ticketService.createTicketsBatch(eventId, ticketData, parseInt(quantity), userId);
@@ -546,6 +552,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       order: ticket.order,
       buyer: ticket.buyer,
       buyerDocument: ticket.buyerDocument,
+      buyerEmail: ticket.buyerEmail,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
@@ -589,6 +596,7 @@ app.get('/api/tickets/:id', requiresAuth, async (req, res) => {
       order: ticket.order,
       buyer: ticket.buyer,
       buyerDocument: ticket.buyerDocument,
+      buyerEmail: ticket.buyerEmail,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     };
@@ -620,7 +628,8 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       price,
       order,
       buyer,
-      buyerDocument
+      buyerDocument,
+      buyerEmail
     } = req.body;
     
     // Validate price if provided
@@ -641,7 +650,8 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       price: price !== undefined ? parseFloat(price) : undefined,
       order,
       buyer,
-      buyerDocument
+      buyerDocument,
+      buyerEmail
     };
     
     const updatedTicket = await ticketService.updateTicket(id, ticketData, userId);
@@ -658,6 +668,7 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       order: updatedTicket.order,
       buyer: updatedTicket.buyer,
       buyerDocument: updatedTicket.buyerDocument,
+      buyerEmail: updatedTicket.buyerEmail,
       created_at: updatedTicket.created_at,
       updated_at: updatedTicket.updated_at
     };

@@ -133,6 +133,7 @@
                   <th>Table</th>
                   <th>Price</th>
                   <th>Buyer</th>
+                  <th>Email</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -144,6 +145,7 @@
                   <td>{{ ticket.table || '-' }}</td>
                   <td>${{ ticket.price.toFixed(2) }}</td>
                   <td>{{ ticket.buyer || '-' }}</td>
+                  <td>{{ ticket.buyerEmail || '-' }}</td>
                   <td>
                     <div class="btn-group btn-group-sm">
                       <button class="btn btn-outline-primary" @click="editTicket(ticket)" title="Edit">
@@ -247,6 +249,15 @@
                 >
               </div>
               <div class="mb-3">
+                <label for="ticketBuyerEmail" class="form-label">Buyer Email</label>
+                <input 
+                  type="email" 
+                  class="form-control" 
+                  id="ticketBuyerEmail" 
+                  v-model="ticketForm.buyerEmail"
+                >
+              </div>
+              <div class="mb-3">
                 <label for="ticketOrder" class="form-label">Order</label>
                 <input 
                   type="text" 
@@ -340,6 +351,42 @@
                   </div>
                 </div>
               </div>
+              <div class="mb-3">
+                <label for="batchBuyer" class="form-label">Buyer</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="batchBuyer" 
+                  v-model="batchForm.buyer"
+                >
+              </div>
+              <div class="mb-3">
+                <label for="batchBuyerDocument" class="form-label">Buyer Document</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="batchBuyerDocument" 
+                  v-model="batchForm.buyerDocument"
+                >
+              </div>
+              <div class="mb-3">
+                <label for="batchBuyerEmail" class="form-label">Buyer Email</label>
+                <input 
+                  type="email" 
+                  class="form-control" 
+                  id="batchBuyerEmail" 
+                  v-model="batchForm.buyerEmail"
+                >
+              </div>
+              <div class="mb-3">
+                <label for="batchOrder" class="form-label">Order</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="batchOrder" 
+                  v-model="batchForm.order"
+                >
+              </div>
             </form>
           </div>
           <div class="modal-footer">
@@ -386,6 +433,7 @@ const ticketForm = reactive({
   price: 0,
   buyer: '',
   buyerDocument: '',
+  buyerEmail: '',
   order: ''
 })
 
@@ -394,7 +442,11 @@ const batchForm = reactive({
   location: '',
   table: null,
   price: 0,
-  quantity: 1
+  quantity: 1,
+  buyer: '',
+  buyerDocument: '',
+  buyerEmail: '',
+  order: ''
 })
 
 // Bootstrap modals
@@ -483,6 +535,7 @@ const editTicket = (ticket) => {
     price: ticket.price || 0,
     buyer: ticket.buyer || '',
     buyerDocument: ticket.buyerDocument || '',
+    buyerEmail: ticket.buyerEmail || '',
     order: ticket.order || ''
   })
   
@@ -572,6 +625,7 @@ const resetTicketForm = () => {
     price: 0,
     buyer: '',
     buyerDocument: '',
+    buyerEmail: '',
     order: ''
   })
 }
@@ -582,7 +636,11 @@ const resetBatchForm = () => {
     location: '',
     table: null,
     price: 0,
-    quantity: 1
+    quantity: 1,
+    buyer: '',
+    buyerDocument: '',
+    buyerEmail: '',
+    order: ''
   })
 }
 
