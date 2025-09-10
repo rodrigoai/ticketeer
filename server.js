@@ -346,6 +346,7 @@ app.get('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       buyer: ticket.buyer,
       buyerDocument: ticket.buyerDocument,
       buyerEmail: ticket.buyerEmail,
+      salesEndDateTime: ticket.salesEndDateTime,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
@@ -415,7 +416,8 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       order,
       buyer,
       buyerDocument,
-      buyerEmail
+      buyerEmail,
+      salesEndDateTime
     } = req.body;
     
     // Validate required fields
@@ -445,7 +447,8 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       order,
       buyer,
       buyerDocument,
-      buyerEmail
+      buyerEmail,
+      salesEndDateTime
     };
     
     const newTicket = await ticketService.createTicket(eventId, ticketData, userId);
@@ -463,6 +466,7 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       buyer: newTicket.buyer,
       buyerDocument: newTicket.buyerDocument,
       buyerEmail: newTicket.buyerEmail,
+      salesEndDateTime: newTicket.salesEndDateTime,
       created_at: newTicket.created_at,
       updated_at: newTicket.updated_at
     };
@@ -497,6 +501,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       buyer,
       buyerDocument,
       buyerEmail,
+      salesEndDateTime,
       quantity
     } = req.body;
     
@@ -535,7 +540,8 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       order,
       buyer,
       buyerDocument,
-      buyerEmail
+      buyerEmail,
+      salesEndDateTime
     };
     
     const newTickets = await ticketService.createTicketsBatch(eventId, ticketData, parseInt(quantity), userId);
@@ -553,6 +559,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       buyer: ticket.buyer,
       buyerDocument: ticket.buyerDocument,
       buyerEmail: ticket.buyerEmail,
+      salesEndDateTime: ticket.salesEndDateTime,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
@@ -597,6 +604,7 @@ app.get('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyer: ticket.buyer,
       buyerDocument: ticket.buyerDocument,
       buyerEmail: ticket.buyerEmail,
+      salesEndDateTime: ticket.salesEndDateTime,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     };
@@ -629,7 +637,8 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       order,
       buyer,
       buyerDocument,
-      buyerEmail
+      buyerEmail,
+      salesEndDateTime
     } = req.body;
     
     // Validate price if provided
@@ -651,7 +660,8 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       order,
       buyer,
       buyerDocument,
-      buyerEmail
+      buyerEmail,
+      salesEndDateTime
     };
     
     const updatedTicket = await ticketService.updateTicket(id, ticketData, userId);
@@ -669,6 +679,7 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyer: updatedTicket.buyer,
       buyerDocument: updatedTicket.buyerDocument,
       buyerEmail: updatedTicket.buyerEmail,
+      salesEndDateTime: updatedTicket.salesEndDateTime,
       created_at: updatedTicket.created_at,
       updated_at: updatedTicket.updated_at
     };

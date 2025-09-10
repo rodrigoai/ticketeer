@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -20,37 +17,33 @@ model Event {
   map_image         String?
   description       String?
   venue             String?
-  created_by        String   // Auth0 user ID
-  nextTicketNumber  Int      @default(1) // Atomic counter for ticket identification numbers
+  created_by        String
+  nextTicketNumber  Int      @default(1)
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
-  status            String   @default("active") // active, inactive, cancelled
-
-  // Relationships
+  status            String   @default("active")
   tickets           Ticket[]
 
   @@map("events")
 }
 
 model Ticket {
-  id                     Int      @id @default(autoincrement())
-  eventId                Int      // Foreign key to Event
-  description            String   // Required
-  identificationNumber   Int      // Required, sequential per event
-  location               String?  // Optional
-  table                  Int?     // Optional
-  price                  Decimal  // Required, monetary value
-  order                  String?  // Optional
-  buyer                  String?  // Optional
-  buyerDocument          String?  // Optional
-  buyerEmail             String?  // Optional
-  created_at             DateTime @default(now())
-  updated_at             DateTime @updatedAt
+  id                   Int       @id @default(autoincrement())
+  eventId              Int
+  description          String
+  identificationNumber Int
+  location             String?
+  table                Int?
+  price                Decimal
+  order                String?
+  buyer                String?
+  buyerDocument        String?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  buyerEmail           String?
+  salesEndDateTime     DateTime?
+  event                Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  // Relationships
-  event                  Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  // Unique constraint: (eventId, identificationNumber) for concurrency safety
   @@unique([eventId, identificationNumber])
   @@map("tickets")
 }

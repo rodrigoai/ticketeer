@@ -134,6 +134,7 @@
                   <th>Price</th>
                   <th>Buyer</th>
                   <th>Email</th>
+                  <th>Sales End</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -146,6 +147,7 @@
                   <td>${{ ticket.price.toFixed(2) }}</td>
                   <td>{{ ticket.buyer || '-' }}</td>
                   <td>{{ ticket.buyerEmail || '-' }}</td>
+                  <td>{{ ticket.salesEndDateTime ? formatDate(ticket.salesEndDateTime) : '-' }}</td>
                   <td>
                     <div class="btn-group btn-group-sm">
                       <button class="btn btn-outline-primary" @click="editTicket(ticket)" title="Edit">
@@ -265,6 +267,16 @@
                   id="ticketOrder" 
                   v-model="ticketForm.order"
                 >
+              </div>
+              <div class="mb-3">
+                <label for="ticketSalesEndDateTime" class="form-label">Sales End Date & Time</label>
+                <input 
+                  type="datetime-local" 
+                  class="form-control" 
+                  id="ticketSalesEndDateTime" 
+                  v-model="ticketForm.salesEndDateTime"
+                >
+                <div class="form-text">Optional: Set when ticket sales should end</div>
               </div>
             </form>
           </div>
@@ -387,6 +399,16 @@
                   v-model="batchForm.order"
                 >
               </div>
+              <div class="mb-3">
+                <label for="batchSalesEndDateTime" class="form-label">Sales End Date & Time</label>
+                <input 
+                  type="datetime-local" 
+                  class="form-control" 
+                  id="batchSalesEndDateTime" 
+                  v-model="batchForm.salesEndDateTime"
+                >
+                <div class="form-text">Optional: Set when ticket sales should end (applies to all tickets)</div>
+              </div>
             </form>
           </div>
           <div class="modal-footer">
@@ -434,7 +456,8 @@ const ticketForm = reactive({
   buyer: '',
   buyerDocument: '',
   buyerEmail: '',
-  order: ''
+  order: '',
+  salesEndDateTime: ''
 })
 
 const batchForm = reactive({
@@ -446,7 +469,8 @@ const batchForm = reactive({
   buyer: '',
   buyerDocument: '',
   buyerEmail: '',
-  order: ''
+  order: '',
+  salesEndDateTime: ''
 })
 
 // Bootstrap modals
@@ -536,7 +560,8 @@ const editTicket = (ticket) => {
     buyer: ticket.buyer || '',
     buyerDocument: ticket.buyerDocument || '',
     buyerEmail: ticket.buyerEmail || '',
-    order: ticket.order || ''
+    order: ticket.order || '',
+    salesEndDateTime: ticket.salesEndDateTime ? new Date(ticket.salesEndDateTime).toISOString().slice(0, 16) : ''
   })
   
   if (!ticketModal) {
@@ -626,7 +651,8 @@ const resetTicketForm = () => {
     buyer: '',
     buyerDocument: '',
     buyerEmail: '',
-    order: ''
+    order: '',
+    salesEndDateTime: ''
   })
 }
 
@@ -640,7 +666,8 @@ const resetBatchForm = () => {
     buyer: '',
     buyerDocument: '',
     buyerEmail: '',
-    order: ''
+    order: '',
+    salesEndDateTime: ''
   })
 }
 

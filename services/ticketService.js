@@ -18,7 +18,8 @@ class TicketService {
         order,
         buyer,
         buyerDocument,
-        buyerEmail
+        buyerEmail,
+        salesEndDateTime
       } = ticketData;
 
       // Validate required fields
@@ -69,7 +70,8 @@ class TicketService {
             order: order || null,
             buyer: buyer || null,
             buyerDocument: buyerDocument || null,
-            buyerEmail: buyerEmail || null
+            buyerEmail: buyerEmail || null,
+            salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null
           }
         });
       });
@@ -98,7 +100,8 @@ class TicketService {
         order,
         buyer,
         buyerDocument,
-        buyerEmail
+        buyerEmail,
+        salesEndDateTime
       } = ticketData;
 
       // Validate required fields
@@ -149,7 +152,8 @@ class TicketService {
             order: order || null,
             buyer: buyer || null,
             buyerDocument: buyerDocument || null,
-            buyerEmail: buyerEmail || null
+            buyerEmail: buyerEmail || null,
+            salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null
           });
         }
 
@@ -244,7 +248,8 @@ class TicketService {
         order,
         buyer,
         buyerDocument,
-        buyerEmail
+        buyerEmail,
+        salesEndDateTime
       } = ticketData;
 
       // Get existing ticket and verify ownership
@@ -268,6 +273,7 @@ class TicketService {
       if (buyer !== undefined) updateData.buyer = buyer || null;
       if (buyerDocument !== undefined) updateData.buyerDocument = buyerDocument || null;
       if (buyerEmail !== undefined) updateData.buyerEmail = buyerEmail || null;
+      if (salesEndDateTime !== undefined) updateData.salesEndDateTime = salesEndDateTime ? new Date(salesEndDateTime) : null;
 
       const updatedTicket = await prisma.ticket.update({
         where: { id: parseInt(ticketId) },

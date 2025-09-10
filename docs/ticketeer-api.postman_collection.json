@@ -1,8 +1,8 @@
 {
   "info": {
     "name": "Ticketeer API Collection",
-    "description": "Comprehensive API documentation for the Ticketeer ticket sales management system. This collection includes authentication methods, request/response examples, and detailed parameter documentation for all endpoints.\n\n## Authentication\nMost endpoints require Auth0 JWT authentication. Include a valid JWT token in the Authorization header as Bearer token.\n\n## Base URL\n`http://localhost:3000` (development)\n\n## Last Updated\nSeptember 10, 2025 - v1.0.0\n\n## Features Covered\n- Health Check & Test Endpoints\n- Event Management (CRUD)\n- Ticket Management (CRUD)\n- Batch Operations\n- Statistics & Analytics",
-    "version": "1.0.0",
+    "description": "Comprehensive API documentation for the Ticketeer ticket sales management system. This collection includes authentication methods, request/response examples, and detailed parameter documentation for all endpoints.\n\n## Authentication\nMost endpoints require Auth0 JWT authentication. Include a valid JWT token in the Authorization header as Bearer token.\n\n## Base URL\n`http://localhost:3000` (development)\n\n## Last Updated\nSeptember 10, 2025 - v1.1.0\n\n## Features Covered\n- Health Check & Test Endpoints\n- Event Management (CRUD)\n- Ticket Management (CRUD)\n- Batch Operations\n- Statistics & Analytics\n- Sales End DateTime for Tickets\n- Buyer Email Integration\n\n## New in v1.1.0\n- Added `salesEndDateTime` field to all ticket endpoints\n- Enhanced buyer information with `buyerEmail` field\n- Updated request/response examples to include new fields",
+    "version": "1.1.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "author": "Ticketeer Development Team"
   },
@@ -631,7 +631,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 1,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 1,\n      \"location\": \"Main Floor\",\n      \"table\": 5,\n      \"price\": 25.00,\n      \"order\": \"ORDER-001\",\n      \"buyer\": \"John Doe\",\n      \"buyerDocument\": \"123456789\",\n      \"buyerEmail\": \"john.doe@example.com\",\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    }\n  ],\n  \"count\": 1,\n  \"eventId\": 1,\n  \"user\": \"user@example.com\"\n}"
+              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 1,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 1,\n      \"location\": \"Main Floor\",\n      \"table\": 5,\n      \"price\": 25.00,\n      \"order\": \"ORDER-001\",\n      \"buyer\": \"John Doe\",\n      \"buyerDocument\": \"123456789\",\n      \"buyerEmail\": \"john.doe@example.com\",\n      \"salesEndDateTime\": \"2025-11-30T23:59:59.000Z\",\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    }\n  ],\n  \"count\": 1,\n  \"eventId\": 1,\n  \"user\": \"user@example.com\"\n}"
             }
           ]
         },
@@ -710,7 +710,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"description\": \"VIP Ticket\",\n  \"location\": \"VIP Section\",\n  \"table\": 1,\n  \"price\": 75.50,\n  \"order\": \"VIP-001\",\n  \"buyer\": \"Jane Smith\",\n  \"buyerDocument\": \"987654321\",\n  \"buyerEmail\": \"jane.smith@example.com\"\n}",
+              "raw": "{\n  \"description\": \"VIP Ticket\",\n  \"location\": \"VIP Section\",\n  \"table\": 1,\n  \"price\": 75.50,\n  \"order\": \"VIP-001\",\n  \"buyer\": \"Jane Smith\",\n  \"buyerDocument\": \"987654321\",\n  \"buyerEmail\": \"jane.smith@example.com\",\n  \"salesEndDateTime\": \"2025-11-30T23:59:59.000Z\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -729,7 +729,7 @@
                 }
               ]
             },
-            "description": "Create a single ticket for an event. The ticket will be assigned a sequential identification number automatically.\n\n**Required Fields:**\n- description (string): Ticket description\n- price (number): Ticket price (must be >= 0)\n\n**Optional Fields:**\n- location (string): Ticket location/section\n- table (number): Table number\n- order (string): Order reference\n- buyer (string): Buyer name\n- buyerDocument (string): Buyer document/ID\n- buyerEmail (string): Buyer email address"
+            "description": "Create a single ticket for an event. The ticket will be assigned a sequential identification number automatically.\n\n**Required Fields:**\n- description (string): Ticket description\n- price (number): Ticket price (must be >= 0)\n\n**Optional Fields:**\n- location (string): Ticket location/section\n- table (number): Table number\n- order (string): Order reference\n- buyer (string): Buyer name\n- buyerDocument (string): Buyer document/ID\n- buyerEmail (string): Buyer email address\n- salesEndDateTime (string): ISO 8601 datetime when ticket sales should end"
           },
           "response": [
             {
@@ -750,7 +750,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"description\": \"VIP Ticket\",\n  \"location\": \"VIP Section\",\n  \"table\": 1,\n  \"price\": 75.50,\n  \"order\": \"VIP-001\",\n  \"buyer\": \"Jane Smith\",\n  \"buyerDocument\": \"987654321\",\n  \"buyerEmail\": \"jane.smith@example.com\"\n}",
+                  "raw": "{\n  \"description\": \"VIP Ticket\",\n  \"location\": \"VIP Section\",\n  \"table\": 1,\n  \"price\": 75.50,\n  \"order\": \"VIP-001\",\n  \"buyer\": \"Jane Smith\",\n  \"buyerDocument\": \"987654321\",\n  \"buyerEmail\": \"jane.smith@example.com\",\n  \"salesEndDateTime\": \"2025-11-30T23:59:59.000Z\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -771,7 +771,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket\",\n    \"identificationNumber\": 1,\n    \"location\": \"VIP Section\",\n    \"table\": 1,\n    \"price\": 75.50,\n    \"order\": \"VIP-001\",\n    \"buyer\": \"Jane Smith\",\n    \"buyerDocument\": \"987654321\",\n    \"buyerEmail\": \"jane.smith@example.com\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n  },\n  \"message\": \"Ticket created successfully\",\n  \"user\": \"user@example.com\"\n}"
+              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket\",\n    \"identificationNumber\": 1,\n    \"location\": \"VIP Section\",\n    \"table\": 1,\n    \"price\": 75.50,\n    \"order\": \"VIP-001\",\n    \"buyer\": \"Jane Smith\",\n    \"buyerDocument\": \"987654321\",\n    \"buyerEmail\": \"jane.smith@example.com\",\n    \"salesEndDateTime\": \"2025-11-30T23:59:59.000Z\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n  },\n  \"message\": \"Ticket created successfully\",\n  \"user\": \"user@example.com\"\n}"
             },
             {
               "name": "Validation Error",
@@ -835,7 +835,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"description\": \"General Admission\",\n  \"location\": \"Main Floor\",\n  \"table\": null,\n  \"price\": 25.00,\n  \"order\": \"BATCH-001\",\n  \"buyer\": \"Group Purchase\",\n  \"buyerDocument\": \"GROUP123\",\n  \"buyerEmail\": \"group@example.com\",\n  \"quantity\": 5\n}",
+              "raw": "{\n  \"description\": \"General Admission\",\n  \"location\": \"Main Floor\",\n  \"table\": null,\n  \"price\": 25.00,\n  \"order\": \"BATCH-001\",\n  \"buyer\": \"Group Purchase\",\n  \"buyerDocument\": \"GROUP123\",\n  \"buyerEmail\": \"group@example.com\",\n  \"salesEndDateTime\": \"2025-11-25T18:00:00.000Z\",\n  \"quantity\": 5\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -854,7 +854,7 @@
                 }
               ]
             },
-            "description": "Create multiple tickets with identical information for an event. Each ticket will be assigned sequential identification numbers.\n\n**Required Fields:**\n- description (string): Ticket description\n- price (number): Ticket price (must be >= 0)\n- quantity (number): Number of tickets to create (1-100)\n\n**Optional Fields:**\n- location (string): Ticket location/section\n- table (number): Table number\n- order (string): Order reference\n- buyer (string): Buyer name\n- buyerDocument (string): Buyer document/ID\n- buyerEmail (string): Buyer email address"
+            "description": "Create multiple tickets with identical information for an event. Each ticket will be assigned sequential identification numbers.\n\n**Required Fields:**\n- description (string): Ticket description\n- price (number): Ticket price (must be >= 0)\n- quantity (number): Number of tickets to create (1-100)\n\n**Optional Fields:**\n- location (string): Ticket location/section\n- table (number): Table number\n- order (string): Order reference\n- buyer (string): Buyer name\n- buyerDocument (string): Buyer document/ID\n- buyerEmail (string): Buyer email address\n- salesEndDateTime (string): ISO 8601 datetime when ticket sales should end (applied to all tickets)"
           },
           "response": [
             {
@@ -896,7 +896,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 2,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 2,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": null,\n      \"buyer\": null,\n      \"buyerDocument\": null,\n      \"buyerEmail\": null,\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    },\n    {\n      \"id\": 3,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 3,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": null,\n      \"buyer\": null,\n      \"buyerDocument\": null,\n      \"buyerEmail\": null,\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    },\n    {\n      \"id\": 4,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 4,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": null,\n      \"buyer\": null,\n      \"buyerDocument\": null,\n      \"buyerEmail\": null,\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    }\n  ],\n  \"count\": 3,\n  \"message\": \"3 tickets created successfully\",\n  \"user\": \"user@example.com\"\n}"
+              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 2,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 2,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": \"BATCH-001\",\n      \"buyer\": \"Group Purchase\",\n      \"buyerDocument\": \"GROUP123\",\n      \"buyerEmail\": \"group@example.com\",\n      \"salesEndDateTime\": \"2025-11-25T18:00:00.000Z\",\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    },\n    {\n      \"id\": 3,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 3,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": \"BATCH-001\",\n      \"buyer\": \"Group Purchase\",\n      \"buyerDocument\": \"GROUP123\",\n      \"buyerEmail\": \"group@example.com\",\n      \"salesEndDateTime\": \"2025-11-25T18:00:00.000Z\",\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    },\n    {\n      \"id\": 4,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": 4,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": \"BATCH-001\",\n      \"buyer\": \"Group Purchase\",\n      \"buyerDocument\": \"GROUP123\",\n      \"buyerEmail\": \"group@example.com\",\n      \"salesEndDateTime\": \"2025-11-25T18:00:00.000Z\",\n      \"created_at\": \"2025-09-10T18:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n    }\n  ],\n  \"count\": 3,\n  \"message\": \"3 tickets created successfully\",\n  \"user\": \"user@example.com\"\n}"
             },
             {
               "name": "Quantity Validation Error",
@@ -993,7 +993,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket\",\n    \"identificationNumber\": 1,\n    \"location\": \"VIP Section\",\n    \"table\": 1,\n    \"price\": 75.50,\n    \"order\": \"VIP-001\",\n    \"buyer\": \"Jane Smith\",\n    \"buyerDocument\": \"987654321\",\n    \"buyerEmail\": \"jane.smith@example.com\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n  },\n  \"user\": \"user@example.com\"\n}"
+              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket\",\n    \"identificationNumber\": 1,\n    \"location\": \"VIP Section\",\n    \"table\": 1,\n    \"price\": 75.50,\n    \"order\": \"VIP-001\",\n    \"buyer\": \"Jane Smith\",\n    \"buyerDocument\": \"987654321\",\n    \"buyerEmail\": \"jane.smith@example.com\",\n    \"salesEndDateTime\": \"2025-11-30T23:59:59.000Z\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:30:00.000Z\"\n  },\n  \"user\": \"user@example.com\"\n}"
             }
           ]
         },
@@ -1016,7 +1016,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"description\": \"VIP Ticket - Updated\",\n  \"location\": \"Premium VIP Section\",\n  \"table\": 2,\n  \"price\": 85.00,\n  \"order\": \"VIP-001-UPDATED\",\n  \"buyer\": \"Jane Smith Updated\",\n  \"buyerDocument\": \"987654321-NEW\",\n  \"buyerEmail\": \"jane.smith.updated@example.com\"\n}",
+              "raw": "{\n  \"description\": \"VIP Ticket - Updated\",\n  \"location\": \"Premium VIP Section\",\n  \"table\": 2,\n  \"price\": 85.00,\n  \"order\": \"VIP-001-UPDATED\",\n  \"buyer\": \"Jane Smith Updated\",\n  \"buyerDocument\": \"987654321-NEW\",\n  \"buyerEmail\": \"jane.smith.updated@example.com\",\n  \"salesEndDateTime\": \"2025-11-28T20:00:00.000Z\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1035,7 +1035,7 @@
                 }
               ]
             },
-            "description": "Update a ticket. Only the event owner can update tickets. All fields are optional. The identification number cannot be changed.\n\n**Note:** The identificationNumber is automatically assigned and cannot be modified."
+            "description": "Update a ticket. Only the event owner can update tickets. All fields are optional. The identification number cannot be changed.\n\n**Optional Fields:**\n- description (string): Ticket description\n- location (string): Ticket location/section\n- table (number): Table number\n- price (number): Ticket price (must be >= 0)\n- order (string): Order reference\n- buyer (string): Buyer name\n- buyerDocument (string): Buyer document/ID\n- buyerEmail (string): Buyer email address\n- salesEndDateTime (string): ISO 8601 datetime when ticket sales should end\n\n**Note:** The identificationNumber is automatically assigned and cannot be modified."
           },
           "response": [
             {
@@ -1077,7 +1077,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket - Updated\",\n    \"identificationNumber\": 1,\n    \"location\": \"Premium VIP Section\",\n    \"table\": 2,\n    \"price\": 85.00,\n    \"order\": \"VIP-001-UPDATED\",\n    \"buyer\": \"Jane Smith Updated\",\n    \"buyerDocument\": \"987654321-NEW\",\n    \"buyerEmail\": \"jane.smith.updated@example.com\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:31:00.000Z\"\n  },\n  \"message\": \"Ticket updated successfully\",\n  \"user\": \"user@example.com\"\n}"
+              "body": "{\n  \"success\": true,\n  \"ticket\": {\n    \"id\": 1,\n    \"eventId\": 1,\n    \"description\": \"VIP Ticket - Updated\",\n    \"identificationNumber\": 1,\n    \"location\": \"Premium VIP Section\",\n    \"table\": 2,\n    \"price\": 85.00,\n    \"order\": \"VIP-001-UPDATED\",\n    \"buyer\": \"Jane Smith Updated\",\n    \"buyerDocument\": \"987654321-NEW\",\n    \"buyerEmail\": \"jane.smith.updated@example.com\",\n    \"salesEndDateTime\": \"2025-11-28T20:00:00.000Z\",\n    \"created_at\": \"2025-09-10T18:30:00.000Z\",\n    \"updated_at\": \"2025-09-10T18:31:00.000Z\"\n  },\n  \"message\": \"Ticket updated successfully\",\n  \"user\": \"user@example.com\"\n}"
             }
           ]
         },

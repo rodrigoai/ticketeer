@@ -2,6 +2,47 @@
 
 This document tracks all changes made to the Ticketeer API and its documentation.
 
+## Version 1.1.0 - September 10, 2025
+
+### ✨ Features Added
+- **Sales End DateTime Field**: Added `salesEndDateTime` field to ticket model
+  - Added to all ticket endpoints (create, update, get, list)
+  - Included in both single and batch ticket operations
+  - Optional field to control when ticket sales should end
+  - Accepts ISO 8601 datetime format (e.g., "2025-11-30T23:59:59.000Z")
+
+### 📝 API Changes
+- **POST** `/api/events/:eventId/tickets` - Added `salesEndDateTime` field
+- **POST** `/api/events/:eventId/tickets/batch` - Added `salesEndDateTime` field  
+- **PUT** `/api/tickets/:id` - Added `salesEndDateTime` field
+- **GET** `/api/events/:eventId/tickets` - Response includes `salesEndDateTime`
+- **GET** `/api/tickets/:id` - Response includes `salesEndDateTime`
+
+### 🗄️ Database Changes
+- Added `salesEndDateTime` column to tickets table
+- Created Prisma migration for salesEndDateTime field
+- Updated Prisma client generation
+
+### 🎨 Frontend Changes
+- Added Sales End Date & Time input fields to ticket creation forms
+- Added Sales End Date column to ticket display table
+- Updated Vue.js components to handle datetime-local input type
+
+### 📚 Documentation Updates
+- Updated all ticket-related Postman examples to include `salesEndDateTime`
+- Added salesEndDateTime to data model examples
+- Updated API documentation with new field requirements
+- Updated Postman collection to version 1.1.0
+- Enhanced field descriptions with ISO 8601 format guidance
+
+### 🧪 Testing
+- Created comprehensive tests for salesEndDateTime functionality
+- Verified database-level operations (create, read, update)
+- Tested service layer integration
+- Validated API endpoint behavior
+
+---
+
 ## Version 1.0.1 - September 10, 2025
 
 ### ✨ Features Added
