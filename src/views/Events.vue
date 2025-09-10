@@ -6,7 +6,7 @@
           <div>
             <h2>Events Management</h2>
             <small class="text-muted" v-if="isAuthenticated">
-              <i class="fas fa-user"></i> {{ userName }} ({{ userEmail }}) {{userId}}
+              <i class="fas fa-user"></i> {{ userName }} ({{ userEmail }})
             </small>
           </div>
           <button class="btn btn-primary" @click="showCreateModal" v-if="isAuthenticated">
@@ -58,12 +58,17 @@
                 </div>
               </div>
               <div class="card-footer">
+                <div class="d-flex gap-2 mb-2">
+                  <router-link :to="`/events/${event.id}`" class="btn btn-success btn-sm flex-fill">
+                    <i class="fas fa-ticket-alt"></i> Manage Tickets
+                  </router-link>
+                </div>
                 <div class="btn-group w-100" role="group">
                   <button class="btn btn-outline-primary btn-sm" @click="editEvent(event)">
-                    Edit
+                    <i class="fas fa-edit"></i> Edit
                   </button>
                   <button class="btn btn-outline-danger btn-sm" @click="deleteEvent(event.id)">
-                    Delete
+                    <i class="fas fa-trash"></i> Delete
                   </button>
                 </div>
               </div>

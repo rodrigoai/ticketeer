@@ -21,9 +21,35 @@ model Event {
   description       String?
   venue             String?
   created_by        String   // Auth0 user ID
+  nextTicketNumber  Int      @default(1) // Atomic counter for ticket identification numbers
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
   status            String   @default("active") // active, inactive, cancelled
 
+  // Relationships
+  tickets           Ticket[]
+
   @@map("events")
+}
+
+model Ticket {
+  id                     Int      @id @default(autoincrement())
+  eventId                Int      // Foreign key to Event
+  description            String   // Required
+  identificationNumber   Int      // Required, sequential per event
+  location               String?  // Optional
+  table                  Int?     // Optional
+  price                  Decimal  // Required, monetary value
+  order                  String?  // Optional
+  buyer                  String?  // Optional
+  buyerDocument          String?  // Optional
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  // Relationships
+  event                  Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Unique constraint: (eventId, identificationNumber) for concurrency safety
+  @@unique([eventId, identificationNumber])
+  @@map("tickets")
 }

@@ -204,6 +204,47 @@ app.post('/api/events', requiresAuth, async (req, res) => {
   }
 });
 
+// Get individual event by ID (JWT authenticated)
+app.get('/api/events/:id', requiresAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    const eventService = require('./services/eventService');
+    
+    const event = await eventService.getEventById(id, userId);
+    
+    // Map database fields to frontend expectations
+    const mappedEvent = {
+      id: event.id,
+      title: event.name,
+      name: event.name,
+      description: event.description,
+      date: event.opening_datetime,
+      opening_datetime: event.opening_datetime,
+      closing_datetime: event.closing_datetime,
+      venue: event.venue,
+      status: event.status,
+      created_by: event.created_by,
+      created_at: event.created_at,
+      updated_at: event.updated_at
+    };
+    
+    res.json({
+      success: true,
+      event: mappedEvent,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch event',
+      message: error.message
+    });
+  }
+});
+
 // Update event in database (JWT authenticated)
 app.put('/api/events/:id', requiresAuth, async (req, res) => {
   try {
@@ -278,6 +319,424 @@ app.delete('/api/events/:id', requiresAuth, async (req, res) => {
   }
 });
 
+// ==========================================
+// TICKET API ENDPOINTS
+// ==========================================
+
+// Get all tickets for an event (JWT authenticated)
+app.get('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    const ticketService = require('./services/ticketService');
+    
+    const tickets = await ticketService.getTicketsByEvent(eventId, userId);
+    
+    // Map tickets to frontend format
+    const mappedTickets = tickets.map(ticket => ({
+      id: ticket.id,
+      eventId: ticket.eventId,
+      description: ticket.description,
+      identificationNumber: ticket.identificationNumber,
+      location: ticket.location,
+      table: ticket.table,
+      price: parseFloat(ticket.price) || 0,
+      order: ticket.order,
+      buyer: ticket.buyer,
+      buyerDocument: ticket.buyerDocument,
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at
+    }));
+    
+    res.json({
+      success: true,
+      tickets: mappedTickets,
+      count: mappedTickets.length,
+      eventId: parseInt(eventId),
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error fetching tickets:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch tickets',
+      message: error.message
+    });
+  }
+});
+
+// Get ticket statistics for an event (JWT authenticated)
+app.get('/api/events/:eventId/tickets/stats', requiresAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    const ticketService = require('./services/ticketService');
+    
+    const stats = await ticketService.getEventTicketStats(eventId, userId);
+    
+    // Convert decimal strings to numbers for frontend
+    const mappedStats = {
+      totalTickets: stats.totalTickets,
+      totalRevenue: parseFloat(stats.totalRevenue) || 0,
+      averagePrice: parseFloat(stats.averagePrice) || 0,
+      minPrice: parseFloat(stats.minPrice) || 0,
+      maxPrice: parseFloat(stats.maxPrice) || 0
+    };
+    
+    res.json({
+      success: true,
+      stats: mappedStats,
+      eventId: parseInt(eventId),
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error fetching ticket stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch ticket statistics',
+      message: error.message
+    });
+  }
+});
+
+// Create a single ticket for an event (JWT authenticated)
+app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const {
+      description,
+      location,
+      table,
+      price,
+      order,
+      buyer,
+      buyerDocument
+    } = req.body;
+    
+    // Validate required fields
+    if (!description || price === undefined || price === null) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Description and price are required'
+      });
+    }
+    
+    if (parseFloat(price) < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Price must be a positive number'
+      });
+    }
+    
+    const ticketService = require('./services/ticketService');
+    
+    const ticketData = {
+      description,
+      location,
+      table: table ? parseInt(table) : undefined,
+      price: parseFloat(price),
+      order,
+      buyer,
+      buyerDocument
+    };
+    
+    const newTicket = await ticketService.createTicket(eventId, ticketData, userId);
+    
+    // Map response to frontend format
+    const mappedTicket = {
+      id: newTicket.id,
+      eventId: newTicket.eventId,
+      description: newTicket.description,
+      identificationNumber: newTicket.identificationNumber,
+      location: newTicket.location,
+      table: newTicket.table,
+      price: parseFloat(newTicket.price) || 0,
+      order: newTicket.order,
+      buyer: newTicket.buyer,
+      buyerDocument: newTicket.buyerDocument,
+      created_at: newTicket.created_at,
+      updated_at: newTicket.updated_at
+    };
+    
+    res.status(201).json({
+      success: true,
+      ticket: mappedTicket,
+      message: 'Ticket created successfully',
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error creating ticket:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create ticket',
+      message: error.message
+    });
+  }
+});
+
+// Create multiple tickets in batch for an event (JWT authenticated)
+app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const {
+      description,
+      location,
+      table,
+      price,
+      order,
+      buyer,
+      buyerDocument,
+      quantity
+    } = req.body;
+    
+    // Validate required fields
+    if (!description || price === undefined || price === null || !quantity) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Description, price, and quantity are required'
+      });
+    }
+    
+    if (parseFloat(price) < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Price must be a positive number'
+      });
+    }
+    
+    if (parseInt(quantity) < 1 || parseInt(quantity) > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Quantity must be between 1 and 100'
+      });
+    }
+    
+    const ticketService = require('./services/ticketService');
+    
+    const ticketData = {
+      description,
+      location,
+      table: table ? parseInt(table) : undefined,
+      price: parseFloat(price),
+      order,
+      buyer,
+      buyerDocument
+    };
+    
+    const newTickets = await ticketService.createTicketsBatch(eventId, ticketData, parseInt(quantity), userId);
+    
+    // Map response to frontend format
+    const mappedTickets = newTickets.map(ticket => ({
+      id: ticket.id,
+      eventId: ticket.eventId,
+      description: ticket.description,
+      identificationNumber: ticket.identificationNumber,
+      location: ticket.location,
+      table: ticket.table,
+      price: parseFloat(ticket.price) || 0,
+      order: ticket.order,
+      buyer: ticket.buyer,
+      buyerDocument: ticket.buyerDocument,
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at
+    }));
+    
+    res.status(201).json({
+      success: true,
+      tickets: mappedTickets,
+      count: mappedTickets.length,
+      message: `${mappedTickets.length} tickets created successfully`,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error creating tickets batch:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create tickets',
+      message: error.message
+    });
+  }
+});
+
+// Get a specific ticket by ID (JWT authenticated)
+app.get('/api/tickets/:id', requiresAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    const ticketService = require('./services/ticketService');
+    
+    const ticket = await ticketService.getTicketById(id, userId);
+    
+    // Map response to frontend format
+    const mappedTicket = {
+      id: ticket.id,
+      eventId: ticket.eventId,
+      description: ticket.description,
+      identificationNumber: ticket.identificationNumber,
+      location: ticket.location,
+      table: ticket.table,
+      price: parseFloat(ticket.price) || 0,
+      order: ticket.order,
+      buyer: ticket.buyer,
+      buyerDocument: ticket.buyerDocument,
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at
+    };
+    
+    res.json({
+      success: true,
+      ticket: mappedTicket,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error fetching ticket:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch ticket',
+      message: error.message
+    });
+  }
+});
+
+// Update a ticket (JWT authenticated)
+app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const {
+      description,
+      location,
+      table,
+      price,
+      order,
+      buyer,
+      buyerDocument
+    } = req.body;
+    
+    // Validate price if provided
+    if (price !== undefined && price !== null && parseFloat(price) < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Price must be a positive number'
+      });
+    }
+    
+    const ticketService = require('./services/ticketService');
+    
+    const ticketData = {
+      description,
+      location,
+      table: table !== undefined ? (table ? parseInt(table) : null) : undefined,
+      price: price !== undefined ? parseFloat(price) : undefined,
+      order,
+      buyer,
+      buyerDocument
+    };
+    
+    const updatedTicket = await ticketService.updateTicket(id, ticketData, userId);
+    
+    // Map response to frontend format
+    const mappedTicket = {
+      id: updatedTicket.id,
+      eventId: updatedTicket.eventId,
+      description: updatedTicket.description,
+      identificationNumber: updatedTicket.identificationNumber,
+      location: updatedTicket.location,
+      table: updatedTicket.table,
+      price: parseFloat(updatedTicket.price) || 0,
+      order: updatedTicket.order,
+      buyer: updatedTicket.buyer,
+      buyerDocument: updatedTicket.buyerDocument,
+      created_at: updatedTicket.created_at,
+      updated_at: updatedTicket.updated_at
+    };
+    
+    res.json({
+      success: true,
+      ticket: mappedTicket,
+      message: 'Ticket updated successfully',
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error updating ticket:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update ticket',
+      message: error.message
+    });
+  }
+});
+
+// Delete a single ticket (JWT authenticated)
+app.delete('/api/tickets/:id', requiresAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    const ticketService = require('./services/ticketService');
+    
+    const deletedTicket = await ticketService.deleteTicket(id, userId);
+    
+    res.json({
+      success: true,
+      message: 'Ticket deleted successfully',
+      deletedTicket: { id: parseInt(id) },
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error deleting ticket:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete ticket',
+      message: error.message
+    });
+  }
+});
+
+// Delete multiple tickets (JWT authenticated)
+app.delete('/api/tickets/batch', requiresAuth, async (req, res) => {
+  try {
+    const { ticketIds } = req.body;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'ticketIds array is required and must not be empty'
+      });
+    }
+    
+    const ticketService = require('./services/ticketService');
+    
+    const result = await ticketService.deleteTickets(ticketIds, userId);
+    
+    res.json({
+      success: true,
+      message: `${result.count} tickets deleted successfully`,
+      deletedCount: result.count,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error deleting tickets:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete tickets',
+      message: error.message
+    });
+  }
+});
 
 
 // SPA catch-all route - serve index.html for client-side routing

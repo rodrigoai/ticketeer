@@ -1,6 +1,7 @@
 import Profile from "../views/Profile.vue";
 import Dashboard from '@/views/Dashboard.vue'
 import Events from '@/views/Events.vue'
+import EventDetail from '@/views/EventDetail.vue'
 import Newpro from '@/views/Newpro.vue'
 
 import { createAuthGuard } from "@auth0/auth0-vue";
@@ -20,6 +21,13 @@ export const createRoutes = (app) => {
       name: 'Events',
       component: Events,
       beforeEnter: authGuard
+    },
+    {
+      path: '/events/:id',
+      name: 'EventDetail',
+      component: EventDetail,
+      beforeEnter: authGuard,
+      props: true
     },
     {
       path: '/profile',
