@@ -114,3 +114,5 @@ Thumbs.db
 # Example applications
 login_example_app/
 Ticketeer/
+.vercel
+.env*.local
