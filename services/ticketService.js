@@ -375,6 +375,83 @@ class TicketService {
   }
 
   /**
+   * Search tickets by event with filtering and privacy protection
+   * @param {number} eventId - Event ID to search tickets for
+   * @param {string} userId - User ID for authorization
+   * @param {boolean} availableOnly - If true, return only available tickets (no order + sales not ended)
+   * @returns {Array} Filtered tickets without buyer information for privacy
+   */
+  async searchTicketsByEvent(eventId, userId, availableOnly = false) {
+    try {
+      // Verify event exists and user owns it
+      const event = await prisma.event.findFirst({
+        where: { 
+          id: parseInt(eventId), 
+          created_by: userId 
+        }
+      });
+
+      if (!event) {
+        throw new Error('Event not found or access denied');
+      }
+
+      // Build where clause based on availability filter
+      const whereClause = {
+        eventId: parseInt(eventId)
+      };
+
+      if (availableOnly) {
+        const currentDateTime = new Date();
+        
+        whereClause.AND = [
+          // No order field filled (unsold)
+          {
+            OR: [
+              { order: null },
+              { order: '' }
+            ]
+          },
+          // Sales end date time is either null or in the future
+          {
+            OR: [
+              { salesEndDateTime: null },
+              { salesEndDateTime: { gt: currentDateTime } }
+            ]
+          }
+        ];
+      }
+
+      const tickets = await prisma.ticket.findMany({
+        where: whereClause,
+        orderBy: { identificationNumber: 'asc' },
+        select: {
+          // Include all fields except buyer information for privacy
+          id: true,
+          eventId: true,
+          description: true,
+          identificationNumber: true,
+          location: true,
+          table: true,
+          price: true,
+          order: true, // Keep order field as required
+          salesEndDateTime: true,
+          created_at: true,
+          updated_at: true,
+          // Explicitly exclude buyer information for privacy
+          // buyer: false,
+          // buyerDocument: false,
+          // buyerEmail: false,
+        }
+      });
+
+      return tickets;
+    } catch (error) {
+      console.error('Error searching tickets:', error);
+      throw new Error(`Failed to search tickets: ${error.message}`);
+    }
+  }
+
+  /**
    * Close the Prisma connection
    */
   async disconnect() {

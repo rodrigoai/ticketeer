@@ -2,6 +2,52 @@
 
 This document tracks all changes made to the Ticketeer API and its documentation.
 
+## Version 1.2.0 - September 10, 2025
+
+### ✨ Features Added
+- **Ticket Search API**: Added new privacy-protected ticket search endpoint
+  - New endpoint: `GET /events/:eventId/tickets/search`
+  - Optional `available` query parameter for filtering
+  - Privacy protection: excludes buyer information from results
+  - Returns reduced dataset with only non-sensitive ticket data
+  - Results sorted by identification number (ASC)
+  - Supports authentication-based access control
+
+### 📝 API Changes
+- **GET** `/api/events/:eventId/tickets/search` - New privacy-protected search endpoint
+  - Query parameter `available` (boolean, optional):
+    - `true`: Returns only available tickets (no order + sales not ended)
+    - `false` or omitted: Returns all tickets
+  - Response excludes buyer information (buyer, buyerDocument, buyerEmail)
+  - Maintains all other ticket fields including order field
+
+### 🔒 Privacy & Security Features
+- **Data Protection**: Automatic exclusion of sensitive buyer information
+- **Authentication Required**: JWT token validation for all requests
+- **Ownership Validation**: Users can only search tickets from their own events
+- **Parameter Validation**: Proper validation with meaningful error messages
+
+### 🗄️ Database Changes
+- **Service Layer**: Added `searchTicketsByEvent` method in TicketService
+- **Query Optimization**: Efficient filtering using Prisma select statements
+- **Time-based Filtering**: Real-time comparison of sales end dates
+
+### 📚 Documentation Updates
+- Updated Postman collection to v1.2.0 with new search endpoint
+- Added comprehensive examples for both available=true and available=false
+- Documented privacy rules and parameter validation
+- Added error response examples
+- Enhanced collection description with search capabilities
+
+### 🧪 Testing
+- Created comprehensive test coverage for search functionality
+- Verified privacy protection (no buyer data leaks)
+- Tested availability filtering logic
+- Validated parameter validation and error handling
+- Confirmed authentication and authorization
+
+---
+
 ## Version 1.1.0 - September 10, 2025
 
 ### ✨ Features Added

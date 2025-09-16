@@ -1,8 +1,8 @@
 {
   "info": {
     "name": "Ticketeer API Collection",
-    "description": "Comprehensive API documentation for the Ticketeer ticket sales management system. This collection includes authentication methods, request/response examples, and detailed parameter documentation for all endpoints.\n\n## Authentication\nMost endpoints require Auth0 JWT authentication. Include a valid JWT token in the Authorization header as Bearer token.\n\n## Base URL\n`http://localhost:3000` (development)\n\n## Last Updated\nSeptember 10, 2025 - v1.1.0\n\n## Features Covered\n- Health Check & Test Endpoints\n- Event Management (CRUD)\n- Ticket Management (CRUD)\n- Batch Operations\n- Statistics & Analytics\n- Sales End DateTime for Tickets\n- Buyer Email Integration\n\n## New in v1.1.0\n- Added `salesEndDateTime` field to all ticket endpoints\n- Enhanced buyer information with `buyerEmail` field\n- Updated request/response examples to include new fields",
-    "version": "1.1.0",
+    "description": "Comprehensive API documentation for the Ticketeer ticket sales management system. This collection includes authentication methods, request/response examples, and detailed parameter documentation for all endpoints.\n\n## Authentication\nMost endpoints require Auth0 JWT authentication. Include a valid JWT token in the Authorization header as Bearer token.\n\n## Base URL\n`http://localhost:3000` (development)\n\n## Last Updated\nSeptember 10, 2025 - v1.2.0\n\n## Features Covered\n- Health Check & Test Endpoints\n- Event Management (CRUD)\n- Ticket Management (CRUD)\n- Batch Operations\n- Statistics & Analytics\n- Sales End DateTime for Tickets\n- Buyer Email Integration\n- Privacy-Protected Ticket Search\n\n## New in v1.2.0\n- Added `GET /events/:eventId/tickets/search` endpoint for privacy-protected ticket searching\n- Support for availability filtering (available/sold tickets)\n- Buyer information excluded from search results for privacy\n- Results sorted by identification number\n\n## New in v1.1.0\n- Added `salesEndDateTime` field to all ticket endpoints\n- Enhanced buyer information with `buyerEmail` field\n- Updated request/response examples to include new fields",
+    "version": "1.2.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "author": "Ticketeer Development Team"
   },
@@ -688,6 +688,141 @@
                 }
               ],
               "body": "{\n  \"success\": true,\n  \"stats\": {\n    \"totalTickets\": 10,\n    \"totalRevenue\": 250.00,\n    \"averagePrice\": 25.00,\n    \"minPrice\": 15.00,\n    \"maxPrice\": 50.00\n  },\n  \"eventId\": 1,\n  \"user\": \"user@example.com\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search Tickets (Privacy Protected)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text",
+                "description": "Auth0 JWT Bearer token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/:eventId/tickets/search?available=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "events", ":eventId", "tickets", "search"],
+              "query": [
+                {
+                  "key": "available",
+                  "value": "true",
+                  "description": "Filter for available tickets only (true) or all tickets (false)"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "1",
+                  "description": "Unique identifier of the event"
+                }
+              ]
+            },
+            "description": "Search tickets for an event with privacy protection and optional filtering. Returns reduced dataset without buyer information for privacy reasons.\n\n**Query Parameters:**\n- available (boolean, optional): \n  - `true`: Return only available tickets (no order + sales end date in future/null)\n  - `false`: Return all tickets\n  - Default: `false`\n\n**Privacy Rules:**\n- Buyer information (buyer, buyerDocument, buyerEmail) is excluded from results\n- Order field is included as required\n- All other ticket fields are returned normally\n\n**Response is sorted by identificationNumber ASC**"
+          },
+          "response": [
+            {
+              "name": "Available Tickets Only (available=true)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets/search?available=true",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets", "search"],
+                  "query": [
+                    {
+                      "key": "available",
+                      "value": "true"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 1,\n      \"eventId\": 1,\n      \"description\": \"Available VIP Ticket\",\n      \"identificationNumber\": 1,\n      \"location\": \"VIP Section\",\n      \"table\": 1,\n      \"price\": 75.50,\n      \"order\": null,\n      \"salesEndDateTime\": \"2025-12-01T23:59:59.000Z\",\n      \"created_at\": \"2025-09-10T21:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T21:30:00.000Z\"\n    },\n    {\n      \"id\": 2,\n      \"eventId\": 1,\n      \"description\": \"Available General Ticket\",\n      \"identificationNumber\": 2,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": null,\n      \"salesEndDateTime\": null,\n      \"created_at\": \"2025-09-10T21:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T21:30:00.000Z\"\n    }\n  ],\n  \"count\": 2,\n  \"eventId\": 1,\n  \"filter\": {\n    \"available\": true\n  },\n  \"user\": \"user@example.com\"\n}"
+            },
+            {
+              "name": "All Tickets (available=false)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets/search?available=false",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets", "search"],
+                  "query": [
+                    {
+                      "key": "available",
+                      "value": "false"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 1,\n      \"eventId\": 1,\n      \"description\": \"Available VIP Ticket\",\n      \"identificationNumber\": 1,\n      \"location\": \"VIP Section\",\n      \"table\": 1,\n      \"price\": 75.50,\n      \"order\": null,\n      \"salesEndDateTime\": \"2025-12-01T23:59:59.000Z\",\n      \"created_at\": \"2025-09-10T21:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T21:30:00.000Z\"\n    },\n    {\n      \"id\": 2,\n      \"eventId\": 1,\n      \"description\": \"Available General Ticket\",\n      \"identificationNumber\": 2,\n      \"location\": \"Main Floor\",\n      \"table\": null,\n      \"price\": 25.00,\n      \"order\": null,\n      \"salesEndDateTime\": null,\n      \"created_at\": \"2025-09-10T21:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T21:30:00.000Z\"\n    },\n    {\n      \"id\": 3,\n      \"eventId\": 1,\n      \"description\": \"Sold Premium Ticket\",\n      \"identificationNumber\": 3,\n      \"location\": \"Premium Section\",\n      \"table\": 5,\n      \"price\": 150.00,\n      \"order\": \"ORDER-12345\",\n      \"salesEndDateTime\": \"2025-11-25T18:00:00.000Z\",\n      \"created_at\": \"2025-09-10T21:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T21:30:00.000Z\"\n    },\n    {\n      \"id\": 4,\n      \"eventId\": 1,\n      \"description\": \"Expired Ticket\",\n      \"identificationNumber\": 4,\n      \"location\": \"General Seating\",\n      \"table\": null,\n      \"price\": 30.00,\n      \"order\": null,\n      \"salesEndDateTime\": \"2025-09-01T23:59:59.000Z\",\n      \"created_at\": \"2025-09-10T21:30:00.000Z\",\n      \"updated_at\": \"2025-09-10T21:30:00.000Z\"\n    }\n  ],\n  \"count\": 4,\n  \"eventId\": 1,\n  \"filter\": {\n    \"available\": false\n  },\n  \"user\": \"user@example.com\"\n}"
+            },
+            {
+              "name": "Parameter Validation Error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/events/1/tickets/search?available=invalid",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "events", "1", "tickets", "search"],
+                  "query": [
+                    {
+                      "key": "available",
+                      "value": "invalid"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Validation failed\",\n  \"message\": \"Available parameter must be \\\"true\\\" or \\\"false\\\"\"\n}"
             }
           ]
         },
