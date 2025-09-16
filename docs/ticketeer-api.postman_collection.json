@@ -1,8 +1,8 @@
 {
   "info": {
     "name": "Ticketeer API Collection",
-    "description": "Comprehensive API documentation for the Ticketeer ticket sales management system. This collection includes authentication methods, request/response examples, and detailed parameter documentation for all endpoints.\n\n## Authentication\nMost endpoints require Auth0 JWT authentication. Include a valid JWT token in the Authorization header as Bearer token.\n\n## Base URL\n`http://localhost:3000` (development)\n\n## Last Updated\nSeptember 10, 2025 - v1.2.0\n\n## Features Covered\n- Health Check & Test Endpoints\n- Event Management (CRUD)\n- Ticket Management (CRUD)\n- Batch Operations\n- Statistics & Analytics\n- Sales End DateTime for Tickets\n- Buyer Email Integration\n- Privacy-Protected Ticket Search\n\n## New in v1.2.0\n- Added `GET /events/:eventId/tickets/search` endpoint for privacy-protected ticket searching\n- Support for availability filtering (available/sold tickets)\n- Buyer information excluded from search results for privacy\n- Results sorted by identification number\n\n## New in v1.1.0\n- Added `salesEndDateTime` field to all ticket endpoints\n- Enhanced buyer information with `buyerEmail` field\n- Updated request/response examples to include new fields",
-    "version": "1.2.0",
+    "description": "Comprehensive API documentation for the Ticketeer ticket sales management system. This collection includes authentication methods, request/response examples, and detailed parameter documentation for all endpoints.\n\n## Authentication\nMost endpoints require Auth0 JWT authentication. Include a valid JWT token in the Authorization header as Bearer token.\n\n## Base URL\n`http://localhost:3000` (development)\n\n## Last Updated\nSeptember 16, 2025 - v1.3.0\n\n## Features Covered\n- Health Check & Test Endpoints\n- Event Management (CRUD)\n- Ticket Management (CRUD)\n- Batch Operations\n- Statistics & Analytics\n- Sales End DateTime for Tickets\n- Buyer Email Integration\n- Privacy-Protected Ticket Search\n- Webhook Payment Confirmations\n\n## New in v1.3.0\n- Added `POST /api/webhooks/checkout` endpoint for payment confirmation webhooks\n- Processes `order.paid` events to update ticket sales status\n- Smart buyer assignment logic (single vs multiple tickets)\n- Comprehensive webhook validation and error handling\n- Example curl commands available in `docs/webhook-example-curl.sh`\n\n## New in v1.2.0\n- Added `GET /events/:eventId/tickets/search` endpoint for privacy-protected ticket searching\n- Support for availability filtering (available/sold tickets)\n- Buyer information excluded from search results for privacy\n- Results sorted by identification number\n\n## New in v1.1.0\n- Added `salesEndDateTime` field to all ticket endpoints\n- Enhanced buyer information with `buyerEmail` field\n- Updated request/response examples to include new fields",
+    "version": "1.3.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "author": "Ticketeer Development Team"
   },
@@ -1387,6 +1387,186 @@
                 }
               ],
               "body": "{\n  \"success\": false,\n  \"error\": \"Validation failed\",\n  \"message\": \"ticketIds array is required and must not be empty\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Webhook Endpoints",
+      "description": "Webhook endpoints for processing external system integrations, including payment confirmations",
+      "item": [
+        {
+          "name": "Checkout Payment Confirmation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"order.paid\",\n  \"payload\": {\n    \"id\": 7931,\n    \"date\": \"2025-09-16T09:07:09-03:00\",\n    \"meta\": {\n      \"tickets\": \"[\\\"30\\\"]\",\n      \"tableNumber\": \"1\",\n      \"_checkout_url\": \"https://coyo.staging.pay.nova.money/pt-BR/checkout/example\"\n    },\n    \"total\": 44.9,\n    \"status\": \"paid\",\n    \"customer\": {\n      \"name\": \"Rodrigo Lima\",\n      \"email\": \"rodrigo@coyo.com.br\",\n      \"phone\": \"+5512998833382\",\n      \"identification\": \"44010729015\"\n    },\n    \"payments\": [\n      {\n        \"type\": \"pix\",\n        \"amount\": 44.9,\n        \"status\": \"paid\"\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "checkout"]
+            },
+            "description": "Webhook endpoint to confirm ticket purchases from payment system. Processes order.paid events to update ticket status.\n\n**Required Fields:**\n- event (string): Must be 'order.paid'\n- payload.id (number): Order ID from payment system\n- payload.meta.tickets (JSON string): Array of ticket IDs purchased\n\n**Optional Fields:**\n- payload.meta.tableNumber (string): Table number assignment (only for table-based events)\n- payload.customer (object): Customer information (used for single ticket purchases)\n\n**Behavior:**\n- Single ticket purchase: Populates buyer information from customer data\n- Multiple ticket purchase: Leaves buyer fields empty\n- Updates ticket 'order' field with order ID\n- Updates ticket 'table' field with table number (if provided)\n- Response includes tableNumber only when provided in request"
+          },
+          "response": [
+            {
+              "name": "Single Ticket Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"event\": \"order.paid\",\n  \"payload\": {\n    \"id\": 7931,\n    \"meta\": {\n      \"tickets\": \"[\\\"30\\\"]\",\n      \"tableNumber\": \"1\"\n    },\n    \"customer\": {\n      \"name\": \"Rodrigo Lima\",\n      \"email\": \"rodrigo@coyo.com.br\",\n      \"identification\": \"44010729015\"\n    }\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/webhooks/checkout",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "webhooks", "checkout"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Successfully processed 1 ticket(s)\",\n  \"data\": {\n    \"orderId\": \"7931\",\n    \"tableNumber\": 1,\n    \"ticketIds\": [30],\n    \"buyerAssigned\": true,\n    \"processedTickets\": 1\n  }\n}"
+            },
+            {
+              "name": "Multi-Ticket Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"event\": \"order.paid\",\n  \"payload\": {\n    \"id\": 7932,\n    \"meta\": {\n      \"tickets\": \"[\\\"31\\\",\\\"32\\\"]\",\n      \"tableNumber\": \"2\"\n    },\n    \"customer\": {\n      \"name\": \"Maria Silva\",\n      \"email\": \"maria@example.com\"\n    }\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/webhooks/checkout",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "webhooks", "checkout"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Successfully processed 2 ticket(s)\",\n  \"data\": {\n    \"orderId\": \"7932\",\n    \"tableNumber\": 2,\n    \"ticketIds\": [31, 32],\n    \"buyerAssigned\": false,\n    \"processedTickets\": 2\n  }\n}"
+            },
+            {
+              "name": "Validation Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"event\": \"order.paid\",\n  \"payload\": {\n    \"id\": 7933,\n    \"meta\": {\n      \"tableNumber\": \"1\"\n    }\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/webhooks/checkout",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "webhooks", "checkout"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Failed to process webhook\",\n  \"message\": \"Invalid webhook payload: missing meta.tickets\"\n}"
+            },
+            {
+              "name": "Wrong Event Type",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"event\": \"order.refunded\",\n  \"payload\": {\n    \"id\": 7934,\n    \"meta\": {\n      \"tickets\": \"[\\\"30\\\"]\",\n      \"tableNumber\": \"1\"\n    }\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/webhooks/checkout",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "webhooks", "checkout"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Webhook event 'order.refunded' acknowledged but not processed\"\n}"
             }
           ]
         }

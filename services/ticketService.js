@@ -452,6 +452,139 @@ class TicketService {
   }
 
   /**
+   * Process checkout webhook to confirm ticket purchases
+   * @param {Object} webhookPayload - The webhook payload from payment system
+   * @returns {Object} - Processing result with updated tickets info
+   */
+  async processCheckoutWebhook(webhookPayload) {
+    try {
+      // Validate webhook payload structure
+      if (!webhookPayload.payload || !webhookPayload.payload.meta) {
+        throw new Error('Invalid webhook payload: missing payload or meta object');
+      }
+
+      const { meta, customer, id: orderId } = webhookPayload.payload;
+
+      // Validate required meta fields
+      if (!meta.tickets) {
+        throw new Error('Invalid webhook payload: missing meta.tickets');
+      }
+
+      // Parse tickets from JSON string
+      let ticketIds;
+      try {
+        ticketIds = JSON.parse(meta.tickets);
+        if (!Array.isArray(ticketIds)) {
+          // Handle single ticket as array
+          ticketIds = [ticketIds];
+        }
+      } catch (error) {
+        throw new Error('Invalid webhook payload: meta.tickets is not valid JSON');
+      }
+
+      if (ticketIds.length === 0) {
+        throw new Error('Invalid webhook payload: no ticket IDs provided');
+      }
+
+      // Convert ticket IDs to integers
+      const ticketIdsInt = ticketIds.map(id => {
+        const intId = parseInt(id, 10);
+        if (isNaN(intId)) {
+          throw new Error(`Invalid ticket ID: ${id}`);
+        }
+        return intId;
+      });
+
+      // Parse table number if present (optional)
+      let tableNumber = null;
+      if (meta.tableNumber) {
+        tableNumber = parseInt(meta.tableNumber, 10);
+        if (isNaN(tableNumber)) {
+          throw new Error(`Invalid table number: ${meta.tableNumber}`);
+        }
+      }
+
+      // Check if tickets exist and are available
+      const existingTickets = await prisma.ticket.findMany({
+        where: {
+          id: { in: ticketIdsInt }
+        },
+        select: {
+          id: true,
+          eventId: true,
+          description: true,
+          identificationNumber: true,
+          order: true,
+          buyer: true
+        }
+      });
+
+      if (existingTickets.length !== ticketIdsInt.length) {
+        const foundIds = existingTickets.map(t => t.id);
+        const missingIds = ticketIdsInt.filter(id => !foundIds.includes(id));
+        throw new Error(`Tickets not found: ${missingIds.join(', ')}`);
+      }
+
+      // Check if any tickets are already sold
+      const soldTickets = existingTickets.filter(t => t.order && t.order.trim() !== '');
+      if (soldTickets.length > 0) {
+        const soldIds = soldTickets.map(t => t.id);
+        throw new Error(`Tickets already sold: ${soldIds.join(', ')}`);
+      }
+
+      // Prepare buyer information for single ticket purchases
+      let buyerInfo = {};
+      if (ticketIdsInt.length === 1 && customer) {
+        buyerInfo = {
+          buyer: customer.name || null,
+          buyerDocument: customer.identification || null,
+          buyerEmail: customer.email || null
+        };
+      }
+
+      // Update tickets with order information
+      const updateData = {
+        order: orderId.toString(),
+        ...buyerInfo
+      };
+
+      // Only include table number if it was provided
+      if (tableNumber !== null) {
+        updateData.table = tableNumber;
+      }
+
+      const updatedTickets = [];
+      for (const ticketId of ticketIdsInt) {
+        const updatedTicket = await prisma.ticket.update({
+          where: { id: ticketId },
+          data: updateData
+        });
+        updatedTickets.push(updatedTicket);
+      }
+
+      const result = {
+        success: true,
+        message: `Successfully processed ${ticketIdsInt.length} ticket(s)`,
+        orderId: orderId.toString(),
+        ticketIds: ticketIdsInt,
+        updatedTickets,
+        buyerAssigned: Object.keys(buyerInfo).length > 0
+      };
+
+      // Only include table number in response if it was provided
+      if (tableNumber !== null) {
+        result.tableNumber = tableNumber;
+      }
+
+      return result;
+
+    } catch (error) {
+      console.error('Error processing checkout webhook:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Close the Prisma connection
    */
   async disconnect() {

@@ -823,6 +823,62 @@ app.delete('/api/tickets/batch', requiresAuth, async (req, res) => {
   }
 });
 
+// ==========================================
+// WEBHOOK API ENDPOINTS
+// ==========================================
+
+// Checkout webhook endpoint - processes payment confirmations
+app.post('/api/webhooks/checkout', async (req, res) => {
+  try {
+    const webhookPayload = req.body;
+    
+    console.log('Received checkout webhook:', JSON.stringify(webhookPayload, null, 2));
+    
+    // Validate basic webhook structure
+    if (!webhookPayload || !webhookPayload.event) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid webhook payload',
+        message: 'Missing event field in webhook payload'
+      });
+    }
+    
+    // Only process 'order.paid' events
+    if (webhookPayload.event !== 'order.paid') {
+      console.log(`Ignoring webhook event: ${webhookPayload.event}`);
+      return res.json({
+        success: true,
+        message: `Webhook event '${webhookPayload.event}' acknowledged but not processed`
+      });
+    }
+    
+    const ticketService = require('./services/ticketService');
+    
+    const result = await ticketService.processCheckoutWebhook(webhookPayload);
+    
+    console.log('Webhook processed successfully:', result);
+    
+    res.json({
+      success: true,
+      message: result.message,
+      data: {
+        orderId: result.orderId,
+        tableNumber: result.tableNumber,
+        ticketIds: result.ticketIds,
+        buyerAssigned: result.buyerAssigned,
+        processedTickets: result.updatedTickets.length
+      }
+    });
+  } catch (error) {
+    console.error('Error processing checkout webhook:', error);
+    res.status(400).json({
+      success: false,
+      error: 'Failed to process webhook',
+      message: error.message
+    });
+  }
+});
+
 
 // SPA catch-all route - serve index.html for client-side routing
 app.get('*', (req, res, next) => {

@@ -1,0 +1,79 @@
+{
+  "event": "order.paid",
+  "payload": {
+    "id": 7931,
+    "date": "2025-09-16T09:07:09-03:00",
+    "meta": {
+      "_fbp": "fb.1.1745938412499.233098240965998130",
+      "tickets": "[\"30\",\"31\"]",
+      "_user_ip": "18.68.37.44",
+      "_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+      "tableNumber": "1",
+      "_checkout_url": "https://coyo.staging.pay.nova.money/pt-BR/checkout/3724cee5-2bc7-469c-9aad-9a0c31b181e8/payment?meta.tickets=30,31\u0026meta.tableNumber=1"
+    },
+    "utms": {},
+    "items": [
+      {
+        "total": 44.9,
+        "value": 44.9,
+        "quantity": 1.0,
+        "unit_name": "UN",
+        "product_id": 45,
+        "product_name": "Ingresso: Formas Espaciais"
+      }
+    ],
+    "total": 44.9,
+    "seller": {
+      "name": null
+    },
+    "status": "paid",
+    "deal_id": null,
+    "customer": {
+      "meta": {
+        "tickets": "[\"30\",\"31\"]",
+        "tableNumber": "1",
+        "_checkout_url": "https://coyo.staging.pay.nova.money/pt-BR/checkout/3724cee5-2bc7-469c-9aad-9a0c31b181e8?meta.tickets=30,31\u0026meta.tableNumber=1"
+      },
+      "name": "Rodrigo Lima",
+      "utms": {
+        "utm_id": "12334",
+        "utm_term": "curso",
+        "utm_medium": "adwords",
+        "utm_source": "GoogleAds",
+        "utm_content": "lastOp",
+        "utm_campaign": "lastCall"
+      },
+      "email": "rodrigo@coyo.com.br",
+      "phone": "+5512998833382",
+      "address": {
+        "city": "S o Jos dos Campos",
+        "state": "SP",
+        "number": "319",
+        "street": "Av Cassiano Ricardo",
+        "zipcode": "12230083",
+        "neighborhood": "Jd Aquarius"
+      },
+      "identification": "44010729015"
+    },
+    "discount": 0.0,
+    "invoices": [],
+    "payments": [
+      {
+        "type": "pix",
+        "amount": 44.9,
+        "status": "paid",
+        "company": "NOVA MONEY",
+        "interest": 0.0,
+        "created_at": "2025-09-16T09:07:08-03:00",
+        "gateway_id": "ch_a6me2wlfoKcop5OZ",
+        "installments": 1,
+        "installation_value": 44.9
+      }
+    ],
+    "seller_id": null,
+    "created_at": "2025-09-16T09:07:04-03:00",
+    "coupon_code": null,
+    "observation": "",
+    "checkout_page_id": "3724cee5-2bc7-469c-9aad-9a0c31b181e8"
+  }
+}

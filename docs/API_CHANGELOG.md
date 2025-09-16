@@ -2,6 +2,60 @@
 
 This document tracks all changes made to the Ticketeer API and its documentation.
 
+## Version 1.3.0 - September 16, 2025
+
+### ✨ Features Added
+- **Checkout Webhook Endpoint**: Added payment confirmation webhook endpoint
+  - New endpoint: `POST /api/webhooks/checkout`
+  - Processes `order.paid` webhook events from payment systems
+  - Validates required meta fields: `tickets` (JSON array) only
+  - Optional `tableNumber` field for table-based events
+  - Updates tickets with order ID and optionally table number assignment
+  - Implements intelligent buyer assignment logic:
+    - Single ticket: Populates buyer information from customer data
+    - Multiple tickets: Leaves buyer information empty
+  - Comprehensive validation and error handling
+  - Prevents duplicate processing of already sold tickets
+  - Supports both individual ticket sales and table-based events
+
+### 📝 API Changes
+- **POST** `/api/webhooks/checkout` - New webhook endpoint for payment confirmations
+  - Accepts webhook payload with `event` and `payload` structure
+  - **Required**: `meta.tickets` (JSON string array)
+  - **Optional**: `meta.tableNumber` (string) - only required for table-based events
+  - Only processes `order.paid` events, acknowledges others
+  - Returns detailed processing results with ticket IDs and buyer assignment status
+  - Response includes `tableNumber` only when provided in request
+  - Error responses for validation failures and business logic violations
+
+### 🔄 Changes Made
+- **Webhook Flexibility**: Made `tableNumber` optional in webhook requests
+  - Individual ticket purchases no longer require table assignment
+  - Table-based purchases can still include table number for proper assignment
+  - Database `table` field remains null when no `tableNumber` provided
+  - API response structure adapts based on input (includes `tableNumber` only when provided)
+
+### 🔒 Security Features
+- **Webhook Validation**: Strict payload structure validation
+- **Business Logic Protection**: Prevents duplicate ticket sales
+- **Error Handling**: Comprehensive error messages without exposing sensitive data
+- **Event Filtering**: Only processes authorized event types
+
+### 🧪 Testing
+- Created comprehensive webhook test suite
+- Test coverage for single and multi-ticket scenarios
+- Validation error testing for missing/invalid fields
+- Event type filtering verification
+- Already-sold ticket detection testing
+
+### 📚 Documentation Updates
+- Added webhook endpoint examples in `docs/webhook-example-curl.sh`
+- Comprehensive curl command examples for all scenarios
+- Error case documentation and expected responses
+- Webhook payload structure documentation
+
+---
+
 ## Version 1.2.0 - September 10, 2025
 
 ### ✨ Features Added
