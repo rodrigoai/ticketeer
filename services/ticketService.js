@@ -454,9 +454,10 @@ class TicketService {
   /**
    * Process checkout webhook to confirm ticket purchases
    * @param {Object} webhookPayload - The webhook payload from payment system
+   * @param {string} userId - The user ID to validate ticket ownership
    * @returns {Object} - Processing result with updated tickets info
    */
-  async processCheckoutWebhook(webhookPayload) {
+  async processCheckoutWebhook(webhookPayload, userId) {
     try {
       // Validate webhook payload structure
       if (!webhookPayload.payload || !webhookPayload.payload.meta) {
@@ -504,18 +505,19 @@ class TicketService {
         }
       }
 
-      // Check if tickets exist and are available
+      // Check if tickets exist and are available, and validate they belong to events owned by the specified userId
       const existingTickets = await prisma.ticket.findMany({
         where: {
           id: { in: ticketIdsInt }
         },
-        select: {
-          id: true,
-          eventId: true,
-          description: true,
-          identificationNumber: true,
-          order: true,
-          buyer: true
+        include: {
+          event: {
+            select: {
+              id: true,
+              created_by: true,
+              name: true
+            }
+          }
         }
       });
 
@@ -523,6 +525,13 @@ class TicketService {
         const foundIds = existingTickets.map(t => t.id);
         const missingIds = ticketIdsInt.filter(id => !foundIds.includes(id));
         throw new Error(`Tickets not found: ${missingIds.join(', ')}`);
+      }
+
+      // Validate that all tickets belong to events owned by the specified userId
+      const invalidTickets = existingTickets.filter(t => t.event.created_by !== userId);
+      if (invalidTickets.length > 0) {
+        const invalidIds = invalidTickets.map(t => t.id);
+        throw new Error(`Tickets do not belong to user ${userId}: ${invalidIds.join(', ')}`);
       }
 
       // Check if any tickets are already sold

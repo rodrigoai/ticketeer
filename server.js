@@ -996,12 +996,52 @@ app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
 // WEBHOOK API ENDPOINTS
 // ==========================================
 
-// Checkout webhook endpoint - processes payment confirmations
-app.post('/api/webhooks/checkout', async (req, res) => {
+// Checkout webhook endpoint - processes payment confirmations (public API)
+app.post('/api/webhooks/checkout/:userId', async (req, res) => {
   try {
+    const { userId } = req.params;
     const webhookPayload = req.body;
     
-    console.log('Received checkout webhook:', JSON.stringify(webhookPayload, null, 2));
+    console.log(`Received checkout webhook for userId: ${userId}`, JSON.stringify(webhookPayload, null, 2));
+    
+    // Validate userId parameter
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid userId parameter',
+        message: 'userId parameter is required and must be a string'
+      });
+    }
+    
+    // Validate that the userId exists in the database by checking if they have any events
+    const { PrismaClient } = require('./generated/prisma');
+    const prisma = new PrismaClient();
+    
+    try {
+      const userExists = await prisma.event.findFirst({
+        where: { created_by: userId },
+        select: { id: true }
+      });
+      
+      if (!userExists) {
+        await prisma.$disconnect();
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+          message: `User with ID '${userId}' does not exist or has no events`
+        });
+      }
+      
+      await prisma.$disconnect();
+    } catch (dbError) {
+      console.error('Database error during user validation:', dbError);
+      await prisma.$disconnect();
+      return res.status(500).json({
+        success: false,
+        error: 'Database validation error',
+        message: 'Failed to validate user existence'
+      });
+    }
     
     // Validate basic webhook structure
     if (!webhookPayload || !webhookPayload.event) {
@@ -1022,14 +1062,16 @@ app.post('/api/webhooks/checkout', async (req, res) => {
     }
     
     const ticketService = require('./services/ticketService');
-    
-    const result = await ticketService.processCheckoutWebhook(webhookPayload);
+    console.log("userID: ", userId);
+    // Process the webhook with the validated userId
+    const result = await ticketService.processCheckoutWebhook(webhookPayload, userId);
     
     console.log('Webhook processed successfully:', result);
     
     res.json({
       success: true,
       message: result.message,
+      userId: userId,
       data: {
         orderId: result.orderId,
         tableNumber: result.tableNumber,

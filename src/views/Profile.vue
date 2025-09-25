@@ -11,6 +11,20 @@
       <div class="col-md text-center text-md-left">
         <h2>{{ user?.name }}</h2>
         <p class="lead text-muted">{{ user?.email }}</p>
+        <div class="mt-2">
+          <span class="badge bg-primary me-2">
+            <i class="fas fa-id-card me-1"></i>User ID
+          </span>
+          <code class="text-primary">{{ userId }}</code>
+          <button 
+            class="btn btn-sm btn-outline-secondary ms-2" 
+            @click="copyUserId"
+            :disabled="!userId"
+            title="Copy User ID"
+          >
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -18,7 +32,92 @@
       <div class="col-12">
         <div class="card mb-4">
           <div class="card-header">
-            <h5 class="mb-0">Access Token</h5>
+            <h5 class="mb-0">
+              <i class="fas fa-user-tag me-2"></i>
+              User Identity & Webhook Configuration
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label fw-bold">
+                    <i class="fas fa-id-card me-2 text-primary"></i>User ID
+                  </label>
+                  <div class="input-group">
+                    <input 
+                      type="text" 
+                      class="form-control font-monospace" 
+                      :value="userId" 
+                      readonly
+                      style="background-color: #f8f9fa;"
+                    />
+                    <button 
+                      class="btn btn-outline-primary" 
+                      type="button" 
+                      @click="copyUserId"
+                      :disabled="!userId"
+                      title="Copy User ID"
+                    >
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  </div>
+                  <small class="form-text text-muted">
+                    This ID is used to identify your account in webhook URLs.
+                  </small>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label fw-bold">
+                    <i class="fas fa-webhook me-2 text-success"></i>Webhook URL
+                  </label>
+                  <div class="input-group">
+                    <input 
+                      type="text" 
+                      class="form-control font-monospace" 
+                      :value="webhookUrl" 
+                      readonly
+                      style="background-color: #f8f9fa; font-size: 0.85rem;"
+                    />
+                    <button 
+                      class="btn btn-outline-success" 
+                      type="button" 
+                      @click="copyWebhookUrl"
+                      :disabled="!webhookUrl"
+                      title="Copy Webhook URL"
+                    >
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  </div>
+                  <small class="form-text text-muted">
+                    Use this URL for payment webhook configurations.
+                  </small>
+                </div>
+              </div>
+            </div>
+            <div class="alert alert-info mt-3">
+              <h6 class="alert-heading">
+                <i class="fas fa-info-circle me-2"></i>Webhook Information
+              </h6>
+              <p class="mb-2">
+                The webhook URL above is a <strong>public endpoint</strong> that accepts payment confirmations.
+                It validates that tickets belong to your events before processing.
+              </p>
+              <p class="mb-0">
+                <strong>Security:</strong> Only tickets from events you created can be processed through your webhook URL.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">API Access Token</h5>
           </div>
           <div class="card-body">
             <div v-if="isLoadingToken" class="text-center">
@@ -113,13 +212,14 @@
 
 <script lang="ts">
 import { useUser } from '@/composables/useUser';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 
 export default {
   name: "profile-view",
   setup() {
     const {
       user, 
+      userId,
       isAuthenticated, 
       isLoading, 
       accessToken, 
@@ -130,6 +230,13 @@ export default {
     } = useUser();
     
     const testResult = ref<any>(null);
+    
+    // Computed webhook URL based on current domain and userId
+    const webhookUrl = computed(() => {
+      if (!userId.value) return '';
+      const baseUrl = window.location.origin;
+      return `${baseUrl}/api/webhooks/checkout/${encodeURIComponent(userId.value)}`;
+    });
     
     // Get token function (wrapper around centralized function)
     const getToken = async () => {
@@ -150,6 +257,32 @@ export default {
           console.log('Token copied to clipboard');
         } catch (err) {
           console.error('Failed to copy token:', err);
+        }
+      }
+    };
+    
+    // Copy userId to clipboard
+    const copyUserId = async () => {
+      if (userId.value) {
+        try {
+          await navigator.clipboard.writeText(userId.value);
+          console.log('User ID copied to clipboard');
+          // You could add a toast notification here
+        } catch (err) {
+          console.error('Failed to copy User ID:', err);
+        }
+      }
+    };
+    
+    // Copy webhook URL to clipboard
+    const copyWebhookUrl = async () => {
+      if (webhookUrl.value) {
+        try {
+          await navigator.clipboard.writeText(webhookUrl.value);
+          console.log('Webhook URL copied to clipboard');
+          // You could add a toast notification here
+        } catch (err) {
+          console.error('Failed to copy Webhook URL:', err);
         }
       }
     };
@@ -192,6 +325,8 @@ export default {
     
     return {
       user,
+      userId,
+      webhookUrl,
       accessToken,
       isLoadingToken,
       tokenError,
@@ -199,6 +334,8 @@ export default {
       getToken,
       refreshToken,
       copyToken,
+      copyUserId,
+      copyWebhookUrl,
       testToken
     }
   }
