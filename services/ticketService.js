@@ -453,6 +453,7 @@ class TicketService {
 
   /**
    * Process checkout webhook to confirm ticket purchases
+   * Uses quantity-based selection or table-based selection depending on payload
    * @param {Object} webhookPayload - The webhook payload from payment system
    * @param {string} userId - The user ID to validate ticket ownership
    * @returns {Object} - Processing result with updated tickets info
@@ -460,135 +461,281 @@ class TicketService {
   async processCheckoutWebhook(webhookPayload, userId) {
     try {
       // Validate webhook payload structure
-      if (!webhookPayload.payload || !webhookPayload.payload.meta) {
-        throw new Error('Invalid webhook payload: missing payload or meta object');
+      if (!webhookPayload.payload) {
+        throw new Error('Invalid webhook payload: missing payload object');
       }
 
-      const { meta, customer, id: orderId } = webhookPayload.payload;
-
-      // Validate required meta fields
-      if (!meta.tickets) {
-        throw new Error('Invalid webhook payload: missing meta.tickets');
+      const { payload } = webhookPayload;
+      const { meta, customer, id: orderId, items } = payload;
+      
+      // Validate required fields
+      if (!orderId) {
+        throw new Error('Invalid webhook payload: missing order ID');
       }
 
-      // Parse tickets from JSON string
-      let ticketIds;
-      try {
-        ticketIds = JSON.parse(meta.tickets);
-        if (!Array.isArray(ticketIds)) {
-          // Handle single ticket as array
-          ticketIds = [ticketIds];
-        }
-      } catch (error) {
-        throw new Error('Invalid webhook payload: meta.tickets is not valid JSON');
-      }
-
-      if (ticketIds.length === 0) {
-        throw new Error('Invalid webhook payload: no ticket IDs provided');
-      }
-
-      // Convert ticket IDs to integers
-      const ticketIdsInt = ticketIds.map(id => {
-        const intId = parseInt(id, 10);
-        if (isNaN(intId)) {
-          throw new Error(`Invalid ticket ID: ${id}`);
-        }
-        return intId;
-      });
-
-      // Parse table number if present (optional)
+      // Parse table number if present
       let tableNumber = null;
-      if (meta.tableNumber) {
+      if (meta && meta.tableNumber) {
         tableNumber = parseInt(meta.tableNumber, 10);
         if (isNaN(tableNumber)) {
           throw new Error(`Invalid table number: ${meta.tableNumber}`);
         }
       }
 
-      // Check if tickets exist and are available, and validate they belong to events owned by the specified userId
-      const existingTickets = await prisma.ticket.findMany({
-        where: {
-          id: { in: ticketIdsInt }
-        },
-        include: {
-          event: {
-            select: {
-              id: true,
-              created_by: true,
-              name: true
+      // Use transaction to ensure atomicity
+      const result = await prisma.$transaction(async (tx) => {
+        let ticketsToUpdate;
+        let selectionMethod;
+
+        if (tableNumber !== null) {
+          // CASE 1: Table-based selection - update all tickets for this table
+          selectionMethod = 'table-based';
+          
+          ticketsToUpdate = await tx.ticket.findMany({
+            where: {
+              table: tableNumber,
+              event: {
+                created_by: userId
+              }
+            },
+            include: {
+              event: {
+                select: {
+                  id: true,
+                  created_by: true,
+                  name: true
+                }
+              }
+            },
+            orderBy: {
+              identificationNumber: 'asc'
             }
+          });
+
+          if (ticketsToUpdate.length === 0) {
+            throw new Error(`No tickets found for table ${tableNumber} belonging to user ${userId}`);
+          }
+
+        } else {
+          // CASE 2: Quantity-based selection - find N unsold tickets without table numbers
+          selectionMethod = 'quantity-based';
+          
+          // Determine quantity from items array
+          let quantity = 0;
+          if (items && Array.isArray(items)) {
+            quantity = items.reduce((total, item) => total + (item.quantity || 0), 0);
+          }
+          
+          if (quantity <= 0) {
+            throw new Error('Invalid webhook payload: no valid quantity found in items');
+          }
+
+          // Find unsold tickets without table numbers
+          ticketsToUpdate = await tx.ticket.findMany({
+            where: {
+              AND: [
+                {
+                  event: {
+                    created_by: userId
+                  }
+                },
+                {
+                  OR: [
+                    { table: null },
+                    { table: 0 }
+                  ]
+                },
+                {
+                  OR: [
+                    { order: null },
+                    { order: '' }
+                  ]
+                }
+              ]
+            },
+            include: {
+              event: {
+                select: {
+                  id: true,
+                  created_by: true,
+                  name: true
+                }
+              }
+            },
+            orderBy: {
+              identificationNumber: 'asc'
+            },
+            take: Math.floor(quantity)
+          });
+
+          if (ticketsToUpdate.length === 0) {
+            throw new Error(`No available tickets without table numbers found for user ${userId}`);
+          }
+
+          if (ticketsToUpdate.length < Math.floor(quantity)) {
+            throw new Error(`Not enough available tickets: requested ${Math.floor(quantity)}, found ${ticketsToUpdate.length}`);
           }
         }
-      });
 
-      if (existingTickets.length !== ticketIdsInt.length) {
-        const foundIds = existingTickets.map(t => t.id);
-        const missingIds = ticketIdsInt.filter(id => !foundIds.includes(id));
-        throw new Error(`Tickets not found: ${missingIds.join(', ')}`);
-      }
+        // Validate user ownership (additional safety check)
+        const invalidTickets = ticketsToUpdate.filter(t => t.event.created_by !== userId);
+        if (invalidTickets.length > 0) {
+          const invalidIds = invalidTickets.map(t => t.id);
+          throw new Error(`Tickets do not belong to user ${userId}: ${invalidIds.join(', ')}`);
+        }
 
-      // Validate that all tickets belong to events owned by the specified userId
-      const invalidTickets = existingTickets.filter(t => t.event.created_by !== userId);
-      if (invalidTickets.length > 0) {
-        const invalidIds = invalidTickets.map(t => t.id);
-        throw new Error(`Tickets do not belong to user ${userId}: ${invalidIds.join(', ')}`);
-      }
+        // For table-based updates, check if any tickets are already sold (only if not table-based)
+        if (selectionMethod !== 'table-based') {
+          const soldTickets = ticketsToUpdate.filter(t => t.order && t.order.trim() !== '');
+          if (soldTickets.length > 0) {
+            const soldIds = soldTickets.map(t => t.id);
+            throw new Error(`Some tickets are already sold: ${soldIds.join(', ')}`);
+          }
+        }
 
-      // Check if any tickets are already sold
-      const soldTickets = existingTickets.filter(t => t.order && t.order.trim() !== '');
-      if (soldTickets.length > 0) {
-        const soldIds = soldTickets.map(t => t.id);
-        throw new Error(`Tickets already sold: ${soldIds.join(', ')}`);
-      }
+        // Prepare buyer information
+        let buyerInfo = {};
+        if (customer) {
+          buyerInfo = {
+            buyer: customer.name || null,
+            buyerDocument: customer.identification || null,
+            buyerEmail: customer.email || null
+          };
+        }
 
-      // Prepare buyer information for single ticket purchases
-      let buyerInfo = {};
-      if (ticketIdsInt.length === 1 && customer) {
-        buyerInfo = {
-          buyer: customer.name || null,
-          buyerDocument: customer.identification || null,
-          buyerEmail: customer.email || null
+        // Prepare update data
+        const updateData = {
+          order: orderId.toString(),
+          ...buyerInfo
         };
-      }
 
-      // Update tickets with order information
-      const updateData = {
-        order: orderId.toString(),
-        ...buyerInfo
-      };
+        // Update all selected tickets
+        const ticketIds = ticketsToUpdate.map(t => t.id);
+        const updatedTickets = [];
+        
+        for (const ticketId of ticketIds) {
+          const updatedTicket = await tx.ticket.update({
+            where: { id: ticketId },
+            data: updateData
+          });
+          updatedTickets.push(updatedTicket);
+        }
 
-      // Only include table number if it was provided
-      if (tableNumber !== null) {
-        updateData.table = tableNumber;
-      }
-
-      const updatedTickets = [];
-      for (const ticketId of ticketIdsInt) {
-        const updatedTicket = await prisma.ticket.update({
-          where: { id: ticketId },
-          data: updateData
-        });
-        updatedTickets.push(updatedTicket);
-      }
-
-      const result = {
-        success: true,
-        message: `Successfully processed ${ticketIdsInt.length} ticket(s)`,
-        orderId: orderId.toString(),
-        ticketIds: ticketIdsInt,
-        updatedTickets,
-        buyerAssigned: Object.keys(buyerInfo).length > 0
-      };
-
-      // Only include table number in response if it was provided
-      if (tableNumber !== null) {
-        result.tableNumber = tableNumber;
-      }
+        return {
+          success: true,
+          message: `Successfully processed ${ticketsToUpdate.length} ticket(s) using ${selectionMethod} selection`,
+          orderId: orderId.toString(),
+          ticketIds,
+          updatedTickets,
+          buyerAssigned: Object.keys(buyerInfo).length > 0,
+          selectionMethod,
+          tableNumber: tableNumber,
+          quantity: selectionMethod === 'quantity-based' ? Math.floor(items.reduce((total, item) => total + (item.quantity || 0), 0)) : undefined
+        };
+      });
 
       return result;
 
     } catch (error) {
       console.error('Error processing checkout webhook:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Public search tickets by event and user with filtering and privacy protection
+   * This method validates userId separately and is designed for public API access
+   * @param {number} eventId - Event ID to search tickets for
+   * @param {string} userId - User ID to validate and filter tickets
+   * @param {boolean} availableOnly - If true, return only available tickets (no order + sales not ended)
+   * @returns {Object} Result with tickets and validation info
+   */
+  async searchTicketsPublic(eventId, userId, availableOnly = false) {
+    try {
+      // First, validate that the userId exists in the database (has created events)
+      const userEvents = await prisma.event.findFirst({
+        where: { 
+          created_by: userId 
+        },
+        select: { id: true }
+      });
+
+      if (!userEvents) {
+        throw new Error(`User with ID '${userId}' does not exist or has no events`);
+      }
+
+      // Verify the specific event exists and belongs to the specified userId
+      const event = await prisma.event.findFirst({
+        where: { 
+          id: parseInt(eventId), 
+          created_by: userId 
+        }
+      });
+
+      if (!event) {
+        throw new Error(`Event not found or does not belong to user '${userId}'`);
+      }
+
+      // Build where clause based on availability filter
+      const whereClause = {
+        eventId: parseInt(eventId)
+      };
+
+      if (availableOnly) {
+        const currentDateTime = new Date();
+        
+        whereClause.AND = [
+          // No order field filled (unsold)
+          {
+            OR: [
+              { order: null },
+              { order: '' }
+            ]
+          },
+          // Sales end date time is either null or in the future
+          {
+            OR: [
+              { salesEndDateTime: null },
+              { salesEndDateTime: { gt: currentDateTime } }
+            ]
+          }
+        ];
+      }
+
+      const tickets = await prisma.ticket.findMany({
+        where: whereClause,
+        orderBy: { identificationNumber: 'asc' },
+        select: {
+          // Include all fields except buyer information for privacy
+          id: true,
+          eventId: true,
+          description: true,
+          identificationNumber: true,
+          location: true,
+          table: true,
+          price: true,
+          order: true, // Keep order field as required
+          salesEndDateTime: true,
+          created_at: true,
+          updated_at: true,
+          // Explicitly exclude buyer information for privacy
+          // buyer: false,
+          // buyerDocument: false,
+          // buyerEmail: false,
+        }
+      });
+
+      return {
+        success: true,
+        tickets,
+        eventId: parseInt(eventId),
+        userId,
+        filter: {
+          available: availableOnly
+        }
+      };
+    } catch (error) {
+      console.error('Error in public ticket search:', error);
       throw error;
     }
   }

@@ -466,6 +466,112 @@ app.get('/api/events/:eventId/tickets/search', requiresAuth, async (req, res) =>
   }
 });
 
+// Public search tickets endpoint (no authentication required)
+app.get('/api/public/tickets/search', async (req, res) => {
+  try {
+    const { userId, eventId, available } = req.query;
+    
+    // Validate required parameters
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'userId parameter is required'
+      });
+    }
+    
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'eventId parameter is required'
+      });
+    }
+    
+    // Validate eventId is a number
+    if (isNaN(parseInt(eventId))) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'eventId must be a valid number'
+      });
+    }
+    
+    // Validate available parameter if provided
+    let availableOnly = false;
+    if (available !== undefined) {
+      if (available === 'true') {
+        availableOnly = true;
+      } else if (available === 'false') {
+        availableOnly = false;
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          message: 'Available parameter must be "true" or "false"'
+        });
+      }
+    }
+    
+    const ticketService = require('./services/ticketService');
+    
+    const result = await ticketService.searchTicketsPublic(eventId, userId, availableOnly);
+    
+    // Map tickets to frontend format (privacy-protected - no buyer information)
+    const mappedTickets = result.tickets.map(ticket => ({
+      id: ticket.id,
+      eventId: ticket.eventId,
+      description: ticket.description,
+      identificationNumber: ticket.identificationNumber,
+      location: ticket.location,
+      table: ticket.table,
+      price: parseFloat(ticket.price) || 0,
+      order: ticket.order,
+      salesEndDateTime: ticket.salesEndDateTime,
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at
+      // Note: buyer, buyerDocument, buyerEmail are excluded for privacy
+    }));
+    
+    res.json({
+      success: true,
+      tickets: mappedTickets,
+      count: mappedTickets.length,
+      eventId: parseInt(eventId),
+      userId: userId,
+      filter: {
+        available: availableOnly
+      }
+    });
+  } catch (error) {
+    console.error('Error in public ticket search:', error);
+    
+    // Handle user not found error specifically
+    if (error.message.includes('does not exist or has no events')) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: error.message
+      });
+    }
+    
+    // Handle event not found error
+    if (error.message.includes('Event not found or does not belong to user')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found',
+        message: error.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to search tickets',
+      message: error.message
+    });
+  }
+});
+
 // Create a single ticket for an event (JWT authenticated)
 app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
   try {
