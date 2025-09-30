@@ -1,0 +1,742 @@
+{
+  "info": {
+    "name": "Ticketeer Public APIs",
+    "description": "Comprehensive documentation for all public APIs of the Ticketeer application. These endpoints do not require authentication and are designed for public access, integration, and webhook processing.",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://ticketeer.vercel.app",
+      "type": "string",
+      "description": "Production base URL for Ticketeer API"
+    },
+    {
+      "key": "local_url",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Local development base URL"
+    },
+    {
+      "key": "sample_user_id",
+      "value": "auth0|sample_user_123",
+      "type": "string",
+      "description": "Sample user ID for testing (replace with real user ID)"
+    },
+    {
+      "key": "sample_event_id",
+      "value": "1",
+      "type": "string",
+      "description": "Sample event ID for testing (replace with real event ID)"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Status",
+      "description": "System health and status endpoints for monitoring and diagnostics",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Returns the health status of the Ticketeer server, including authentication configuration and timestamp."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"OK\",\n  \"message\": \"Ticketeer SPA server is running!\",\n  \"timestamp\": \"2024-01-15T10:30:00.000Z\",\n  \"auth\": {\n    \"domain\": \"novamoney.us.auth0.com\",\n    \"audience\": \"https://ticket.nova.money\"\n  }\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has status OK\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"OK\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains timestamp\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.timestamp).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simple Test Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/test/simple",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "test",
+                "simple"
+              ]
+            },
+            "description": "Simple test endpoint that verifies basic API functionality without authentication requirements."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Simple test endpoint working!\",\n  \"timestamp\": \"2024-01-15T10:30:00.000Z\"\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response indicates success\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Public Ticket Search",
+      "description": "Public APIs for searching and retrieving ticket information without authentication",
+      "item": [
+        {
+          "name": "Search Available Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/public/tickets/search?userId={{sample_user_id}}&eventId={{sample_event_id}}&available=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "tickets",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{sample_user_id}}",
+                  "description": "Required: User ID who owns the event (Auth0 format: auth0|username)"
+                },
+                {
+                  "key": "eventId",
+                  "value": "{{sample_event_id}}",
+                  "description": "Required: Numeric ID of the event to search tickets for"
+                },
+                {
+                  "key": "available",
+                  "value": "true",
+                  "description": "Optional: Filter for available tickets only (true/false). When true, returns tickets with no order assigned and sales end date in the future."
+                }
+              ]
+            },
+            "description": "Public endpoint to search for tickets in a specific event. Filters tickets to show only available ones (no order assigned and sales still active) when available=true. Does not expose sensitive buyer information."
+          },
+          "response": [
+            {
+              "name": "Success Response - Available Tickets",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 1,\n      \"eventId\": 1,\n      \"description\": \"VIP Section Ticket\",\n      \"identificationNumber\": \"T001\",\n      \"location\": \"Section A\",\n      \"table\": 5,\n      \"price\": 150.00,\n      \"order\": null,\n      \"salesEndDateTime\": \"2024-12-31T23:59:59.000Z\",\n      \"created_at\": \"2024-01-15T10:00:00.000Z\",\n      \"updated_at\": \"2024-01-15T10:00:00.000Z\"\n    },\n    {\n      \"id\": 2,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": \"T002\",\n      \"location\": \"General Area\",\n      \"table\": null,\n      \"price\": 75.00,\n      \"order\": null,\n      \"salesEndDateTime\": \"2024-12-31T23:59:59.000Z\",\n      \"created_at\": \"2024-01-15T10:00:00.000Z\",\n      \"updated_at\": \"2024-01-15T10:00:00.000Z\"\n    }\n  ],\n  \"count\": 2,\n  \"eventId\": 1,\n  \"userId\": \"auth0|sample_user_123\",\n  \"filter\": {\n    \"available\": true\n  }\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            {
+              "name": "Empty Result - No Available Tickets",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"tickets\": [],\n  \"count\": 0,\n  \"eventId\": 1,\n  \"userId\": \"auth0|sample_user_123\",\n  \"filter\": {\n    \"available\": true\n  }\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            {
+              "name": "Error - Missing Required Parameters",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"error\": \"Validation failed\",\n  \"message\": \"userId parameter is required\"\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            {
+              "name": "Error - User Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"success\": false,\n  \"error\": \"User not found\",\n  \"message\": \"User with ID 'nonexistent_user' does not exist or has no events\"\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            {
+              "name": "Error - Event Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"success\": false,\n  \"error\": \"Event not found\",\n  \"message\": \"Event not found or does not belong to user\"\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 or 400 or 404\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 404]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Response has success field\", function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.success).to.be.true;",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"Response contains tickets array\", function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.tickets).to.be.an('array');",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"Count matches tickets array length\", function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.count).to.eql(jsonData.tickets.length);",
+                  "    });",
+                  "}",
+                  "",
+                  "if (pm.response.code === 400 || pm.response.code === 404) {",
+                  "    pm.test(\"Error response has proper structure\", function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.success).to.be.false;",
+                  "        pm.expect(jsonData.error).to.exist;",
+                  "        pm.expect(jsonData.message).to.exist;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search All Tickets (Available and Sold)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/public/tickets/search?userId={{sample_user_id}}&eventId={{sample_event_id}}&available=false",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "tickets",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{sample_user_id}}",
+                  "description": "Required: User ID who owns the event"
+                },
+                {
+                  "key": "eventId",
+                  "value": "{{sample_event_id}}",
+                  "description": "Required: Numeric ID of the event"
+                },
+                {
+                  "key": "available",
+                  "value": "false",
+                  "description": "Returns all tickets regardless of availability status"
+                }
+              ]
+            },
+            "description": "Retrieve all tickets for an event, including both available and sold tickets. Buyer information is still protected for privacy."
+          },
+          "response": [
+            {
+              "name": "Success Response - All Tickets",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"tickets\": [\n    {\n      \"id\": 1,\n      \"eventId\": 1,\n      \"description\": \"VIP Section Ticket\",\n      \"identificationNumber\": \"T001\",\n      \"location\": \"Section A\",\n      \"table\": 5,\n      \"price\": 150.00,\n      \"order\": null,\n      \"salesEndDateTime\": \"2024-12-31T23:59:59.000Z\",\n      \"created_at\": \"2024-01-15T10:00:00.000Z\",\n      \"updated_at\": \"2024-01-15T10:00:00.000Z\"\n    },\n    {\n      \"id\": 2,\n      \"eventId\": 1,\n      \"description\": \"General Admission\",\n      \"identificationNumber\": \"T002\",\n      \"location\": \"General Area\",\n      \"table\": null,\n      \"price\": 75.00,\n      \"order\": \"ORDER-12345\",\n      \"salesEndDateTime\": \"2024-12-31T23:59:59.000Z\",\n      \"created_at\": \"2024-01-15T10:00:00.000Z\",\n      \"updated_at\": \"2024-01-15T12:30:00.000Z\"\n    }\n  ],\n  \"count\": 2,\n  \"eventId\": 1,\n  \"userId\": \"auth0|sample_user_123\",\n  \"filter\": {\n    \"available\": false\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search Tickets - Default Filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/public/tickets/search?userId={{sample_user_id}}&eventId={{sample_event_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "tickets",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{sample_user_id}}",
+                  "description": "Required: User ID who owns the event"
+                },
+                {
+                  "key": "eventId",
+                  "value": "{{sample_event_id}}",
+                  "description": "Required: Numeric ID of the event"
+                }
+              ]
+            },
+            "description": "Search tickets without specifying the available filter. Defaults to showing all tickets."
+          },
+          "response": [
+            {
+              "name": "Success Response - Default Filter",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"tickets\": [],\n  \"count\": 0,\n  \"eventId\": 1,\n  \"userId\": \"auth0|sample_user_123\",\n  \"filter\": {\n    \"available\": false\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "description": "Public webhook endpoints for processing external payment and order confirmations",
+      "item": [
+        {
+          "name": "Checkout Webhook - Single Ticket Purchase",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/checkout/{{sample_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "checkout",
+                "{{sample_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"order.paid\",\n  \"payload\": {\n    \"id\": \"ORDER-SINGLE-001\",\n    \"customer\": {\n      \"name\": \"Alice Johnson\",\n      \"email\": \"alice.johnson@example.com\",\n      \"identification\": \"123.456.789-10\"\n    },\n    \"items\": [\n      {\n        \"name\": \"General Admission\",\n        \"quantity\": 1,\n        \"price\": 75.00\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "NEW BEHAVIOR: Processes single ticket purchase with selective buyer assignment. The single ticket gets both order field and buyer information (name, document, email)."
+          }
+          "response": [
+            {
+              "name": "Success Response - Single Ticket",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Checkout webhook processed successfully. Order ORDER-SINGLE-001 assigned to 1 tickets with 1 tickets updated.\",\n  \"userId\": \"auth0|sample_user_123\",\n  \"orderId\": \"ORDER-SINGLE-001\",\n  \"tableNumber\": null,\n  \"ticketIds\": [1],\n  \"buyerAssigned\": \"Alice Johnson\",\n  \"processedTickets\": 1\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+            {
+              "name": "Error - Invalid User ID",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"success\": false,\n  \"error\": \"User not found\",\n  \"message\": \"User with ID 'invalid_user' does not exist or has no events\"\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            {
+              "name": "Error - Invalid Webhook Payload",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"error\": \"Invalid webhook payload\",\n  \"message\": \"Missing event field in webhook payload\"\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            {
+              "name": "Info - Event Ignored",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Webhook event 'order.created' acknowledged but not processed\"\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200, 400, or 404\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 404]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success field\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.exist;",
+                  "});",
+                  "",
+                  "pm.test(\"Response has message field\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.exist;",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200 && pm.response.json().success === true && pm.response.json().data) {",
+                  "    pm.test(\"Successful processing includes data object\", function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.data).to.be.an('object');",
+                  "        pm.expect(jsonData.data.orderId).to.exist;",
+                  "        pm.expect(jsonData.userId).to.exist;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout Webhook - Multi-Ticket Purchase",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/checkout/{{sample_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "checkout",
+                "{{sample_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"order.paid\",\n  \"payload\": {\n    \"id\": \"ORDER-MULTI-002\",\n    \"customer\": {\n      \"name\": \"Bob Martinez\",\n      \"email\": \"bob.martinez@example.com\",\n      \"identification\": \"987.654.321-00\"\n    },\n    \"items\": [\n      {\n        \"name\": \"General Admission\",\n        \"quantity\": 3,\n        \"price\": 225.00\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "NEW BEHAVIOR: Processes multi-ticket purchase with selective buyer assignment. All 3 tickets get order field, but ONLY the first ticket (by identificationNumber) gets buyer information."
+          },
+          "response": [
+            {
+              "name": "Success Response - Multi-Ticket",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Checkout webhook processed successfully. Order ORDER-MULTI-002 assigned to 3 tickets with 3 tickets updated.\",\n  \"userId\": \"auth0|sample_user_123\",\n  \"orderId\": \"ORDER-MULTI-002\",\n  \"tableNumber\": null,\n  \"ticketIds\": [2, 3, 4],\n  \"buyerAssigned\": \"Bob Martinez\",\n  \"processedTickets\": 3\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Checkout Webhook - Table Purchase",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/checkout/{{sample_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "checkout",
+                "{{sample_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"order.paid\",\n  \"payload\": {\n    \"id\": \"ORDER-TABLE-003\",\n    \"customer\": {\n      \"name\": \"Carol Davis\",\n      \"email\": \"carol.davis@example.com\",\n      \"identification\": \"456.789.123-45\"\n    },\n    \"meta\": {\n      \"tableNumber\": \"7\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Table 7 - VIP Section\",\n        \"quantity\": 4,\n        \"price\": 600.00\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "NEW BEHAVIOR: Processes table purchase with selective buyer assignment. All tickets for table 7 get order field, but ONLY the first ticket (lowest identificationNumber) gets buyer information."
+          },
+          "response": [
+            {
+              "name": "Success Response - Table Purchase",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Checkout webhook processed successfully. Order ORDER-TABLE-003 assigned to table 7 with 4 tickets updated.\",\n  \"userId\": \"auth0|sample_user_123\",\n  \"orderId\": \"ORDER-TABLE-003\",\n  \"tableNumber\": 7,\n  \"ticketIds\": [10, 11, 12, 13],\n  \"buyerAssigned\": \"Carol Davis\",\n  \"processedTickets\": 4\n}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Checkout Webhook - Other Events",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/webhooks/checkout/{{sample_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "checkout",
+                "{{sample_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"order.created\",\n  \"data\": {\n    \"order_id\": \"ORDER-12345-ABC\",\n    \"status\": \"pending\",\n    \"amount\": 225.00,\n    \"currency\": \"BRL\"\n  },\n  \"webhook_id\": \"wh_1234567890abcdef\",\n  \"created_at\": \"2024-01-15T14:25:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Example of webhook events that are acknowledged but not processed. The system only processes 'order.paid' events, but acknowledges other event types gracefully."
+          },
+          "response": [
+            {
+              "name": "Event Acknowledged But Not Processed",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Webhook event 'order.created' acknowledged but not processed\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global pre-request script for all public API requests",
+          "// Set common headers and validate environment variables",
+          "",
+          "// Ensure we have a base URL set",
+          "if (!pm.variables.get(\"base_url\")) {",
+          "    pm.variables.set(\"base_url\", \"https://ticketeer.vercel.app\");",
+          "}",
+          "",
+          "// Log the request for debugging",
+          "console.log(`Making ${pm.request.method} request to: ${pm.request.url}`);",
+          "",
+          "// Add timestamp to request",
+          "pm.variables.set(\"timestamp\", new Date().toISOString());"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test script for all public API requests",
+          "",
+          "pm.test(\"Response time is less than 5000ms\", function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "pm.test(\"Response has Content-Type header\", function () {",
+          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+          "});",
+          "",
+          "pm.test(\"Response is valid JSON\", function () {",
+          "    pm.response.to.be.json;",
+          "});",
+          "",
+          "// Log response for debugging",
+          "console.log(`Response Status: ${pm.response.status} (${pm.response.code})`);",
+          "console.log(`Response Time: ${pm.response.responseTime}ms`);"
+        ]
+      }
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  }
+}

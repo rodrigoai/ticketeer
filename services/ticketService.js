@@ -454,6 +454,7 @@ class TicketService {
   /**
    * Process checkout webhook to confirm ticket purchases
    * Uses quantity-based selection or table-based selection depending on payload
+   * NEW BEHAVIOR: Only the first ticket gets buyer information, all tickets get order field
    * @param {Object} webhookPayload - The webhook payload from payment system
    * @param {string} userId - The user ID to validate ticket ownership
    * @returns {Object} - Processing result with updated tickets info
@@ -593,43 +594,19 @@ class TicketService {
           }
         }
 
-        // Prepare buyer information
-        let buyerInfo = {};
-        if (customer) {
-          buyerInfo = {
-            buyer: customer.name || null,
-            buyerDocument: customer.identification || null,
-            buyerEmail: customer.email || null
-          };
-        }
-
-        // Prepare update data
-        const updateData = {
-          order: orderId.toString(),
-          ...buyerInfo
-        };
-
-        // Update all selected tickets
-        const ticketIds = ticketsToUpdate.map(t => t.id);
-        const updatedTickets = [];
-        
-        for (const ticketId of ticketIds) {
-          const updatedTicket = await tx.ticket.update({
-            where: { id: ticketId },
-            data: updateData
-          });
-          updatedTickets.push(updatedTicket);
-        }
+        // Process selective buyer assignment using helper method
+        const updateResult = await this._updateTicketsWithSelectiveBuyerInfo(tx, ticketsToUpdate, orderId.toString(), customer);
 
         return {
           success: true,
-          message: `Successfully processed ${ticketsToUpdate.length} ticket(s) using ${selectionMethod} selection`,
+          message: `Checkout webhook processed successfully. Order ${orderId} assigned to ${tableNumber ? `table ${tableNumber}` : `${ticketsToUpdate.length} tickets`} with ${updateResult.ticketsUpdated} tickets updated.`,
           orderId: orderId.toString(),
-          ticketIds,
-          updatedTickets,
-          buyerAssigned: Object.keys(buyerInfo).length > 0,
-          selectionMethod,
           tableNumber: tableNumber,
+          ticketIds: updateResult.ticketIds,
+          buyerAssigned: updateResult.buyerInfo ? (updateResult.buyerInfo.buyer || 'N/A') : null,
+          processedTickets: updateResult.ticketsUpdated,
+          updatedTickets: updateResult.updatedTickets,
+          selectionMethod,
           quantity: selectionMethod === 'quantity-based' ? Math.floor(items.reduce((total, item) => total + (item.quantity || 0), 0)) : undefined
         };
       });
@@ -639,6 +616,74 @@ class TicketService {
     } catch (error) {
       console.error('Error processing checkout webhook:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Helper method to update tickets with selective buyer information assignment
+   * NEW BEHAVIOR: Only the first ticket (by identificationNumber asc) gets buyer info
+   * All tickets get the order field filled
+   * @param {Object} tx - Prisma transaction object
+   * @param {Array} ticketsToUpdate - Array of tickets to update (already sorted by identificationNumber asc)
+   * @param {string} orderId - Order ID to assign to all tickets
+   * @param {Object} customer - Customer object from webhook payload
+   * @returns {Object} - Result with updated tickets info
+   */
+  async _updateTicketsWithSelectiveBuyerInfo(tx, ticketsToUpdate, orderId, customer) {
+    try {
+      if (!ticketsToUpdate || ticketsToUpdate.length === 0) {
+        throw new Error('No tickets provided for update');
+      }
+
+      // Prepare buyer information from customer object
+      let buyerInfo = null;
+      if (customer) {
+        buyerInfo = {
+          buyer: customer.name || null,
+          buyerDocument: customer.identification || null,
+          buyerEmail: customer.email || null
+        };
+      }
+
+      const updatedTickets = [];
+      const ticketIds = ticketsToUpdate.map(t => t.id);
+
+      // Process each ticket
+      for (let i = 0; i < ticketsToUpdate.length; i++) {
+        const ticket = ticketsToUpdate[i];
+        const isFirstTicket = i === 0;
+
+        // Base update data - all tickets get order field
+        const updateData = {
+          order: orderId
+        };
+
+        // Only the first ticket gets buyer information
+        if (isFirstTicket && buyerInfo) {
+          Object.assign(updateData, buyerInfo);
+        }
+
+        // Update the ticket
+        const updatedTicket = await tx.ticket.update({
+          where: { id: ticket.id },
+          data: updateData
+        });
+
+        updatedTickets.push(updatedTicket);
+      }
+
+      return {
+        ticketIds,
+        updatedTickets,
+        ticketsUpdated: updatedTickets.length,
+        buyerInfo: buyerInfo,
+        firstTicketId: ticketsToUpdate[0].id,
+        orderAssignedToAll: true
+      };
+
+    } catch (error) {
+      console.error('Error in selective buyer info assignment:', error);
+      throw new Error(`Failed to update tickets with selective buyer info: ${error.message}`);
     }
   }
 
