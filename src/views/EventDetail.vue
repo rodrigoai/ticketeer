@@ -132,6 +132,7 @@
                   <th>Location</th>
                   <th>Table</th>
                   <th>Price</th>
+                  <th>Order</th>
                   <th>Buyer</th>
                   <th>Email</th>
                   <th>Sales End</th>
@@ -145,6 +146,22 @@
                   <td>{{ ticket.location || '-' }}</td>
                   <td>{{ ticket.table || '-' }}</td>
                   <td>${{ ticket.price.toFixed(2) }}</td>
+                  <td>
+                    <div v-if="ticket.order">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-info text-dark">{{ ticket.order }}</span>
+                        <a 
+                          :href="getCachedConfirmationUrl(ticket.order)" 
+                          target="_blank" 
+                          class="btn btn-sm btn-outline-success" 
+                          title="Open confirmation page"
+                        >
+                          <i class="fas fa-external-link-alt"></i>
+                        </a>
+                      </div>
+                    </div>
+                    <span v-else class="text-muted">-</span>
+                  </td>
                   <td>{{ ticket.buyer || '-' }}</td>
                   <td>{{ ticket.buyerEmail || '-' }}</td>
                   <td>{{ ticket.salesEndDateTime ? formatDate(ticket.salesEndDateTime) : '-' }}</td>
@@ -675,6 +692,64 @@ const resetBatchForm = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'No date'
   return new Date(dateString).toLocaleString()
+}
+
+// Store for cached confirmation URLs to avoid repeated API calls
+const confirmationUrlCache = ref({})
+
+// Generate confirmation URL for an order
+const getConfirmationUrl = (orderId) => {
+  if (!orderId) return '#'
+  
+  // Check cache first
+  if (confirmationUrlCache.value[orderId]) {
+    return confirmationUrlCache.value[orderId]
+  }
+  
+  // For synchronous template usage, return a placeholder initially
+  // and trigger async URL generation in background
+  generateConfirmationUrlAsync(orderId)
+  
+  // Return temporary fallback while API call is in progress
+  const baseUrl = window.location.origin
+  return `${baseUrl}/confirmation/${btoa(orderId).replace(/[+/=]/g, '')}`
+}
+
+// Async function to get proper confirmation URL and cache it
+const generateConfirmationUrlAsync = async (orderId) => {
+  try {
+    const hash = await getOrderConfirmationHash(orderId)
+    const baseUrl = window.location.origin
+    const url = `${baseUrl}/confirmation/${hash}`
+    
+    // Cache the result
+    confirmationUrlCache.value[orderId] = url
+    
+    // Force reactivity update
+    confirmationUrlCache.value = { ...confirmationUrlCache.value }
+  } catch (error) {
+    console.warn(`Could not generate confirmation URL for order: ${orderId}`, error)
+    // Keep the fallback URL in cache
+    const baseUrl = window.location.origin
+    confirmationUrlCache.value[orderId] = `${baseUrl}/confirmation/${btoa(orderId).replace(/[+/=]/g, '')}`
+  }
+}
+
+// Get order confirmation hash from API
+const getOrderConfirmationHash = async (orderId) => {
+  try {
+    const response = await get(`/api/orders/${orderId}/confirmation-hash`)
+    return response.hash
+  } catch (error) {
+    console.error('Failed to get confirmation hash:', error)
+    throw error
+  }
+}
+
+// Get cached or computed confirmation URL for display
+const getCachedConfirmationUrl = (orderId) => {
+  if (!orderId) return '#'
+  return confirmationUrlCache.value[orderId] || getConfirmationUrl(orderId)
 }
 
 // Load data on mount

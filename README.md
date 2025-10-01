@@ -203,6 +203,13 @@ GET    /api/tickets/:id                 # Get ticket by ID
 PUT    /api/tickets/:id                 # Update ticket
 DELETE /api/tickets/:id                 # Delete single ticket
 DELETE /api/tickets/batch               # Delete multiple tickets
+
+# Order Management (Protected)
+GET    /api/orders/:orderId/confirmation-hash # Get confirmation hash for order
+
+# Buyer Confirmation (Public)
+GET    /api/public/orders/:hash         # Get order details by confirmation hash
+POST   /api/public/orders/:hash/buyers  # Save buyer information for order
 ```
 
 **📚 For detailed API documentation, request/response examples, and Postman collection, see [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)**

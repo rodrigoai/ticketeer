@@ -1099,6 +1099,166 @@ app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
 });
 
 // ==========================================
+// BUYER CONFIRMATION PUBLIC API ENDPOINTS
+// ==========================================
+
+// Get order details by hash for buyer confirmation (public endpoint)
+app.get('/api/public/orders/:hash', async (req, res) => {
+  try {
+    const { hash } = req.params;
+    
+    const orderService = require('./services/orderService');
+    const orderDetails = await orderService.getOrderByHash(hash);
+    
+    res.json({
+      success: true,
+      order: orderDetails
+    });
+  } catch (error) {
+    console.error('Error fetching order by hash:', error);
+    
+    if (error.message.includes('Invalid hash format')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid hash format',
+        message: 'The provided hash is not valid'
+      });
+    }
+    
+    if (error.message.includes('Order not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+        message: 'No order found for the provided hash'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch order',
+      message: error.message
+    });
+  }
+});
+
+// Get order confirmation hash by order ID (JWT authenticated)
+app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    if (!orderId || typeof orderId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid order ID',
+        message: 'Order ID is required and must be a string'
+      });
+    }
+    
+    const orderService = require('./services/orderService');
+    const hash = await orderService.getConfirmationHashByOrderId(orderId, userId);
+    
+    res.json({
+      success: true,
+      hash: hash,
+      orderId: orderId
+    });
+  } catch (error) {
+    console.error('Error fetching confirmation hash:', error);
+    
+    if (error.message.includes('Order not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+        message: 'No order found with the provided ID or you do not have access to it'
+      });
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'You do not have permission to access this order'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get confirmation hash',
+      message: error.message
+    });
+  }
+});
+
+// Save buyer information for order tickets (public endpoint)
+app.post('/api/public/orders/:hash/buyers', async (req, res) => {
+  try {
+    const { hash } = req.params;
+    const { buyers } = req.body;
+    
+    if (!buyers || !Array.isArray(buyers)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        message: 'Buyers data must be provided as an array'
+      });
+    }
+    
+    const orderService = require('./services/orderService');
+    const result = await orderService.saveBuyersForOrder(hash, buyers);
+    
+    res.json({
+      success: true,
+      message: result.message,
+      orderId: result.orderId,
+      updatedTickets: result.updatedTickets
+    });
+  } catch (error) {
+    console.error('Error saving buyers for order:', error);
+    
+    if (error.message.includes('Invalid hash format')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid hash format',
+        message: 'The provided hash is not valid'
+      });
+    }
+    
+    if (error.message.includes('Order not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+        message: 'No order found for the provided hash'
+      });
+    }
+    
+    if (error.message.includes('already been completed')) {
+      return res.status(409).json({
+        success: false,
+        error: 'Order already completed',
+        message: 'This order has already been completed and cannot be modified'
+      });
+    }
+    
+    if (error.message.includes('All fields are required') || 
+        error.message.includes('Invalid') || 
+        error.message.includes('already used')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: error.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save buyers',
+      message: error.message
+    });
+  }
+});
+
+// ==========================================
 // WEBHOOK API ENDPOINTS
 // ==========================================
 
@@ -1197,6 +1357,20 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
 });
 
 
+// Serve buyer confirmation page
+app.get('/confirmation/:hash', (req, res) => {
+  const { hash } = req.params;
+  const orderHash = require('./utils/orderHash');
+  
+  // Basic hash format validation
+  if (!orderHash.isValidHashFormat(hash)) {
+    return res.status(400).send('Invalid confirmation link');
+  }
+  
+  // Serve the confirmation page
+  res.sendFile(path.join(__dirname, 'public', 'confirmation.html'));
+});
+
 // SPA catch-all route - serve index.html for client-side routing
 app.get('*', (req, res, next) => {
   // Don't serve SPA for API routes that return 404
@@ -1205,6 +1379,11 @@ app.get('*', (req, res, next) => {
       error: 'API route not found',
       message: 'The requested API endpoint does not exist'
     });
+  }
+  
+  // Don't serve SPA for confirmation routes (already handled above)
+  if (req.path.startsWith('/confirmation/')) {
+    return res.status(404).send('Confirmation link not found');
   }
   
   // Serve the Vue SPA index.html for all other routes

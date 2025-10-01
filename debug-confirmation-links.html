@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Confirmation Links</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .debug-title {
+            color: #007bff;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-family: monospace;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Confirmation Links</h1>
+    
+    <div class="debug-section">
+        <div class="debug-title">1. Check if Vue App is Running</div>
+        <button onclick="checkVueApp()">Test Vue App</button>
+        <div id="vue-result" class="result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <div class="debug-title">2. Test API Endpoints</div>
+        <button onclick="testHealthEndpoint()">Test Health API</button>
+        <button onclick="testAuthEndpoint()">Test Auth Status</button>
+        <div id="api-result" class="result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <div class="debug-title">3. Test Confirmation Hash API</div>
+        <input type="text" id="order-id-input" placeholder="Enter Order ID (e.g., ORDER123)" style="width: 300px; padding: 8px; margin: 5px;">
+        <button onclick="testConfirmationHash()">Test Hash Generation</button>
+        <div id="hash-result" class="result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <div class="debug-title">4. Check Existing Tickets with Orders</div>
+        <button onclick="fetchTicketsWithOrders()">Fetch Tickets</button>
+        <div id="tickets-result" class="result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <div class="debug-title">5. Test Confirmation Page</div>
+        <input type="text" id="hash-input" placeholder="Enter hash to test confirmation page" style="width: 300px; padding: 8px; margin: 5px;">
+        <button onclick="testConfirmationPage()">Test Confirmation Page</button>
+        <div id="confirmation-result" class="result"></div>
+    </div>
+
+    <script>
+        // Function to make API calls
+        async function apiCall(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return { success: response.ok, status: response.status, data };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        // Check if Vue app is running
+        async function checkVueApp() {
+            const result = document.getElementById('vue-result');
+            result.innerHTML = 'Checking Vue app...';
+            
+            try {
+                const response = await fetch('http://localhost:5173');
+                if (response.ok) {
+                    result.className = 'result success';
+                    result.innerHTML = '✅ Vue dev server is running on port 5173';
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `❌ Vue server responded with status: ${response.status}`;
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `❌ Cannot connect to Vue server: ${error.message}`;
+            }
+        }
+        
+        // Test health endpoint
+        async function testHealthEndpoint() {
+            const result = document.getElementById('api-result');
+            result.innerHTML = 'Testing health endpoint...';
+            
+            const response = await apiCall('http://localhost:3000/api/health');
+            
+            if (response.success) {
+                result.className = 'result success';
+                result.innerHTML = `✅ Health API: ${JSON.stringify(response.data, null, 2)}`;
+            } else {
+                result.className = 'result error';
+                result.innerHTML = `❌ Health API failed: ${response.error || response.status}`;
+            }
+        }
+        
+        // Test auth status
+        async function testAuthEndpoint() {
+            const result = document.getElementById('api-result');
+            result.innerHTML = 'Testing auth status...';
+            
+            const response = await apiCall('http://localhost:3000/api/auth/status');
+            
+            if (response.success) {
+                result.className = 'result success';
+                result.innerHTML = `✅ Auth Status: ${JSON.stringify(response.data, null, 2)}`;
+            } else {
+                result.className = 'result error';
+                result.innerHTML = `❌ Auth Status failed: ${response.error || response.status}`;
+            }
+        }
+        
+        // Test confirmation hash API
+        async function testConfirmationHash() {
+            const orderId = document.getElementById('order-id-input').value;
+            const result = document.getElementById('hash-result');
+            
+            if (!orderId) {
+                result.className = 'result error';
+                result.innerHTML = '❌ Please enter an Order ID';
+                return;
+            }
+            
+            result.innerHTML = `Testing confirmation hash for order: ${orderId}...`;
+            
+            // This will require authentication, so we expect it to fail
+            const response = await apiCall(`http://localhost:3000/api/orders/${orderId}/confirmation-hash`);
+            
+            if (response.success) {
+                result.className = 'result success';
+                result.innerHTML = `✅ Hash generated: ${JSON.stringify(response.data, null, 2)}`;
+            } else {
+                result.className = 'result error';
+                result.innerHTML = `❌ Hash generation failed (expected without auth): ${JSON.stringify(response, null, 2)}`;
+            }
+        }
+        
+        // Fetch tickets to see which ones have orders
+        async function fetchTicketsWithOrders() {
+            const result = document.getElementById('tickets-result');
+            result.innerHTML = 'Fetching tickets...';
+            
+            // This will also require auth, but let's see what we get
+            const response = await apiCall('http://localhost:3000/api/events/1/tickets');
+            
+            if (response.success && response.data.tickets) {
+                const ticketsWithOrders = response.data.tickets.filter(ticket => ticket.order);
+                result.className = 'result success';
+                result.innerHTML = `✅ Found ${ticketsWithOrders.length} tickets with orders:<br>` + 
+                    ticketsWithOrders.map(ticket => 
+                        `Ticket #${ticket.identificationNumber}: Order "${ticket.order}"`
+                    ).join('<br>');
+            } else {
+                result.className = 'result error';
+                result.innerHTML = `❌ Failed to fetch tickets (expected without auth): ${JSON.stringify(response, null, 2)}`;
+            }
+        }
+        
+        // Test confirmation page
+        async function testConfirmationPage() {
+            const hash = document.getElementById('hash-input').value;
+            const result = document.getElementById('confirmation-result');
+            
+            if (!hash) {
+                result.className = 'result error';
+                result.innerHTML = '❌ Please enter a hash';
+                return;
+            }
+            
+            result.innerHTML = `Testing confirmation page for hash: ${hash}...`;
+            
+            const response = await apiCall(`http://localhost:3000/api/public/orders/${hash}`);
+            
+            if (response.success) {
+                result.className = 'result success';
+                result.innerHTML = `✅ Confirmation page accessible: ${JSON.stringify(response.data, null, 2)}`;
+            } else {
+                result.className = 'result error';
+                result.innerHTML = `❌ Confirmation page failed: ${JSON.stringify(response, null, 2)}`;
+            }
+        }
+        
+        // Auto-run basic checks on load
+        window.onload = function() {
+            checkVueApp();
+            testHealthEndpoint();
+        }
+    </script>
+</body>
+</html>

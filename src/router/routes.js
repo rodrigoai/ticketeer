@@ -3,6 +3,7 @@ import Dashboard from '@/views/Dashboard.vue'
 import Events from '@/views/Events.vue'
 import EventDetail from '@/views/EventDetail.vue'
 import Newpro from '@/views/Newpro.vue'
+import BuyerConfirmation from '@/views/BuyerConfirmation.vue'
 
 import { createAuthGuard } from "@auth0/auth0-vue";
 // Export function that takes app instance to create routes with auth guards
@@ -40,6 +41,13 @@ export const createRoutes = (app) => {
       name: 'NewPro',
       component: Newpro,
       beforeEnter: authGuard
+    },
+    {
+      path: '/confirmation/:hash',
+      name: 'BuyerConfirmation',
+      component: BuyerConfirmation,
+      props: true
+      // Note: No authGuard - confirmation pages should be public
     }
   ];
 }

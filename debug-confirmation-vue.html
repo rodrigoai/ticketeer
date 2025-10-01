@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Confirmation Links - Vue Component</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="app" class="container mt-4">
+        <h1>🔍 Debug Vue Confirmation Links</h1>
+        
+        <div class="alert alert-info">
+            <h5>Test Scenario</h5>
+            <p>This page simulates the EventDetail component to test confirmation link generation.</p>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col">
+                <h3>Mock Tickets Data</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Description</th>
+                                <th>Price</th>
+                                <th>Order</th>
+                                <th>Confirmation Link</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="ticket in tickets" :key="ticket.id">
+                                <td><strong>{{ ticket.identificationNumber }}</strong></td>
+                                <td>{{ ticket.description }}</td>
+                                <td>${{ ticket.price.toFixed(2) }}</td>
+                                <td>
+                                    <div v-if="ticket.order">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-info text-dark">{{ ticket.order }}</span>
+                                            <a 
+                                                :href="getCachedConfirmationUrl(ticket.order)" 
+                                                target="_blank" 
+                                                class="btn btn-sm btn-outline-success" 
+                                                title="Open confirmation page"
+                                                @click="logConfirmationClick(ticket.order, $event)"
+                                            >
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <span v-else class="text-muted">-</span>
+                                </td>
+                                <td>
+                                    <div v-if="ticket.order">
+                                        <small class="text-muted">{{ getCachedConfirmationUrl(ticket.order) }}</small>
+                                    </div>
+                                    <span v-else class="text-muted">No order</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Debug Information</h4>
+                <div class="card">
+                    <div class="card-body">
+                        <h6>Confirmation URL Cache:</h6>
+                        <pre>{{ JSON.stringify(confirmationUrlCache, null, 2) }}</pre>
+                        
+                        <h6 class="mt-3">Test Actions:</h6>
+                        <button class="btn btn-primary me-2" @click="testApiEndpoint">Test API Endpoint</button>
+                        <button class="btn btn-secondary" @click="refreshCache">Clear Cache</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h4>Console Logs</h4>
+                <div class="card">
+                    <div class="card-body">
+                        <div id="console-log" style="height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; font-family: monospace; font-size: 12px;">
+                            <!-- Console logs will appear here -->
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary mt-2" @click="clearConsole">Clear Console</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive } = Vue;
+
+        createApp({
+            setup() {
+                // Mock tickets data - some with orders, some without
+                const tickets = ref([
+                    {
+                        id: 1,
+                        identificationNumber: 1,
+                        description: "VIP Ticket",
+                        price: 150.00,
+                        order: "ORDER123"
+                    },
+                    {
+                        id: 2,
+                        identificationNumber: 2,
+                        description: "General Admission",
+                        price: 75.00,
+                        order: "ORDER456"
+                    },
+                    {
+                        id: 3,
+                        identificationNumber: 3,
+                        description: "Student Ticket",
+                        price: 25.00,
+                        order: null // No order assigned
+                    },
+                    {
+                        id: 4,
+                        identificationNumber: 4,
+                        description: "Premium Seat",
+                        price: 200.00,
+                        order: "ORDER789"
+                    }
+                ]);
+
+                // Store for cached confirmation URLs
+                const confirmationUrlCache = reactive({});
+
+                // Log function for debugging
+                const log = (message) => {
+                    console.log(message);
+                    const consoleElement = document.getElementById('console-log');
+                    const time = new Date().toLocaleTimeString();
+                    consoleElement.innerHTML += `[${time}] ${message}<br>`;
+                    consoleElement.scrollTop = consoleElement.scrollHeight;
+                };
+
+                // Generate confirmation URL for an order (simplified version)
+                const getConfirmationUrl = (orderId) => {
+                    if (!orderId) return '#';
+                    
+                    log(`Generating URL for order: ${orderId}`);
+                    
+                    // Check cache first
+                    if (confirmationUrlCache[orderId]) {
+                        log(`Found cached URL for ${orderId}: ${confirmationUrlCache[orderId]}`);
+                        return confirmationUrlCache[orderId];
+                    }
+                    
+                    // Generate fallback URL
+                    const baseUrl = window.location.origin;
+                    const fallbackUrl = `${baseUrl}/confirmation/${btoa(orderId).replace(/[+/=]/g, '')}`;
+                    
+                    // Cache the fallback
+                    confirmationUrlCache[orderId] = fallbackUrl;
+                    
+                    log(`Generated fallback URL for ${orderId}: ${fallbackUrl}`);
+                    
+                    // Try to get real hash (simulated)
+                    generateConfirmationUrlAsync(orderId);
+                    
+                    return fallbackUrl;
+                };
+
+                // Simulate async hash generation
+                const generateConfirmationUrlAsync = async (orderId) => {
+                    try {
+                        log(`Attempting to get hash for order: ${orderId}`);
+                        
+                        // Simulate API call delay
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                        // Simulate hash generation (in reality this would call the API)
+                        const mockHash = `hash_${btoa(orderId + Date.now()).replace(/[+/=]/g, '').substring(0, 16)}`;
+                        const baseUrl = window.location.origin;
+                        const url = `${baseUrl}/confirmation/${mockHash}`;
+                        
+                        // Update cache
+                        confirmationUrlCache[orderId] = url;
+                        
+                        log(`Updated cache with real hash for ${orderId}: ${url}`);
+                        
+                    } catch (error) {
+                        log(`ERROR generating hash for ${orderId}: ${error.message}`);
+                    }
+                };
+
+                // Get cached or computed confirmation URL for display
+                const getCachedConfirmationUrl = (orderId) => {
+                    if (!orderId) return '#';
+                    return confirmationUrlCache[orderId] || getConfirmationUrl(orderId);
+                };
+
+                // Test API endpoint
+                const testApiEndpoint = async () => {
+                    log('Testing API endpoint...');
+                    
+                    try {
+                        const response = await fetch('/api/orders/ORDER123/confirmation-hash', {
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            log(`API SUCCESS: ${JSON.stringify(data)}`);
+                        } else {
+                            log(`API ERROR (${response.status}): ${JSON.stringify(data)}`);
+                        }
+                        
+                    } catch (error) {
+                        log(`API FAILED: ${error.message}`);
+                    }
+                };
+
+                // Log confirmation link clicks
+                const logConfirmationClick = (orderId, event) => {
+                    const url = event.target.closest('a').href;
+                    log(`CLICK: Order ${orderId} -> ${url}`);
+                };
+
+                // Clear cache
+                const refreshCache = () => {
+                    Object.keys(confirmationUrlCache).forEach(key => {
+                        delete confirmationUrlCache[key];
+                    });
+                    log('Cache cleared');
+                };
+
+                // Clear console
+                const clearConsole = () => {
+                    document.getElementById('console-log').innerHTML = '';
+                };
+
+                // Initialize with some debug info
+                log('Debug component initialized');
+                log(`Base URL: ${window.location.origin}`);
+                
+                return {
+                    tickets,
+                    confirmationUrlCache,
+                    getCachedConfirmationUrl,
+                    testApiEndpoint,
+                    logConfirmationClick,
+                    refreshCache,
+                    clearConsole
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
