@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
 const { auth } = require('express-oauth2-jwt-bearer');
 require('dotenv').config();
 
@@ -32,6 +33,47 @@ const requiresAuth = (req, res, next) => {
   });
 };
 
+
+// CORS middleware with custom logic for public vs private endpoints
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  
+  // Check if this is a public API endpoint
+  if (req.path.startsWith('/api/public/')) {
+    // For public endpoints, allow any origin
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+  } else {
+    // For private endpoints, use restricted origins
+    const allowedOrigins = [
+      'http://localhost:5173',  // Vue development server
+      'http://localhost:3000',  // Same origin
+      'http://127.0.0.1:5173',  // Alternative localhost format
+      'http://127.0.0.1:3000'   // Alternative localhost format
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+    }
+    
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+  }
+  
+  next();
+});
 
 // Middleware to parse JSON requests
 app.use(express.json());
