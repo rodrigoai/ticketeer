@@ -1,4 +1,5 @@
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const { SESClient, SendEmailCommand, SendRawEmailCommand } = require('@aws-sdk/client-ses');
+const qrCodeService = require('./qrCodeService');
 
 class EmailService {
   constructor() {
@@ -299,6 +300,243 @@ Equipe Nova Money
         <div class="footer">
             <p>Obrigado por usar o sistema de ingressos Nova Money!</p>
             <p>Em caso de dúvidas, entre em contato conosco.</p>
+        </div>
+    </div>
+</body>
+</html>
+    `.trim();
+  }
+
+  /**
+   * Send QR code ticket email to buyer
+   * @param {string} toEmail - Buyer's email address
+   * @param {Object} ticketData - Ticket information
+   * @param {Object} eventData - Event information
+   * @param {string} userId - User ID (event owner)
+   * @returns {Promise} - Send result
+   */
+  async sendTicketQrCodeEmail(toEmail, ticketData, eventData, userId) {
+    try {
+      console.log(`Sending QR code email to ${toEmail} for ticket ${ticketData.id}`);
+      
+      // Generate QR code for the ticket
+      const qrCodeData = await qrCodeService.generateQrCodeForTicket(ticketData, userId);
+      const qrCodeDataUrl = await qrCodeService.generateQrCodeDataUrl(ticketData, userId);
+      
+      const subject = `Seu ingresso QR Code - ${eventData.name}`;
+      
+      // Create multipart email with embedded QR code and attachment
+      const boundary = 'ticketeer_qr_boundary_' + Date.now();
+      
+      const htmlBody = this.generateQrCodeEmailTemplate({
+        eventName: eventData.name,
+        eventVenue: eventData.venue,
+        eventDate: eventData.date,
+        ticketNumber: ticketData.identificationNumber,
+        buyerName: ticketData.buyer,
+        qrCodeDataUrl: qrCodeDataUrl.dataUrl,
+        qrCodeHash: qrCodeData.hash
+      });
+
+      const textBody = `
+Seu ingresso para ${eventData.name}
+
+Ingresso #${ticketData.identificationNumber}
+Portador: ${ticketData.buyer}
+Evento: ${eventData.name}
+Local: ${eventData.venue || 'A definir'}
+Data: ${eventData.date ? new Date(eventData.date).toLocaleString('pt-BR') : 'A definir'}
+
+Código QR: ${qrCodeData.hash}
+
+Apresente este QR code na entrada do evento.
+
+Atenciosamente,
+Equipe Nova Money
+      `.trim();
+
+      // Create raw email with attachment
+      const rawEmail = [
+        `From: ${this.fromEmail}`,
+        `To: ${toEmail}`,
+        `Subject: ${subject}`,
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: multipart/alternative; boundary="alt_boundary"',
+        '',
+        '--alt_boundary',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        textBody,
+        '',
+        '--alt_boundary',
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        htmlBody,
+        '',
+        '--alt_boundary--',
+        '',
+        `--${boundary}`,
+        'Content-Type: image/png',
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: attachment; filename="ticket-${ticketData.identificationNumber}-qr.png"`,
+        '',
+        qrCodeData.buffer.toString('base64'),
+        '',
+        `--${boundary}--`
+      ].join('\r\n');
+
+      const command = new SendRawEmailCommand({
+        RawMessage: {
+          Data: rawEmail
+        }
+      });
+
+      const result = await this.sesClient.send(command);
+      console.log(`QR code email sent successfully to ${toEmail}:`, result.MessageId);
+      
+      return {
+        success: true,
+        messageId: result.MessageId,
+        email: toEmail,
+        ticketId: ticketData.id,
+        qrHash: qrCodeData.hash
+      };
+
+    } catch (error) {
+      console.error(`Error sending QR code email to ${toEmail}:`, error);
+      throw new Error(`Failed to send QR code email: ${error.message}`);
+    }
+  }
+
+  /**
+   * Send QR code emails for multiple tickets
+   * @param {Array} ticketsData - Array of ticket objects with buyer info
+   * @param {Object} eventData - Event information
+   * @param {string} userId - User ID (event owner)
+   * @returns {Promise<Array>} - Array of send results
+   */
+  async sendQrCodeEmailsForTickets(ticketsData, eventData, userId) {
+    const results = [];
+    const errors = [];
+
+    for (const ticket of ticketsData) {
+      try {
+        if (ticket.buyerEmail) {
+          const result = await this.sendTicketQrCodeEmail(
+            ticket.buyerEmail, 
+            ticket, 
+            eventData, 
+            userId
+          );
+          results.push(result);
+          
+          // Add delay between emails to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } else {
+          console.warn(`No email found for ticket ${ticket.id}, skipping QR code email`);
+        }
+      } catch (error) {
+        console.error(`Failed to send QR code email for ticket ${ticket.id}:`, error);
+        errors.push({
+          ticketId: ticket.id,
+          email: ticket.buyerEmail,
+          error: error.message
+        });
+      }
+    }
+
+    return {
+      successful: results,
+      failed: errors,
+      totalSent: results.length,
+      totalFailed: errors.length
+    };
+  }
+
+  /**
+   * Generate HTML email template for QR code ticket
+   * @param {Object} data - Template data
+   * @returns {string} - HTML email content
+   */
+  generateQrCodeEmailTemplate({ eventName, eventVenue, eventDate, ticketNumber, buyerName, qrCodeDataUrl, qrCodeHash }) {
+    const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : 'Data a definir';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seu Ingresso QR Code</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: white; padding: 30px; border: 1px solid #ddd; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px; }
+        .ticket-info { background: #e9ecef; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .qr-section { background: #fff; border: 2px solid #007bff; padding: 25px; border-radius: 10px; text-align: center; margin: 25px 0; }
+        .qr-code { max-width: 200px; height: auto; margin: 15px 0; }
+        .important { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .hash-code { font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 5px; word-break: break-all; }
+        .ticket-number { font-size: 24px; font-weight: bold; color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎫 Seu Ingresso Digital</h1>
+            <p>QR Code de Acesso</p>
+        </div>
+        
+        <div class="content">
+            <h2>Olá, ${buyerName}!</h2>
+            
+            <p>Seu ingresso foi confirmado com sucesso! Apresente o QR Code abaixo na entrada do evento.</p>
+            
+            <div class="ticket-info">
+                <h3>📅 ${eventName}</h3>
+                <p><strong>Número do Ingresso:</strong> <span class="ticket-number">#${ticketNumber}</span></p>
+                <p><strong>Portador:</strong> ${buyerName}</p>
+                <p><strong>Local:</strong> ${eventVenue || 'A definir'}</p>
+                <p><strong>Data:</strong> ${formattedDate}</p>
+            </div>
+            
+            <div class="qr-section">
+                <h3>🔲 Código QR de Acesso</h3>
+                <p>Apresente este código na entrada:</p>
+                <img src="${qrCodeDataUrl}" alt="QR Code do Ingresso" class="qr-code" />
+                <div class="hash-code">
+                    <small>Hash: ${qrCodeHash}</small>
+                </div>
+            </div>
+            
+            <div class="important">
+                <strong>📱 Instruções importantes:</strong>
+                <ul>
+                    <li>Salve este e-mail ou imprima o QR Code</li>
+                    <li>Apresente um documento de identificação na entrada</li>
+                    <li>O QR Code também está anexado como imagem neste e-mail</li>
+                    <li>Chegue com antecedência ao evento</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Obrigado por usar o sistema de ingressos Nova Money!</p>
+            <p>Este e-mail foi enviado automaticamente. Guarde-o como comprovante.</p>
         </div>
     </div>
 </body>

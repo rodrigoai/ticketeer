@@ -94,6 +94,7 @@ class OrderService {
       // Map tickets to public format (hide sensitive info if already filled)
       const publicTickets = matchingTickets.map(ticket => ({
         id: ticket.id,
+        eventId: ticket.eventId, // Include eventId for QR code generation
         identificationNumber: ticket.identificationNumber,
         description: ticket.description,
         location: ticket.location,
@@ -175,6 +176,7 @@ class OrderService {
 
           updatedTickets.push({
             id: updatedTicket.id,
+            eventId: updatedTicket.eventId, // Include eventId for QR code generation
             identificationNumber: updatedTicket.identificationNumber,
             buyer: updatedTicket.buyer,
             buyerDocument: cpfValidator.format(updatedTicket.buyerDocument),
@@ -185,34 +187,73 @@ class OrderService {
         return updatedTickets;
       });
 
-      // Send completion email to the first buyer (who provided the email)
-      const firstBuyerEmail = buyersData[0]?.email;
+      // Get event creator (userId) for QR code generation
+      const eventCreatorQuery = await prisma.event.findUnique({
+        where: { id: orderDetails.tickets[0].eventId },
+        select: { created_by: true }
+      });
+      
+      const eventCreatorUserId = eventCreatorQuery?.created_by;
+      if (!eventCreatorUserId) {
+        throw new Error('Event creator not found');
+      }
+
+      // Send QR code emails to each buyer
+      let qrCodeEmailsResult = { successful: [], failed: [], totalSent: 0, totalFailed: 0 };
       let completionEmailSent = false;
       
-      if (firstBuyerEmail) {
-        try {
-          const emailService = require('./emailService');
-          await emailService.sendOrderCompletionEmail(firstBuyerEmail, {
-            eventName: orderDetails.event.name,
-            orderId: orderDetails.orderId,
-            totalTickets: result.length,
-            tickets: result
+      try {
+        console.log('🎯 [QR-DEBUG] Starting QR code email sending process...');
+        console.log(`🎯 [QR-DEBUG] Event creator userId: ${eventCreatorUserId}`);
+        console.log(`🎯 [QR-DEBUG] Number of tickets to process: ${result.length}`);
+        console.log(`🎯 [QR-DEBUG] Event data:`, JSON.stringify(orderDetails.event, null, 2));
+        
+        // Log each ticket data
+        result.forEach((ticket, index) => {
+          console.log(`🎯 [QR-DEBUG] Ticket ${index + 1}:`, {
+            id: ticket.id,
+            eventId: ticket.eventId,
+            identificationNumber: ticket.identificationNumber,
+            buyer: ticket.buyer,
+            buyerEmail: ticket.buyerEmail
           });
-          completionEmailSent = true;
-          console.log(`Order completion email sent to ${firstBuyerEmail}`);
-        } catch (emailError) {
-          console.error('Failed to send completion email:', emailError);
-          // Don't fail the save for email issues
-        }
+        });
+        
+        const emailService = require('./emailService');
+        
+        // Send QR code emails for all tickets
+        console.log('🎯 [QR-DEBUG] Calling sendQrCodeEmailsForTickets...');
+        qrCodeEmailsResult = await emailService.sendQrCodeEmailsForTickets(
+          result, // result already contains eventId from database update
+          orderDetails.event,
+          eventCreatorUserId
+        );
+        
+        console.log('🎯 [QR-DEBUG] QR email sending completed!');
+        console.log(`🎯 [QR-DEBUG] Results: ${qrCodeEmailsResult.totalSent} sent, ${qrCodeEmailsResult.totalFailed} failed`);
+        console.log('🎯 [QR-DEBUG] Successful emails:', qrCodeEmailsResult.successful);
+        console.log('🎯 [QR-DEBUG] Failed emails:', qrCodeEmailsResult.failed);
+        
+        // NOTE: No completion email needed - each buyer receives their QR code email directly
+        
+      } catch (qrEmailError) {
+        console.error('❌ [QR-DEBUG] Failed to send QR code emails:', qrEmailError);
+        console.error('❌ [QR-DEBUG] Error stack:', qrEmailError.stack);
+        // Don't fail the save for email issues, but log the error
       }
 
       return {
         success: true,
-        message: `Buyer information saved for ${result.length} tickets`,
+        message: `Buyer information saved for ${result.length} tickets - QR code emails sent to each buyer`,
         orderId: orderDetails.orderId,
         updatedTickets: result,
-        completionEmailSent,
-        emailSentTo: firstBuyerEmail || null
+        completionEmailSent: false, // No completion email needed - QR emails sent directly
+        qrCodeEmails: {
+          sent: qrCodeEmailsResult.totalSent,
+          failed: qrCodeEmailsResult.totalFailed,
+          successful: qrCodeEmailsResult.successful,
+          errors: qrCodeEmailsResult.failed
+        }
       };
 
     } catch (error) {

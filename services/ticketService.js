@@ -692,26 +692,86 @@ class TicketService {
         // Process selective buyer assignment using helper method
         const updateResult = await this._updateTicketsWithSelectiveBuyerInfo(tx, ticketsToUpdate, orderId.toString(), customer);
 
-        // Generate confirmation URL for email sending
-        const orderService = require('./orderService');
-        const confirmationUrl = orderService.generateConfirmationUrl(orderId.toString());
+        // Determine if this is a single ticket purchase (should send QR email immediately)
+        // or multiple tickets/table purchase (should send confirmation email)
+        const isSingleTicket = ticketsToUpdate.length === 1 && !tableNumber;
         
-        // Send confirmation email if customer email is available
         let emailSent = false;
+        let qrEmailSent = false;
+        
         if (customer && customer.email) {
-          try {
-            const emailService = require('./emailService');
-            await emailService.sendConfirmationEmail(customer.email, {
-              eventName: ticketsToUpdate[0].event.name,
-              confirmationUrl,
-              orderId: orderId.toString(),
-              totalTickets: ticketsToUpdate.length
-            });
-            emailSent = true;
-            console.log(`Confirmation email sent to ${customer.email}`);
-          } catch (emailError) {
-            console.error('Failed to send confirmation email:', emailError);
-            // Don't fail the webhook for email issues
+          const emailService = require('./emailService');
+          
+          if (isSingleTicket && updateResult.buyerInfo) {
+            // SINGLE TICKET: Send QR code email directly to the buyer
+            console.log('🎫 Single ticket purchase detected - sending QR code email directly');
+            
+            try {
+              const ticketWithBuyerInfo = updateResult.updatedTickets[0];
+              const eventData = {
+                name: ticketsToUpdate[0].event.name,
+                venue: null, // We'll need to get this from event if available
+                date: null   // We'll need to get this from event if available
+              };
+              
+              // Get full event data for QR email
+              const fullEvent = await prisma.event.findUnique({
+                where: { id: ticketsToUpdate[0].eventId },
+                select: {
+                  name: true,
+                  venue: true,
+                  opening_datetime: true,
+                  created_by: true
+                }
+              });
+              
+              if (fullEvent) {
+                eventData.name = fullEvent.name;
+                eventData.venue = fullEvent.venue;
+                eventData.date = fullEvent.opening_datetime;
+              }
+              
+              const result = await emailService.sendTicketQrCodeEmail(
+                updateResult.buyerInfo.buyerEmail,
+                {
+                  id: ticketWithBuyerInfo.id,
+                  eventId: ticketsToUpdate[0].eventId,
+                  identificationNumber: ticketWithBuyerInfo.identificationNumber,
+                  buyer: ticketWithBuyerInfo.buyer,
+                  buyerEmail: ticketWithBuyerInfo.buyerEmail
+                },
+                eventData,
+                userId
+              );
+              
+              qrEmailSent = true;
+              console.log(`QR code email sent to ${updateResult.buyerInfo.buyerEmail} for single ticket purchase`);
+              
+            } catch (emailError) {
+              console.error('Failed to send QR code email for single ticket:', emailError);
+              // Don't fail the webhook for email issues, but log it
+            }
+            
+          } else {
+            // MULTIPLE TICKETS/TABLE: Send confirmation email for buyer information collection
+            console.log(`🎟️ Multiple tickets/table purchase detected (${ticketsToUpdate.length} tickets, table: ${tableNumber}) - sending confirmation email`);
+            
+            try {
+              const orderService = require('./orderService');
+              const confirmationUrl = orderService.generateConfirmationUrl(orderId.toString());
+              
+              await emailService.sendConfirmationEmail(customer.email, {
+                eventName: ticketsToUpdate[0].event.name,
+                confirmationUrl,
+                orderId: orderId.toString(),
+                totalTickets: ticketsToUpdate.length
+              });
+              emailSent = true;
+              console.log(`Confirmation email sent to ${customer.email} for multi-ticket/table purchase`);
+            } catch (emailError) {
+              console.error('Failed to send confirmation email:', emailError);
+              // Don't fail the webhook for email issues
+            }
           }
         }
 
@@ -726,8 +786,10 @@ class TicketService {
           updatedTickets: updateResult.updatedTickets,
           selectionMethod,
           quantity: selectionMethod === 'quantity-based' ? Math.floor(items.reduce((total, item) => total + (item.quantity || 0), 0)) : undefined,
-          confirmationUrl,
+          confirmationUrl: !isSingleTicket && emailSent ? require('./orderService').generateConfirmationUrl(orderId.toString()) : null,
           emailSent,
+          qrEmailSent,
+          isSingleTicket,
           customerEmail: customer?.email || null
         };
       });
