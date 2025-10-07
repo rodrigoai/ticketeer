@@ -34,10 +34,12 @@ Environment files contain sensitive credentials and should **never** be committe
 | `AUTH0_CLIENT_ID` | Auth0 application ID | All | ✅ |
 | `AUTH0_CLIENT_SECRET` | Auth0 application secret | Server-side | ✅ |
 | `AUTH0_AUDIENCE` | Auth0 API audience | All | ✅ |
-| `DATABASE_URL` | Prisma database connection | All | ✅ |
+| `DATABASE_URL` | Single database connection URL (Prisma) | All | ✅ |
 | `AWS_ACCESS_KEY_ID` | AWS SES access key | Production | ✅ |
 | `AWS_SECRET_ACCESS_KEY` | AWS SES secret key | Production | ✅ |
 | `ORDER_HASH_SECRET` | Order verification secret | Production | ✅ |
+
+**Note:** We use only `DATABASE_URL` for database connections. Avoid multiple database variables like `POSTGRES_URL` or `PRISMA_DATABASE_URL` to prevent conflicts.
 
 ### Security Best Practices:
 
