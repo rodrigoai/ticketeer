@@ -455,6 +455,7 @@ class TicketService {
    * Process checkout webhook to confirm ticket purchases
    * Uses quantity-based selection or table-based selection depending on payload
    * NEW BEHAVIOR: Only the first ticket gets buyer information, all tickets get order field
+   * UPDATED: Supports Base64-encoded eventId in meta.eventId for event-specific ticket selection
    * @param {Object} webhookPayload - The webhook payload from payment system
    * @param {string} userId - The user ID to validate ticket ownership
    * @returns {Object} - Processing result with updated tickets info
@@ -474,6 +475,34 @@ class TicketService {
         throw new Error('Invalid webhook payload: missing order ID');
       }
 
+      // NEW: Decode Base64 eventId from meta.eventId
+      let decodedEventId = null;
+      console.log('🔍 [DEBUG] Starting eventId processing...');
+      console.log('🔍 [DEBUG] meta object:', JSON.stringify(meta, null, 2));
+      
+      if (meta && meta.eventId) {
+        try {
+          // Decode Base64 eventId
+          const base64EventId = meta.eventId;
+          decodedEventId = Buffer.from(base64EventId, 'base64').toString('utf8');
+          console.log(`🔍 [DEBUG] Decoded eventId: ${decodedEventId} (from Base64: ${base64EventId})`);
+          
+          // Validate that decoded eventId is a valid number
+          const eventIdNumber = parseInt(decodedEventId, 10);
+          if (isNaN(eventIdNumber) || eventIdNumber <= 0) {
+            throw new Error(`Invalid decoded eventId: ${decodedEventId}`);
+          }
+          
+          decodedEventId = eventIdNumber;
+          console.log(`🔍 [DEBUG] Final decodedEventId: ${decodedEventId} (type: ${typeof decodedEventId})`);
+        } catch (decodeError) {
+          console.error('❌ [DEBUG] Failed to decode Base64 eventId:', decodeError);
+          throw new Error(`Failed to decode eventId from Base64: ${meta.eventId}`);
+        }
+      } else {
+        console.log('🔍 [DEBUG] No eventId provided in meta, will search across all user events');
+      }
+
       // Parse table number if present
       let tableNumber = null;
       if (meta && meta.tableNumber) {
@@ -481,6 +510,31 @@ class TicketService {
         if (isNaN(tableNumber)) {
           throw new Error(`Invalid table number: ${meta.tableNumber}`);
         }
+      }
+
+      // Validate that the decoded eventId belongs to the user (if provided)
+      if (decodedEventId) {
+        console.log(`🔍 [DEBUG] Validating eventId ${decodedEventId} for user ${userId}`);
+        const event = await prisma.event.findFirst({
+          where: {
+            id: decodedEventId,
+            created_by: userId
+          },
+          select: {
+            id: true,
+            name: true,
+            created_by: true
+          }
+        });
+        
+        console.log(`🔍 [DEBUG] Event validation result:`, JSON.stringify(event, null, 2));
+        
+        if (!event) {
+          console.error(`❌ [DEBUG] Event with ID ${decodedEventId} not found or does not belong to user ${userId}`);
+          throw new Error(`Event with ID ${decodedEventId} not found or does not belong to user ${userId}`);
+        }
+        
+        console.log(`✅ [DEBUG] Event validated: ${event.name} (ID: ${event.id}) for user ${userId}`);
       }
 
       // Use transaction to ensure atomicity
@@ -492,13 +546,21 @@ class TicketService {
           // CASE 1: Table-based selection - update all tickets for this table
           selectionMethod = 'table-based';
           
+          // Build where clause with optional eventId filter
+          const whereClause = {
+            table: tableNumber,
+            event: {
+              created_by: userId
+            }
+          };
+          
+          // If eventId is provided, filter by specific event
+          if (decodedEventId) {
+            whereClause.eventId = decodedEventId;
+          }
+          
           ticketsToUpdate = await tx.ticket.findMany({
-            where: {
-              table: tableNumber,
-              event: {
-                created_by: userId
-              }
-            },
+            where: whereClause,
             include: {
               event: {
                 select: {
@@ -514,7 +576,8 @@ class TicketService {
           });
 
           if (ticketsToUpdate.length === 0) {
-            throw new Error(`No tickets found for table ${tableNumber} belonging to user ${userId}`);
+            const eventFilter = decodedEventId ? ` for event ${decodedEventId}` : '';
+            throw new Error(`No tickets found for table ${tableNumber}${eventFilter} belonging to user ${userId}`);
           }
 
         } else {
@@ -531,29 +594,49 @@ class TicketService {
             throw new Error('Invalid webhook payload: no valid quantity found in items');
           }
 
-          // Find unsold tickets without table numbers
-          ticketsToUpdate = await tx.ticket.findMany({
-            where: {
-              AND: [
-                {
-                  event: {
-                    created_by: userId
-                  }
-                },
-                {
-                  OR: [
-                    { table: null },
-                    { table: 0 }
-                  ]
-                },
-                {
-                  OR: [
-                    { order: null },
-                    { order: '' }
-                  ]
+          // Build where clause for unsold tickets without table numbers
+          console.log(`🔍 [DEBUG] Building WHERE clause for quantity-based selection...`);
+          console.log(`🔍 [DEBUG] quantity: ${quantity}, userId: ${userId}, decodedEventId: ${decodedEventId}`);
+          
+          const whereClause = {
+            AND: [
+              {
+                event: {
+                  created_by: userId
                 }
-              ]
-            },
+              },
+              {
+                OR: [
+                  { table: null },
+                  { table: 0 }
+                ]
+              },
+              {
+                OR: [
+                  { order: null },
+                  { order: '' }
+                ]
+              }
+            ]
+          };
+          
+          console.log(`🔍 [DEBUG] Initial WHERE clause:`, JSON.stringify(whereClause, null, 2));
+          
+          // If eventId is provided, add event-specific filter
+          if (decodedEventId) {
+            console.log(`🔍 [DEBUG] Adding eventId filter: ${decodedEventId}`);
+            whereClause.AND.push({
+              eventId: decodedEventId
+            });
+            console.log(`✅ [DEBUG] WHERE clause after eventId filter:`, JSON.stringify(whereClause, null, 2));
+          } else {
+            console.log(`🔍 [DEBUG] No eventId filter added - will search across all user events`);
+          }
+
+          // Find unsold tickets
+          console.log(`🔍 [DEBUG] Searching for tickets with Prisma query...`);
+          ticketsToUpdate = await tx.ticket.findMany({
+            where: whereClause,
             include: {
               event: {
                 select: {
@@ -568,13 +651,25 @@ class TicketService {
             },
             take: Math.floor(quantity)
           });
+          
+          console.log(`🔍 [DEBUG] Found ${ticketsToUpdate.length} tickets`);
+          if (ticketsToUpdate.length > 0) {
+            console.log(`🔍 [DEBUG] First ticket details:`);
+            console.log(`  - ID: ${ticketsToUpdate[0].id}`);
+            console.log(`  - Event ID: ${ticketsToUpdate[0].eventId}`);
+            console.log(`  - Event Name: ${ticketsToUpdate[0].event.name}`);
+            console.log(`  - Identification Number: ${ticketsToUpdate[0].identificationNumber}`);
+            console.log(`  - Order: ${ticketsToUpdate[0].order || 'null'}`);
+          }
 
           if (ticketsToUpdate.length === 0) {
-            throw new Error(`No available tickets without table numbers found for user ${userId}`);
+            const eventFilter = decodedEventId ? ` for event ${decodedEventId}` : '';
+            throw new Error(`No available tickets without table numbers found${eventFilter} for user ${userId}`);
           }
 
           if (ticketsToUpdate.length < Math.floor(quantity)) {
-            throw new Error(`Not enough available tickets: requested ${Math.floor(quantity)}, found ${ticketsToUpdate.length}`);
+            const eventFilter = decodedEventId ? ` for event ${decodedEventId}` : '';
+            throw new Error(`Not enough available tickets${eventFilter}: requested ${Math.floor(quantity)}, found ${ticketsToUpdate.length}`);
           }
         }
 
