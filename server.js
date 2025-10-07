@@ -1399,19 +1399,8 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
 });
 
 
-// Serve buyer confirmation page
-app.get('/confirmation/:hash', (req, res) => {
-  const { hash } = req.params;
-  const orderHash = require('./utils/orderHash');
-  
-  // Basic hash format validation
-  if (!orderHash.isValidHashFormat(hash)) {
-    return res.status(400).send('Invalid confirmation link');
-  }
-  
-  // Serve the confirmation page
-  res.sendFile(path.join(__dirname, 'public', 'confirmation.html'));
-});
+// Confirmation routes are handled by Vue SPA router
+// No server-side route needed - Vue will handle /confirmation/:hash
 
 // SPA catch-all route - serve index.html for client-side routing
 app.get('*', (req, res, next) => {
@@ -1423,12 +1412,8 @@ app.get('*', (req, res, next) => {
     });
   }
   
-  // Don't serve SPA for confirmation routes (already handled above)
-  if (req.path.startsWith('/confirmation/')) {
-    return res.status(404).send('Confirmation link not found');
-  }
-  
-  // Serve the Vue SPA index.html for all other routes
+  // Serve the Vue SPA index.html for all routes (including /confirmation/:hash)
+  // Vue Router will handle client-side routing
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
