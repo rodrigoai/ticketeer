@@ -29,6 +29,7 @@
   "dependencies": {
     "@auth0/auth0-spa-js": "^2.3.0",
     "@auth0/auth0-vue": "^2.4.0",
+    "@aws-sdk/client-ses": "^3.901.0",
     "@popperjs/core": "^2.11.8",
     "@prisma/client": "^6.15.0",
     "auth0": "^4.28.0",

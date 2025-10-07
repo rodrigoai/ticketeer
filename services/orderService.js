@@ -12,7 +12,13 @@ class OrderService {
    * @param {string} baseUrl - Base URL for the application
    * @returns {string} - Public confirmation URL
    */
-  generateConfirmationUrl(orderId, baseUrl = 'https://ticketeer.vercel.app') {
+  generateConfirmationUrl(orderId, baseUrl = null) {
+    // Auto-detect production base URL if not provided
+    if (!baseUrl) {
+      baseUrl = process.env.BASE_URL || 
+                (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+                'https://ticketeer.vercel.app'; // Your production domain
+    }
     return orderHash.generateConfirmationUrl(orderId, baseUrl);
   }
 
@@ -179,11 +185,34 @@ class OrderService {
         return updatedTickets;
       });
 
+      // Send completion email to the first buyer (who provided the email)
+      const firstBuyerEmail = buyersData[0]?.email;
+      let completionEmailSent = false;
+      
+      if (firstBuyerEmail) {
+        try {
+          const emailService = require('./emailService');
+          await emailService.sendOrderCompletionEmail(firstBuyerEmail, {
+            eventName: orderDetails.event.name,
+            orderId: orderDetails.orderId,
+            totalTickets: result.length,
+            tickets: result
+          });
+          completionEmailSent = true;
+          console.log(`Order completion email sent to ${firstBuyerEmail}`);
+        } catch (emailError) {
+          console.error('Failed to send completion email:', emailError);
+          // Don't fail the save for email issues
+        }
+      }
+
       return {
         success: true,
         message: `Buyer information saved for ${result.length} tickets`,
         orderId: orderDetails.orderId,
-        updatedTickets: result
+        updatedTickets: result,
+        completionEmailSent,
+        emailSentTo: firstBuyerEmail || null
       };
 
     } catch (error) {

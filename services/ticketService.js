@@ -597,6 +597,29 @@ class TicketService {
         // Process selective buyer assignment using helper method
         const updateResult = await this._updateTicketsWithSelectiveBuyerInfo(tx, ticketsToUpdate, orderId.toString(), customer);
 
+        // Generate confirmation URL for email sending
+        const orderService = require('./orderService');
+        const confirmationUrl = orderService.generateConfirmationUrl(orderId.toString());
+        
+        // Send confirmation email if customer email is available
+        let emailSent = false;
+        if (customer && customer.email) {
+          try {
+            const emailService = require('./emailService');
+            await emailService.sendConfirmationEmail(customer.email, {
+              eventName: ticketsToUpdate[0].event.name,
+              confirmationUrl,
+              orderId: orderId.toString(),
+              totalTickets: ticketsToUpdate.length
+            });
+            emailSent = true;
+            console.log(`Confirmation email sent to ${customer.email}`);
+          } catch (emailError) {
+            console.error('Failed to send confirmation email:', emailError);
+            // Don't fail the webhook for email issues
+          }
+        }
+
         return {
           success: true,
           message: `Checkout webhook processed successfully. Order ${orderId} assigned to ${tableNumber ? `table ${tableNumber}` : `${ticketsToUpdate.length} tickets`} with ${updateResult.ticketsUpdated} tickets updated.`,
@@ -607,7 +630,10 @@ class TicketService {
           processedTickets: updateResult.ticketsUpdated,
           updatedTickets: updateResult.updatedTickets,
           selectionMethod,
-          quantity: selectionMethod === 'quantity-based' ? Math.floor(items.reduce((total, item) => total + (item.quantity || 0), 0)) : undefined
+          quantity: selectionMethod === 'quantity-based' ? Math.floor(items.reduce((total, item) => total + (item.quantity || 0), 0)) : undefined,
+          confirmationUrl,
+          emailSent,
+          customerEmail: customer?.email || null
         };
       });
 
