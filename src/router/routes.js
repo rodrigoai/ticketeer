@@ -4,6 +4,7 @@ import Events from '@/views/Events.vue'
 import EventDetail from '@/views/EventDetail.vue'
 import Newpro from '@/views/Newpro.vue'
 import BuyerConfirmation from '@/views/BuyerConfirmation.vue'
+import TicketCheckin from '@/views/TicketCheckin.vue'
 
 import { createAuthGuard } from "@auth0/auth0-vue";
 // Export function that takes app instance to create routes with auth guards
@@ -48,6 +49,13 @@ export const createRoutes = (app) => {
       component: BuyerConfirmation,
       props: true
       // Note: No authGuard - confirmation pages should be public
+    },
+    {
+      path: '/checkin/:hash',
+      name: 'TicketCheckin',
+      component: TicketCheckin,
+      props: true
+      // Note: No authGuard - check-in pages should be public
     }
   ];
 }

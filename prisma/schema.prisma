@@ -42,6 +42,8 @@ model Ticket {
   updated_at           DateTime  @updatedAt
   buyerEmail           String?
   salesEndDateTime     DateTime?
+  checkedIn            Boolean   @default(false)
+  checkedInAt          DateTime?
   event                Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, identificationNumber])

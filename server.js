@@ -389,6 +389,8 @@ app.get('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       buyerDocument: ticket.buyerDocument,
       buyerEmail: ticket.buyerEmail,
       salesEndDateTime: ticket.salesEndDateTime,
+      checkedIn: ticket.checkedIn,
+      checkedInAt: ticket.checkedInAt,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
@@ -483,6 +485,8 @@ app.get('/api/events/:eventId/tickets/search', requiresAuth, async (req, res) =>
       price: parseFloat(ticket.price) || 0,
       order: ticket.order,
       salesEndDateTime: ticket.salesEndDateTime,
+      checkedIn: ticket.checkedIn,
+      checkedInAt: ticket.checkedInAt,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
       // Note: buyer, buyerDocument, buyerEmail are excluded for privacy
@@ -570,6 +574,8 @@ app.get('/api/public/tickets/search', async (req, res) => {
       price: parseFloat(ticket.price) || 0,
       order: ticket.order,
       salesEndDateTime: ticket.salesEndDateTime,
+      checkedIn: ticket.checkedIn,
+      checkedInAt: ticket.checkedInAt,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
       // Note: buyer, buyerDocument, buyerEmail are excluded for privacy
@@ -678,6 +684,8 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       buyerDocument: newTicket.buyerDocument,
       buyerEmail: newTicket.buyerEmail,
       salesEndDateTime: newTicket.salesEndDateTime,
+      checkedIn: newTicket.checkedIn,
+      checkedInAt: newTicket.checkedInAt,
       created_at: newTicket.created_at,
       updated_at: newTicket.updated_at
     };
@@ -771,6 +779,8 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       buyerDocument: ticket.buyerDocument,
       buyerEmail: ticket.buyerEmail,
       salesEndDateTime: ticket.salesEndDateTime,
+      checkedIn: ticket.checkedIn,
+      checkedInAt: ticket.checkedInAt,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
@@ -816,6 +826,8 @@ app.get('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyerDocument: ticket.buyerDocument,
       buyerEmail: ticket.buyerEmail,
       salesEndDateTime: ticket.salesEndDateTime,
+      checkedIn: ticket.checkedIn,
+      checkedInAt: ticket.checkedInAt,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     };
@@ -891,6 +903,8 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyerDocument: updatedTicket.buyerDocument,
       buyerEmail: updatedTicket.buyerEmail,
       salesEndDateTime: updatedTicket.salesEndDateTime,
+      checkedIn: updatedTicket.checkedIn,
+      checkedInAt: updatedTicket.checkedInAt,
       created_at: updatedTicket.created_at,
       updated_at: updatedTicket.updated_at
     };
@@ -1295,6 +1309,158 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to save buyers',
+      message: error.message
+    });
+  }
+});
+
+// ==========================================
+// CHECK-IN API ENDPOINTS
+// ==========================================
+
+// Get check-in status for a ticket by hash (public endpoint)
+app.get('/api/public/checkin/:hash', async (req, res) => {
+  try {
+    const { hash } = req.params;
+    
+    if (!hash || typeof hash !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid hash format',
+        message: 'Hash parameter is required and must be a string'
+      });
+    }
+    
+    const checkinService = require('./services/checkinService');
+    const status = await checkinService.getCheckinStatus(hash);
+    
+    res.json(status);
+  } catch (error) {
+    console.error('Error getting check-in status:', error);
+    
+    if (error.message.includes('Invalid hash format') || 
+        error.message.includes('Ticket not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'No ticket found for the provided hash'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get check-in status',
+      message: error.message
+    });
+  }
+});
+
+// Process ticket check-in (public endpoint)
+app.post('/api/public/checkin/:hash', async (req, res) => {
+  try {
+    const { hash } = req.params;
+    
+    if (!hash || typeof hash !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid hash format',
+        message: 'Hash parameter is required and must be a string'
+      });
+    }
+    
+    const checkinService = require('./services/checkinService');
+    const result = await checkinService.processCheckin(hash);
+    
+    // Handle already checked in case
+    if (!result.success && result.alreadyCheckedIn) {
+      return res.status(409).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error processing check-in:', error);
+    
+    if (error.message.includes('Invalid hash format') || 
+        error.message.includes('Ticket not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'No ticket found for the provided hash'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process check-in',
+      message: error.message
+    });
+  }
+});
+
+// Get check-in statistics for an event (JWT authenticated)
+app.get('/api/events/:eventId/checkin/stats', requiresAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    const checkinService = require('./services/checkinService');
+    const stats = await checkinService.getEventCheckinStats(eventId, userId);
+    
+    res.json({
+      ...stats,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error getting check-in stats:', error);
+    
+    if (error.message.includes('Event not found') || 
+        error.message.includes('access denied')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found',
+        message: 'Event not found or you do not have access to it'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get check-in statistics',
+      message: error.message
+    });
+  }
+});
+
+// Generate check-in hash for a ticket (JWT authenticated - for testing)
+app.get('/api/tickets/:ticketId/checkin-hash', requiresAuth, async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    const checkinService = require('./services/checkinService');
+    const hash = await checkinService.generateCheckinHash(ticketId, userId);
+    
+    res.json({
+      success: true,
+      ticketId: parseInt(ticketId),
+      hash: hash,
+      checkinUrl: `${req.protocol}://${req.get('host')}/checkin/${hash}`,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error generating check-in hash:', error);
+    
+    if (error.message.includes('Ticket not found') || 
+        error.message.includes('access denied')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'Ticket not found or you do not have access to it'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate check-in hash',
       message: error.message
     });
   }
