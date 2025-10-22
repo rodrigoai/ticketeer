@@ -1,8 +1,8 @@
 <template>
-  <div class="min-vh-100 bg-light py-5 px-3">
-    <div class="container" style="max-width: 24rem;">
+  <div class="min-vh-100 bg-light py-4 px-3">
+    <div class="container" style="max-width: 640px;">
       <!-- Back Button -->
-      <div class="mb-4">
+      <div class="mb-3">
         <button @click="goBack" class="btn btn-link text-success p-0 text-decoration-none">
           <i class="fas fa-arrow-left me-2"></i>
           <span class="fw-medium">Voltar</span>
@@ -12,13 +12,18 @@
       <!-- Scanning State -->
       <div v-if="!scannedHash" class="fade-in">
         <!-- Header Card -->
-        <div class="bg-white rounded-4 shadow-sm text-center p-4 mb-4">
+        <div class="bg-white rounded-4 shadow-sm text-center p-4 mb-3">
           <h1 class="h3 fw-bold text-success mb-2">CHECKIN</h1>
-          <p class="text-muted mb-0">Verifique se os dados a seguir batem com a compra</p>
+          <p class="text-muted mb-0 small">Verifique se os dados a seguir batem com a compra</p>
         </div>
 
-        <!-- QR Code Icon -->
-        <div class="d-flex justify-content-center mb-4">
+        <!-- Camera Preview (if using device camera) -->
+        <div v-if="showCamera" class="mb-3">
+          <div id="qr-reader" class="camera-container rounded-4 overflow-hidden shadow-sm"></div>
+        </div>
+
+        <!-- QR Code Icon (shown when camera is not active) -->
+        <div v-else class="d-flex justify-content-center mb-3">
           <div class="qr-icon-wrapper">
             <svg width="206" height="206" viewBox="0 0 206 206" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="103" y="103" width="103" height="103" rx="12" fill="currentColor"/>
@@ -35,16 +40,11 @@
           </div>
         </div>
 
-        <!-- Camera Preview (if using device camera) -->
-        <div v-if="showCamera" class="mb-4">
-          <div id="qr-reader" class="camera-container rounded-4 overflow-hidden"></div>
-        </div>
-
         <!-- Scan Button -->
         <button 
           @click="startScanning" 
           :disabled="scanning"
-          class="btn btn-success btn-lg w-100 rounded-4 fw-semibold"
+          class="btn btn-success btn-lg w-100 rounded-4 fw-semibold py-3"
           type="button"
         >
           <span v-if="scanning" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -53,7 +53,7 @@
 
         <!-- Manual Entry Link -->
         <div class="text-center mt-3">
-          <button @click="showManualEntry" class="btn btn-link text-muted text-decoration-none">
+          <button @click="showManualEntry" class="btn btn-link text-muted text-decoration-none small">
             Inserir código manualmente
           </button>
         </div>
@@ -82,9 +82,9 @@
       </div>
 
       <!-- Error Message -->
-      <div v-if="error" class="alert alert-warning rounded-4 text-center fade-in mt-4">
+      <div v-if="error" class="alert alert-warning rounded-4 text-center fade-in mt-3">
         <i class="fas fa-exclamation-triangle me-2"></i>
-        {{ error }}
+        <div class="small">{{ error }}</div>
       </div>
     </div>
   </div>
@@ -270,8 +270,23 @@ export default {
 .camera-container {
   position: relative;
   background: #000;
-  aspect-ratio: 4/3;
-  max-height: 400px;
+  width: 100%;
+  min-height: 300px;
+  max-height: 500px;
+}
+
+/* Make camera take more space on mobile */
+@media (min-width: 576px) {
+  .camera-container {
+    aspect-ratio: 4/3;
+  }
+}
+
+/* Full viewport height on small screens when camera is active */
+@media (max-width: 575px) {
+  .camera-container {
+    min-height: 400px;
+  }
 }
 
 .camera-overlay {
@@ -343,10 +358,15 @@ video {
 }
 
 /* Responsive adjustments */
-@media (max-width: 576px) {
+@media (max-width: 575px) {
   .qr-icon-wrapper {
-    width: 180px;
-    height: 180px;
+    width: 160px;
+    height: 160px;
+  }
+  
+  .qr-icon-wrapper svg {
+    width: 100%;
+    height: 100%;
   }
 }
 </style>
