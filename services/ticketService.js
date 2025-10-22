@@ -249,7 +249,9 @@ class TicketService {
         buyer,
         buyerDocument,
         buyerEmail,
-        salesEndDateTime
+        salesEndDateTime,
+        checkedIn,
+        checkedInAt
       } = ticketData;
 
       // Get existing ticket and verify ownership
@@ -274,6 +276,8 @@ class TicketService {
       if (buyerDocument !== undefined) updateData.buyerDocument = buyerDocument || null;
       if (buyerEmail !== undefined) updateData.buyerEmail = buyerEmail || null;
       if (salesEndDateTime !== undefined) updateData.salesEndDateTime = salesEndDateTime ? new Date(salesEndDateTime) : null;
+      if (checkedIn !== undefined) updateData.checkedIn = Boolean(checkedIn);
+      if (checkedInAt !== undefined) updateData.checkedInAt = checkedInAt ? new Date(checkedInAt) : null;
 
       const updatedTicket = await prisma.ticket.update({
         where: { id: parseInt(ticketId) },
@@ -361,12 +365,21 @@ class TicketService {
         _max: { price: true }
       });
 
+      // Count tickets that are checked in
+      const checkedInCount = await prisma.ticket.count({
+        where: { 
+          eventId: parseInt(eventId),
+          checkedIn: true
+        }
+      });
+
       return {
         totalTickets: stats._count.id || 0,
         totalRevenue: stats._sum.price || '0',
         averagePrice: stats._avg.price || '0',
         minPrice: stats._min.price || '0',
-        maxPrice: stats._max.price || '0'
+        maxPrice: stats._max.price || '0',
+        checkedInTickets: checkedInCount
       };
     } catch (error) {
       console.error('Error fetching ticket stats:', error);

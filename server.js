@@ -55,7 +55,8 @@ app.use((req, res, next) => {
       'http://localhost:5173',  // Vue development server
       'http://localhost:3000',  // Same origin
       'http://127.0.0.1:5173',  // Alternative localhost format
-      'http://127.0.0.1:3000'   // Alternative localhost format
+      'http://127.0.0.1:3000',  // Alternative localhost format
+      'http://192.168.15.138:5173'  // Network IP access
     ];
     
     if (allowedOrigins.includes(origin)) {
@@ -1669,7 +1670,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🎫 Ticketeer SPA server is running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🌐 Vue.js SPA: http://localhost:${PORT}`);

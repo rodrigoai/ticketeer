@@ -17,6 +17,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: '0.0.0.0', // Allow network access
     proxy: {
       // Proxy API calls to Express server during development
       '/api': {

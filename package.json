@@ -42,6 +42,7 @@
     "express-oauth-server": "^2.0.0",
     "express-oauth2-jwt-bearer": "^1.7.1",
     "express-openid-connect": "^2.19.2",
+    "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.2",
     "jwks-rsa": "^3.2.0",
     "multer": "^2.0.2",

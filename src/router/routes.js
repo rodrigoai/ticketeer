@@ -5,6 +5,7 @@ import EventDetail from '@/views/EventDetail.vue'
 import Newpro from '@/views/Newpro.vue'
 import BuyerConfirmation from '@/views/BuyerConfirmation.vue'
 import TicketCheckin from '@/views/TicketCheckin.vue'
+import QRCodeCheckin from '@/views/QRCodeCheckin.vue'
 
 import { createAuthGuard } from "@auth0/auth0-vue";
 // Export function that takes app instance to create routes with auth guards
@@ -56,6 +57,12 @@ export const createRoutes = (app) => {
       component: TicketCheckin,
       props: true
       // Note: No authGuard - check-in pages should be public
+    },
+    {
+      path: '/qr-checkin',
+      name: 'QRCodeCheckin',
+      component: QRCodeCheckin
+      // Note: No authGuard - QR code scanning should be public
     }
   ];
 }

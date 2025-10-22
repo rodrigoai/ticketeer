@@ -96,6 +96,7 @@ class CheckinService {
           location: ticket.location,
           table: ticket.table,
           buyer: ticket.buyer,
+          buyerDocument: ticket.buyerDocument,
           checkedIn: ticket.checkedIn,
           checkedInAt: ticket.checkedInAt
         },
@@ -134,6 +135,10 @@ class CheckinService {
             id: ticket.id,
             identificationNumber: ticket.identificationNumber,
             description: ticket.description,
+            location: ticket.location,
+            table: ticket.table,
+            buyer: ticket.buyer,
+            buyerDocument: ticket.buyerDocument,
             checkedIn: ticket.checkedIn,
             checkedInAt: ticket.checkedInAt
           },
@@ -175,6 +180,7 @@ class CheckinService {
           location: updatedTicket.location,
           table: updatedTicket.table,
           buyer: updatedTicket.buyer,
+          buyerDocument: updatedTicket.buyerDocument,
           checkedIn: updatedTicket.checkedIn,
           checkedInAt: updatedTicket.checkedInAt
         },

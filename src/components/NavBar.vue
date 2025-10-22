@@ -30,6 +30,12 @@
                 Events
               </router-link>
             </li>
+            <li class="nav-item">
+              <router-link to="/qr-checkin" class="nav-link" :class="{ active: $route.path === '/qr-checkin' }">
+                <i class="fas fa-qrcode me-1"></i>
+                Check-in
+              </router-link>
+            </li>
           </ul>
           <ul class="navbar-nav d-none d-md-block">
             <li v-if="!isAuthenticated && !isLoading" class="nav-item">
