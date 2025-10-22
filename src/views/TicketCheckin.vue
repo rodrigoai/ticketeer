@@ -1,6 +1,6 @@
 <template>
-  <div class="min-vh-100 bg-light py-5 px-3">
-    <div class="container" style="max-width: 24rem;">
+  <div class="min-vh-100 bg-light py-4 px-3">
+    <div class="container" style="max-width: 640px;">
       <!-- Loading State -->
       <div v-if="loading" class="text-center py-5">
         <div class="spinner-border text-success" role="status">
@@ -68,45 +68,45 @@
       <!-- Check-in Confirmation -->
       <div v-else-if="ticketData && ticketData.canCheckin">
         <!-- Header -->
-        <div class="text-center mb-4">
+        <div class="bg-white rounded-4 shadow-sm text-center p-4 mb-4">
           <h1 class="h3 fw-bold text-success mb-2">CHECKIN</h1>
-          <p class="text-muted">Verifique se os dados a seguir batem com a compra</p>
+          <p class="text-muted mb-0 small">Verifique se os dados a seguir batem com a compra</p>
         </div>
 
         <!-- Ticket Information -->
-        <div class="mb-8">
-          <div class="flex items-center mb-4">
-            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <div class="mb-4">
+          <div class="d-flex align-items-center mb-3">
+            <svg width="1.5rem" height="1.5rem" class="me-2" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
             </svg>
-            <span class="font-medium text-gray-700">Ticket número #{{ ticketData.ticket.identificationNumber }}</span>
+            <span class="fw-medium text-secondary">Ticket número #{{ ticketData.ticket.identificationNumber }}</span>
           </div>
           
-          <h3 class="text-2xl font-bold text-gray-900 mb-1">{{ ticketData.ticket.buyer || 'Nome do Comprador' }}</h3>
-          <p class="text-gray-600 mb-1">{{ ticketData.ticket.buyerDocument || '000.000.000-00' }}</p>
-          <p class="text-gray-600 mb-1">{{ ticketData.ticket.location || 'Local' }}</p>
-          <p class="text-gray-600">{{ ticketData.ticket.description }}</p>
+          <h3 class="h4 fw-bold text-dark mb-1">{{ ticketData.ticket.buyer || 'Nome do Comprador' }}</h3>
+          <p class="text-muted mb-1">{{ ticketData.ticket.buyerDocument || '000.000.000-00' }}</p>
+          <p class="text-muted mb-1">{{ ticketData.ticket.location || 'Local' }}</p>
+          <p class="text-muted mb-0">{{ ticketData.ticket.description }}</p>
         </div>
 
         <!-- Event Information -->
-        <div class="mb-8">
-          <div class="flex items-center mb-4">
-            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <div class="mb-4">
+          <div class="d-flex align-items-center mb-3">
+            <svg width="1.5rem" height="1.5rem" class="me-2" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
             </svg>
-            <span class="font-medium text-gray-700">Informações do Evento</span>
+            <span class="fw-medium text-secondary">Informações do Evento</span>
           </div>
           
-          <h3 class="text-2xl font-bold text-gray-900 mb-1">{{ ticketData.event.name }}</h3>
-          <p class="text-gray-600 mb-1">{{ ticketData.event.venue }}</p>
-          <p class="text-gray-600 font-medium">{{ formatEventDateTime(ticketData.event.opening_datetime) }}</p>
+          <h3 class="h4 fw-bold text-dark mb-1">{{ ticketData.event.name }}</h3>
+          <p class="text-muted mb-1">{{ ticketData.event.venue }}</p>
+          <p class="text-muted fw-medium mb-0">{{ formatEventDateTime(ticketData.event.opening_datetime) }}</p>
         </div>
 
         <!-- Check-in Button -->
         <button
           @click="confirmCheckin"
           :disabled="processing"
-          class="btn btn-success btn-lg w-100 rounded-4 fw-semibold"
+          class="btn btn-success btn-lg w-100 rounded-4 fw-semibold py-3"
           type="button"
         >
           <span v-if="processing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -130,32 +130,32 @@
         </div>
 
         <!-- Ticket Information -->
-        <div class="mb-8">
-          <div class="flex items-center mb-4">
-            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <div class="mb-4">
+          <div class="d-flex align-items-center mb-3">
+            <svg width="1.5rem" height="1.5rem" class="me-2" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
             </svg>
-            <span class="font-medium text-gray-700">Ticket número #{{ checkedInSuccess.ticket.identificationNumber }}</span>
+            <span class="fw-medium text-secondary">Ticket número #{{ checkedInSuccess.ticket.identificationNumber }}</span>
           </div>
           
-          <h3 class="text-2xl font-bold text-gray-900 mb-1">{{ checkedInSuccess.ticket.buyer || 'Nome do Comprador' }}</h3>
-          <p class="text-gray-600 mb-1">{{ checkedInSuccess.ticket.buyerDocument || '000.000.000-00' }}</p>
-          <p class="text-gray-600 mb-1">{{ checkedInSuccess.ticket.location || 'Local' }}</p>
-          <p class="text-gray-600">{{ checkedInSuccess.ticket.description }}</p>
+          <h3 class="h4 fw-bold text-dark mb-1">{{ checkedInSuccess.ticket.buyer || 'Nome do Comprador' }}</h3>
+          <p class="text-muted mb-1">{{ checkedInSuccess.ticket.buyerDocument || '000.000.000-00' }}</p>
+          <p class="text-muted mb-1">{{ checkedInSuccess.ticket.location || 'Local' }}</p>
+          <p class="text-muted mb-0">{{ checkedInSuccess.ticket.description }}</p>
         </div>
 
         <!-- Event Information -->
         <div>
-          <div class="flex items-center mb-4">
-            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <div class="d-flex align-items-center mb-3">
+            <svg width="1.5rem" height="1.5rem" class="me-2" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
             </svg>
-            <span class="font-medium text-gray-700">Informações do Evento</span>
+            <span class="fw-medium text-secondary">Informações do Evento</span>
           </div>
           
-          <h3 class="text-2xl font-bold text-gray-900 mb-1">{{ checkedInSuccess.event.name }}</h3>
-          <p class="text-gray-600 mb-1">{{ checkedInSuccess.event.venue }}</p>
-          <p class="text-gray-600 font-medium">{{ formatEventDateTime(checkedInSuccess.event.opening_datetime) }}</p>
+          <h3 class="h4 fw-bold text-dark mb-1">{{ checkedInSuccess.event.name }}</h3>
+          <p class="text-muted mb-1">{{ checkedInSuccess.event.venue }}</p>
+          <p class="text-muted fw-medium mb-0">{{ formatEventDateTime(checkedInSuccess.event.opening_datetime) }}</p>
         </div>
       </div>
     </div>
