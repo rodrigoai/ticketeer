@@ -261,11 +261,25 @@ const submitConfirmation = async () => {
     
   } catch (err) {
     console.error('Confirmation submission failed:', err)
-    if (err.details && Array.isArray(err.details)) {
-      validationErrors.value = err.details
+    
+    // Handle different error formats
+    if (err.data && err.data.message) {
+      // Server returned structured error with message
+      validationErrors.value = [err.data.message]
+    } else if (err.message) {
+      // Generic error message
+      validationErrors.value = [err.message]
     } else {
-      validationErrors.value = [err.message || 'Erro na confirmação dos dados']
+      validationErrors.value = ['Erro na confirmação dos dados. Por favor, verifique os campos.']
     }
+    
+    // Scroll to error message
+    setTimeout(() => {
+      const errorElement = document.querySelector('.error-message')
+      if (errorElement) {
+        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 100)
   } finally {
     isSubmitting.value = false
   }

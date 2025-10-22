@@ -36,11 +36,16 @@ export function useApi() {
         ...options
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        // Create an error object with the response data
+        const error = new Error(data.message || `HTTP error! status: ${response.status}`)
+        error.status = response.status
+        error.data = data
+        throw error
       }
 
-      const data = await response.json()
       return data
     } catch (err) {
       error.value = err.message
