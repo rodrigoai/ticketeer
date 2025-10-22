@@ -122,11 +122,15 @@ export default {
         scanning.value = true
         showCamera.value = true
 
+        // Wait for next tick to ensure DOM element exists
+        await new Promise(resolve => setTimeout(resolve, 100))
+
         // Initialize QR Code scanner
         html5QrCode = new Html5Qrcode("qr-reader")
         
         const config = { fps: 10, qrbox: { width: 250, height: 250 } }
         
+        // Request camera permission and start scanning
         await html5QrCode.start(
           { facingMode: "environment" },
           config,
@@ -135,7 +139,16 @@ export default {
         )
       } catch (err) {
         console.error('Error starting scanner:', err)
-        error.value = 'Não foi possível acessar a câmera. Verifique as permissões.'
+        
+        // Provide more specific error messages
+        if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
+          error.value = 'Permissão de câmera negada. Por favor, permita o acesso à câmera nas configurações do navegador.'
+        } else if (err.name === 'NotFoundError' || err.message?.includes('camera')) {
+          error.value = 'Nenhuma câmera encontrada no dispositivo.'
+        } else {
+          error.value = 'Não foi possível acessar a câmera. Verifique as permissões.'
+        }
+        
         scanning.value = false
         showCamera.value = false
       }
@@ -211,13 +224,8 @@ export default {
     }
 
     onMounted(() => {
-      // Auto-start scanning on mobile devices
-      if (window.innerWidth < 768) {
-        // Small delay to ensure smooth transition
-        setTimeout(() => {
-          startScanning()
-        }, 300)
-      }
+      // Camera permission must be requested via user interaction
+      // Auto-starting can cause permission issues
     })
 
     onUnmounted(() => {
