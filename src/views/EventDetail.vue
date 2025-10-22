@@ -72,8 +72,8 @@
             <div class="col-md-3 col-sm-6 mb-3">
               <div class="card bg-info text-white">
                 <div class="card-body text-center">
-                  <h5 class="card-title">${{ stats.averagePrice.toFixed(2) }}</h5>
-                  <p class="card-text mb-0">Average Price</p>
+                  <h5 class="card-title">{{ stats.checkedInTickets || 0 }}</h5>
+                  <p class="card-text mb-0">Checked-In Tickets</p>
                 </div>
               </div>
             </div>
@@ -127,6 +127,7 @@
             <table class="table table-striped">
               <thead class="table-dark">
                 <tr>
+                  <th>Status</th>
                   <th>#</th>
                   <th>Description</th>
                   <th>Location</th>
@@ -141,6 +142,14 @@
               </thead>
               <tbody>
                 <tr v-for="ticket in tickets" :key="ticket.id">
+                  <td class="text-center">
+                    <span v-if="ticket.checkedIn" class="text-success" title="Checked In">
+                      <i class="fas fa-check-circle fa-lg"></i>
+                    </span>
+                    <span v-else class="text-muted" title="Not Checked In">
+                      <i class="far fa-circle fa-lg"></i>
+                    </span>
+                  </td>
                   <td><strong>{{ ticket.identificationNumber }}</strong></td>
                   <td>{{ ticket.description }}</td>
                   <td>{{ ticket.location || '-' }}</td>
@@ -169,6 +178,15 @@
                     <div class="btn-group btn-group-sm">
                       <button class="btn btn-outline-primary" @click="editTicket(ticket)" title="Edit">
                         <i class="fas fa-edit"></i>
+                      </button>
+                      <button 
+                        v-if="ticket.buyer && ticket.buyerEmail" 
+                        class="btn btn-outline-info" 
+                        @click="resendEmail(ticket)" 
+                        title="Resend email with QR code"
+                        :disabled="isResending"
+                      >
+                        <i class="fas fa-envelope"></i>
                       </button>
                       <button class="btn btn-outline-danger" @click="deleteTicket(ticket.id)" title="Delete">
                         <i class="fas fa-trash"></i>
@@ -294,6 +312,44 @@
                   v-model="ticketForm.salesEndDateTime"
                 >
                 <div class="form-text">Optional: Set when ticket sales should end</div>
+              </div>
+              
+              <!-- Check-in Status Section -->
+              <div class="mb-3" v-if="isEditingTicket">
+                <hr class="my-3">
+                <h6 class="mb-3">Check-in Status</h6>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-check mb-3">
+                      <input 
+                        type="checkbox" 
+                        class="form-check-input" 
+                        id="ticketCheckedIn" 
+                        v-model="ticketForm.checkedIn"
+                        @change="onCheckedInChange"
+                      >
+                      <label class="form-check-label" for="ticketCheckedIn">
+                        <strong>Checked In</strong>
+                        <span v-if="ticketForm.checkedIn" class="text-success ms-2">
+                          <i class="fas fa-check-circle"></i>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label for="ticketCheckedInAt" class="form-label">Checked In At</label>
+                      <input 
+                        type="datetime-local" 
+                        class="form-control" 
+                        id="ticketCheckedInAt" 
+                        v-model="ticketForm.checkedInAt"
+                        :disabled="!ticketForm.checkedIn"
+                      >
+                      <div class="form-text">Automatically set when checked in</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </form>
           </div>
@@ -463,6 +519,7 @@ const isLoadingEvent = ref(false)
 const isLoadingTickets = ref(false)
 const isEditingTicket = ref(false)
 const currentTicketId = ref(null)
+const isResending = ref(false)
 
 // Forms
 const ticketForm = reactive({
@@ -474,7 +531,9 @@ const ticketForm = reactive({
   buyerDocument: '',
   buyerEmail: '',
   order: '',
-  salesEndDateTime: ''
+  salesEndDateTime: '',
+  checkedIn: false,
+  checkedInAt: ''
 })
 
 const batchForm = reactive({
@@ -578,7 +637,9 @@ const editTicket = (ticket) => {
     buyerDocument: ticket.buyerDocument || '',
     buyerEmail: ticket.buyerEmail || '',
     order: ticket.order || '',
-    salesEndDateTime: ticket.salesEndDateTime ? new Date(ticket.salesEndDateTime).toISOString().slice(0, 16) : ''
+    salesEndDateTime: ticket.salesEndDateTime ? new Date(ticket.salesEndDateTime).toISOString().slice(0, 16) : '',
+    checkedIn: ticket.checkedIn || false,
+    checkedInAt: ticket.checkedInAt ? new Date(ticket.checkedInAt).toISOString().slice(0, 16) : ''
   })
   
   if (!ticketModal) {
@@ -641,6 +702,35 @@ const saveBatchTickets = async () => {
   }
 }
 
+// Resend email for a ticket
+const resendEmail = async (ticket) => {
+  if (!ticket.buyerEmail) {
+    error.value = 'Ticket does not have a buyer email'
+    return
+  }
+  
+  if (!confirm(`Resend email to ${ticket.buyerEmail}?`)) {
+    return
+  }
+  
+  try {
+    isResending.value = true
+    const result = await post(`/api/tickets/${ticket.id}/resend-email`, {})
+    
+    if (result.success) {
+      alert(`Email successfully sent to ${ticket.buyerEmail}!`)
+    }
+    
+    error.value = null
+  } catch (err) {
+    console.error('Failed to resend email:', err)
+    error.value = err.message || 'Failed to resend email'
+    alert(`Failed to resend email: ${err.message}`)
+  } finally {
+    isResending.value = false
+  }
+}
+
 // Delete ticket
 const deleteTicket = async (ticketId) => {
   if (!confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
@@ -669,7 +759,9 @@ const resetTicketForm = () => {
     buyerDocument: '',
     buyerEmail: '',
     order: '',
-    salesEndDateTime: ''
+    salesEndDateTime: '',
+    checkedIn: false,
+    checkedInAt: ''
   })
 }
 
@@ -686,6 +778,17 @@ const resetBatchForm = () => {
     order: '',
     salesEndDateTime: ''
   })
+}
+
+// Handle check-in status change
+const onCheckedInChange = () => {
+  if (ticketForm.checkedIn && !ticketForm.checkedInAt) {
+    // If checking in and no date set, set current date/time
+    ticketForm.checkedInAt = new Date().toISOString().slice(0, 16)
+  } else if (!ticketForm.checkedIn) {
+    // If unchecking, clear the check-in date
+    ticketForm.checkedInAt = ''
+  }
 }
 
 // Format date

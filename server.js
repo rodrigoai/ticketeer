@@ -428,7 +428,8 @@ app.get('/api/events/:eventId/tickets/stats', requiresAuth, async (req, res) => 
       totalRevenue: parseFloat(stats.totalRevenue) || 0,
       averagePrice: parseFloat(stats.averagePrice) || 0,
       minPrice: parseFloat(stats.minPrice) || 0,
-      maxPrice: parseFloat(stats.maxPrice) || 0
+      maxPrice: parseFloat(stats.maxPrice) || 0,
+      checkedInTickets: stats.checkedInTickets || 0
     };
     
     res.json({
@@ -861,7 +862,9 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyer,
       buyerDocument,
       buyerEmail,
-      salesEndDateTime
+      salesEndDateTime,
+      checkedIn,
+      checkedInAt
     } = req.body;
     
     // Validate price if provided
@@ -884,7 +887,9 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyer,
       buyerDocument,
       buyerEmail,
-      salesEndDateTime
+      salesEndDateTime,
+      checkedIn,
+      checkedInAt
     };
     
     const updatedTicket = await ticketService.updateTicket(id, ticketData, userId);
@@ -920,6 +925,77 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update ticket',
+      message: error.message
+    });
+  }
+});
+
+// Resend email for a ticket (JWT authenticated)
+app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    const ticketService = require('./services/ticketService');
+    const emailService = require('./services/emailService');
+    
+    // Get ticket details
+    const ticket = await ticketService.getTicketById(id, userId);
+    
+    // Verify ticket has buyer information
+    if (!ticket.buyer || !ticket.buyerEmail) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot resend email',
+        message: 'Ticket must have buyer name and email information'
+      });
+    }
+    
+    // Get event details
+    const eventService = require('./services/eventService');
+    const event = await eventService.getEventById(ticket.eventId, userId);
+    
+    // Send QR code email
+    const emailResult = await emailService.sendTicketQrCodeEmail(
+      ticket.buyerEmail,
+      {
+        id: ticket.id,
+        identificationNumber: ticket.identificationNumber,
+        buyer: ticket.buyer,
+        description: ticket.description,
+        eventId: ticket.eventId
+      },
+      {
+        name: event.name,
+        venue: event.venue,
+        date: event.opening_datetime
+      },
+      userId
+    );
+    
+    res.json({
+      success: true,
+      message: 'Email resent successfully',
+      email: ticket.buyerEmail,
+      ticketId: parseInt(id),
+      messageId: emailResult.messageId,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error resending email:', error);
+    
+    if (error.message.includes('Ticket not found') || 
+        error.message.includes('access denied')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'Ticket not found or you do not have access to it'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to resend email',
       message: error.message
     });
   }
