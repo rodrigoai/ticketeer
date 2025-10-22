@@ -373,13 +373,53 @@ class TicketService {
         }
       });
 
+      // Count tickets that are sold (have order field filled)
+      const soldCount = await prisma.ticket.count({
+        where: { 
+          eventId: parseInt(eventId),
+          AND: [
+            { order: { not: null } },
+            { order: { not: '' } }
+          ]
+        }
+      });
+
+      // Count tickets with complete buyer information
+      const confirmedCount = await prisma.ticket.count({
+        where: { 
+          eventId: parseInt(eventId),
+          AND: [
+            { buyer: { not: null } },
+            { buyer: { not: '' } },
+            { buyerDocument: { not: null } },
+            { buyerDocument: { not: '' } },
+            { buyerEmail: { not: null } },
+            { buyerEmail: { not: '' } }
+          ]
+        }
+      });
+
+      // Count tickets that are remaining (not sold yet - no order field)
+      const remainingCount = await prisma.ticket.count({
+        where: { 
+          eventId: parseInt(eventId),
+          OR: [
+            { order: null },
+            { order: '' }
+          ]
+        }
+      });
+
       return {
         totalTickets: stats._count.id || 0,
         totalRevenue: stats._sum.price || '0',
         averagePrice: stats._avg.price || '0',
         minPrice: stats._min.price || '0',
         maxPrice: stats._max.price || '0',
-        checkedInTickets: checkedInCount
+        checkedInTickets: checkedInCount,
+        totalSold: soldCount,
+        totalConfirmed: confirmedCount,
+        totalRemaining: remainingCount
       };
     } catch (error) {
       console.error('Error fetching ticket stats:', error);

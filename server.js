@@ -431,7 +431,10 @@ app.get('/api/events/:eventId/tickets/stats', requiresAuth, async (req, res) => 
       averagePrice: parseFloat(stats.averagePrice) || 0,
       minPrice: parseFloat(stats.minPrice) || 0,
       maxPrice: parseFloat(stats.maxPrice) || 0,
-      checkedInTickets: stats.checkedInTickets || 0
+      checkedInTickets: stats.checkedInTickets || 0,
+      totalSold: stats.totalSold || 0,
+      totalConfirmed: stats.totalConfirmed || 0,
+      totalRemaining: stats.totalRemaining || 0
     };
     
     res.json({

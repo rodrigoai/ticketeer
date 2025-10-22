@@ -53,7 +53,7 @@
       <div class="row mb-4" v-if="stats">
         <div class="col-12">
           <div class="row">
-            <div class="col-md-3 col-sm-6 mb-3">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
               <div class="card bg-primary text-white">
                 <div class="card-body text-center">
                   <h5 class="card-title">{{ stats.totalTickets }}</h5>
@@ -61,27 +61,35 @@
                 </div>
               </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-3">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
               <div class="card bg-success text-white">
                 <div class="card-body text-center">
-                  <h5 class="card-title">${{ stats.totalRevenue.toFixed(2) }}</h5>
-                  <p class="card-text mb-0">Total Revenue</p>
+                  <h5 class="card-title">{{ stats.totalSold || 0 }}</h5>
+                  <p class="card-text mb-0">Total Sold</p>
                 </div>
               </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-3">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+              <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                  <h5 class="card-title">{{ stats.totalRemaining || 0 }}</h5>
+                  <p class="card-text mb-0">Total Remaining</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
               <div class="card bg-info text-white">
                 <div class="card-body text-center">
-                  <h5 class="card-title">{{ stats.checkedInTickets || 0 }}</h5>
-                  <p class="card-text mb-0">Checked-In Tickets</p>
+                  <h5 class="card-title">{{ stats.totalConfirmed || 0 }}</h5>
+                  <p class="card-text mb-0">Total Confirmed</p>
                 </div>
               </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-3">
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
               <div class="card bg-warning text-white">
                 <div class="card-body text-center">
-                  <h5 class="card-title">${{ stats.minPrice.toFixed(2) }} - ${{ stats.maxPrice.toFixed(2) }}</h5>
-                  <p class="card-text mb-0">Price Range</p>
+                  <h5 class="card-title">{{ stats.checkedInTickets || 0 }}</h5>
+                  <p class="card-text mb-0">Checked-In</p>
                 </div>
               </div>
             </div>
@@ -122,80 +130,122 @@
             <button class="btn btn-info" @click="showBatchCreateModal">Batch Create</button>
           </div>
 
-          <!-- Tickets Table -->
-          <div v-else class="table-responsive">
-            <table class="table table-striped">
-              <thead class="table-dark">
-                <tr>
-                  <th>Status</th>
-                  <th>#</th>
-                  <th>Description</th>
-                  <th>Location</th>
-                  <th>Table</th>
-                  <th>Price</th>
-                  <th>Order</th>
-                  <th>Buyer</th>
-                  <th>Email</th>
-                  <th>Sales End</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="ticket in tickets" :key="ticket.id">
-                  <td class="text-center">
-                    <span v-if="ticket.checkedIn" class="text-success" title="Checked In">
-                      <i class="fas fa-check-circle fa-lg"></i>
-                    </span>
-                    <span v-else class="text-muted" title="Not Checked In">
-                      <i class="far fa-circle fa-lg"></i>
-                    </span>
-                  </td>
-                  <td><strong>{{ ticket.identificationNumber }}</strong></td>
-                  <td>{{ ticket.description }}</td>
-                  <td>{{ ticket.location || '-' }}</td>
-                  <td>{{ ticket.table || '-' }}</td>
-                  <td>${{ ticket.price.toFixed(2) }}</td>
-                  <td>
-                    <div v-if="ticket.order">
-                      <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-info text-dark">{{ ticket.order }}</span>
-                        <a 
-                          :href="getCachedConfirmationUrl(ticket.order)" 
-                          target="_blank" 
-                          class="btn btn-sm btn-outline-success" 
-                          title="Open confirmation page"
-                        >
-                          <i class="fas fa-external-link-alt"></i>
-                        </a>
-                      </div>
-                    </div>
-                    <span v-else class="text-muted">-</span>
-                  </td>
-                  <td>{{ ticket.buyer || '-' }}</td>
-                  <td>{{ ticket.buyerEmail || '-' }}</td>
-                  <td>{{ ticket.salesEndDateTime ? formatDate(ticket.salesEndDateTime) : '-' }}</td>
-                  <td>
-                    <div class="btn-group btn-group-sm">
-                      <button class="btn btn-outline-primary" @click="editTicket(ticket)" title="Edit">
-                        <i class="fas fa-edit"></i>
-                      </button>
-                      <button 
-                        v-if="ticket.buyer && ticket.buyerEmail" 
-                        class="btn btn-outline-info" 
-                        @click="resendEmail(ticket)" 
-                        title="Resend email with QR code"
-                        :disabled="isResending"
-                      >
-                        <i class="fas fa-envelope"></i>
-                      </button>
-                      <button class="btn btn-outline-danger" @click="deleteTicket(ticket.id)" title="Delete">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- Tickets DataTable -->
+          <div v-else>
+            <!-- Search Filter -->
+            <div class="mb-3">
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="fas fa-search"></i>
+                </span>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  placeholder="Search tickets by description, location, buyer, email, or order..."
+                  v-model="searchValue"
+                >
+                <button 
+                  v-if="searchValue" 
+                  class="btn btn-outline-secondary" 
+                  @click="searchValue = ''"
+                  title="Clear search"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+
+            <EasyDataTable
+              :headers="headers"
+              :items="tickets"
+              :rows-per-page="500"
+              :search-value="searchValue"
+              table-class-name="customize-table"
+              header-text-direction="left"
+              body-text-direction="left"
+              border-cell
+              alternating
+            >
+              <!-- Status Icon Column -->
+              <template #item-statusIcon="{ checkedIn }">
+                <div class="text-center">
+                  <span v-if="checkedIn" class="text-success" title="Checked In">
+                    <i class="fas fa-check-circle fa-lg"></i>
+                  </span>
+                  <span v-else class="text-muted" title="Not Checked In">
+                    <i class="far fa-circle fa-lg"></i>
+                  </span>
+                </div>
+              </template>
+
+              <!-- Identification Number -->
+              <template #item-identificationNumber="{ identificationNumber }">
+                <strong>{{ identificationNumber }}</strong>
+              </template>
+
+              <!-- Description + Location Column -->
+              <template #item-descriptionLocation="item">
+                <div>
+                  <div>{{ item.description }}</div>
+                  <small class="text-muted" v-if="item.location">{{ item.location }}</small>
+                </div>
+              </template>
+
+              <!-- Table -->
+              <template #item-table="{ table }">
+                {{ table || '-' }}
+              </template>
+
+              <!-- Order Column (Clickable Badge) -->
+              <template #item-order="item">
+                <a 
+                  v-if="item.order"
+                  :href="getCachedConfirmationUrl(item.order)" 
+                  target="_blank" 
+                  class="badge bg-info text-dark text-decoration-none order-link"
+                  title="Open confirmation page"
+                >
+                  {{ item.order }}
+                </a>
+                <span v-else class="text-muted">-</span>
+              </template>
+
+              <!-- Buyer -->
+              <template #item-buyer="{ buyer }">
+                {{ buyer || '-' }}
+              </template>
+
+              <!-- Buyer Email -->
+              <template #item-buyerEmail="{ buyerEmail }">
+                {{ buyerEmail || '-' }}
+              </template>
+
+              <!-- Sales End Date -->
+              <template #item-salesEndDateTime="{ salesEndDateTime }">
+                {{ salesEndDateTime ? formatDate(salesEndDateTime) : '-' }}
+              </template>
+
+              <!-- Actions Column -->
+              <template #item-actions="item">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-primary" @click="editTicket(item)" title="Edit">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button 
+                    v-if="item.buyer && item.buyerEmail" 
+                    class="btn btn-outline-info" 
+                    @click="resendEmail(item)" 
+                    title="Resend email with QR code"
+                    :disabled="isResending"
+                  >
+                    <i class="fas fa-envelope"></i>
+                  </button>
+                  <button class="btn btn-outline-danger" @click="deleteTicket(item.id)" title="Delete">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </template>
+            </EasyDataTable>
           </div>
         </div>
       </div>
@@ -502,6 +552,8 @@ import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
 import { Modal } from 'bootstrap'
+import EasyDataTable from 'vue3-easy-data-table'
+import 'vue3-easy-data-table/dist/style.css'
 
 // Props and route
 const route = useRoute()
@@ -520,6 +572,7 @@ const isLoadingTickets = ref(false)
 const isEditingTicket = ref(false)
 const currentTicketId = ref(null)
 const isResending = ref(false)
+const searchValue = ref('')
 
 // Forms
 const ticketForm = reactive({
@@ -548,6 +601,19 @@ const batchForm = reactive({
   order: '',
   salesEndDateTime: ''
 })
+
+// DataTable headers configuration
+const headers = [
+  { text: 'Status', value: 'statusIcon', sortable: false, width: 80 },
+  { text: '#', value: 'identificationNumber', sortable: true, width: 80 },
+  { text: 'Description', value: 'descriptionLocation', sortable: true },
+  { text: 'Table', value: 'table', sortable: true, width: 100 },
+  { text: 'Order', value: 'order', sortable: true, width: 120 },
+  { text: 'Buyer', value: 'buyer', sortable: true },
+  { text: 'Email', value: 'buyerEmail', sortable: true },
+  { text: 'Sales End', value: 'salesEndDateTime', sortable: true, width: 150 },
+  { text: 'Actions', value: 'actions', sortable: false, width: 150 }
+]
 
 // Bootstrap modals
 let ticketModal = null
@@ -897,5 +963,43 @@ onMounted(async () => {
 .modal-body {
   max-height: 70vh;
   overflow-y: auto;
+}
+
+/* DataTable Customization */
+:deep(.customize-table) {
+  --easy-table-border: 1px solid #dee2e6;
+  --easy-table-row-border: 1px solid #dee2e6;
+  --easy-table-header-font-size: 14px;
+  --easy-table-header-height: 50px;
+  --easy-table-header-font-color: #fff;
+  --easy-table-header-background-color: #212529;
+  --easy-table-body-row-font-size: 14px;
+  --easy-table-body-row-height: 60px;
+  --easy-table-body-row-hover-font-color: #212529;
+  --easy-table-body-row-hover-background-color: #f8f9fa;
+  --easy-table-footer-background-color: #fff;
+  --easy-table-footer-font-color: #212529;
+  --easy-table-footer-font-size: 14px;
+  --easy-table-footer-padding: 10px 10px;
+  --easy-table-footer-height: 50px;
+}
+
+:deep(.customize-table .header-text) {
+  font-weight: 600;
+}
+
+:deep(.customize-table tbody tr:nth-child(even)) {
+  background-color: #f8f9fa;
+}
+
+/* Clickable Order Badge */
+.order-link {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.order-link:hover {
+  background-color: #0dcaf0 !important;
+  transform: scale(1.05);
 }
 </style>
