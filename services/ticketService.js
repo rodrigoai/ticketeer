@@ -837,7 +837,8 @@ class TicketService {
         buyerInfo = {
           buyer: customer.name || null,
           buyerDocument: customer.identification || null,
-          buyerEmail: customer.email || null
+          buyerEmail: customer.email || null,
+          buyerPhone: customer.phone || null
         };
       }
 

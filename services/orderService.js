@@ -170,7 +170,8 @@ class OrderService {
             data: {
               buyer: buyerData.name.trim(),
               buyerDocument: cpfValidator.clean(buyerData.document),
-              buyerEmail: buyerData.email.trim().toLowerCase()
+              buyerEmail: buyerData.email.trim().toLowerCase(),
+              buyerPhone: buyerData.phone ? buyerData.phone.trim() : null
             }
           });
 

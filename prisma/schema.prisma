@@ -38,6 +38,7 @@ model Ticket {
   order                String?
   buyer                String?
   buyerDocument        String?
+  buyerPhone           String?
   created_at           DateTime  @default(now())
   updated_at           DateTime  @updatedAt
   buyerEmail           String?
