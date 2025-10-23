@@ -1,10 +1,40 @@
 import { ref } from 'vue'
 import { useUser } from './useUser'
 
+// Global token cache shared across all useApi instances
+let cachedToken = null
+let tokenExpiryTime = null
+const TOKEN_CACHE_DURATION = 50 * 60 * 1000 // 50 minutes (tokens typically expire in 60 mins)
+
 export function useApi() {
   const isLoading = ref(false)
   const error = ref(null)
   const { isAuthenticated, getAccessToken } = useUser()
+
+  // Get cached token or fetch new one if expired
+  const getValidToken = async () => {
+    const now = Date.now()
+    
+    // Return cached token if still valid
+    if (cachedToken && tokenExpiryTime && now < tokenExpiryTime) {
+      return cachedToken
+    }
+    
+    // Fetch new token
+    try {
+      const token = await getAccessToken()
+      if (token) {
+        cachedToken = token
+        tokenExpiryTime = now + TOKEN_CACHE_DURATION
+      }
+      return token
+    } catch (error) {
+      // Clear cache on error
+      cachedToken = null
+      tokenExpiryTime = null
+      throw error
+    }
+  }
 
   // Generic API request function
   const request = async (url, options = {}) => {
@@ -21,7 +51,7 @@ export function useApi() {
       // Add Authorization header if user is authenticated
       if (isAuthenticated.value) {
         try {
-          const token = await getAccessToken()
+          const token = await getValidToken()
           if (token) {
             headers['Authorization'] = `Bearer ${token}`
           }

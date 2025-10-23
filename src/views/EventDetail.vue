@@ -646,6 +646,13 @@ const loadTickets = async () => {
     
     tickets.value = data.tickets || []
     error.value = null
+    
+    // Preload confirmation URLs for all orders in background
+    if (tickets.value.length > 0) {
+      preloadConfirmationUrls().catch(err => {
+        console.debug('Some confirmation URLs could not be preloaded:', err)
+      })
+    }
   } catch (err) {
     console.error('Failed to load tickets:', err)
     tickets.value = []
@@ -865,8 +872,9 @@ const formatDate = (dateString) => {
 
 // Store for cached confirmation URLs to avoid repeated API calls
 const confirmationUrlCache = ref({})
+const pendingUrls = new Set() // Track URLs being generated to prevent duplicate requests
 
-// Generate confirmation URL for an order
+// Generate confirmation URL synchronously without API calls
 const getConfirmationUrl = (orderId) => {
   if (!orderId) return '#'
   
@@ -875,50 +883,50 @@ const getConfirmationUrl = (orderId) => {
     return confirmationUrlCache.value[orderId]
   }
   
-  // For synchronous template usage, return a placeholder initially
-  // and trigger async URL generation in background
-  generateConfirmationUrlAsync(orderId)
-  
-  // Return temporary fallback while API call is in progress
+  // Return a simple base64 encoded URL (no API call needed for display)
   const baseUrl = window.location.origin
-  return `${baseUrl}/confirmation/${btoa(orderId).replace(/[+/=]/g, '')}`
+  const encodedId = btoa(orderId).replace(/[+/=]/g, '')
+  return `${baseUrl}/confirmation/${encodedId}`
 }
 
-// Async function to get proper confirmation URL and cache it
-const generateConfirmationUrlAsync = async (orderId) => {
-  try {
-    const hash = await getOrderConfirmationHash(orderId)
-    const baseUrl = window.location.origin
-    const url = `${baseUrl}/confirmation/${hash}`
-    
-    // Cache the result
-    confirmationUrlCache.value[orderId] = url
-    
-    // Force reactivity update
-    confirmationUrlCache.value = { ...confirmationUrlCache.value }
-  } catch (error) {
-    console.warn(`Could not generate confirmation URL for order: ${orderId}`, error)
-    // Keep the fallback URL in cache
-    const baseUrl = window.location.origin
-    confirmationUrlCache.value[orderId] = `${baseUrl}/confirmation/${btoa(orderId).replace(/[+/=]/g, '')}`
-  }
-}
-
-// Get order confirmation hash from API
-const getOrderConfirmationHash = async (orderId) => {
-  try {
-    const response = await get(`/api/orders/${orderId}/confirmation-hash`)
-    return response.hash
-  } catch (error) {
-    console.error('Failed to get confirmation hash:', error)
-    throw error
-  }
+// Preload confirmation URLs for all orders in the tickets list
+const preloadConfirmationUrls = async () => {
+  // Get unique order IDs from tickets
+  const orderIds = [...new Set(tickets.value.map(t => t.order).filter(Boolean))]
+  
+  // Only fetch URLs that aren't cached and aren't already being fetched
+  const uncachedOrders = orderIds.filter(orderId => 
+    !confirmationUrlCache.value[orderId] && !pendingUrls.has(orderId)
+  )
+  
+  if (uncachedOrders.length === 0) return
+  
+  // Mark these orders as pending
+  uncachedOrders.forEach(orderId => pendingUrls.add(orderId))
+  
+  // Fetch all hashes in parallel with error handling per order
+  await Promise.allSettled(
+    uncachedOrders.map(async (orderId) => {
+      try {
+        const response = await get(`/api/orders/${orderId}/confirmation-hash`)
+        const baseUrl = window.location.origin
+        confirmationUrlCache.value[orderId] = `${baseUrl}/confirmation/${response.hash}`
+      } catch (error) {
+        // Silently use fallback URL on error
+        const baseUrl = window.location.origin
+        const encodedId = btoa(orderId).replace(/[+/=]/g, '')
+        confirmationUrlCache.value[orderId] = `${baseUrl}/confirmation/${encodedId}`
+      } finally {
+        pendingUrls.delete(orderId)
+      }
+    })
+  )
 }
 
 // Get cached or computed confirmation URL for display
 const getCachedConfirmationUrl = (orderId) => {
   if (!orderId) return '#'
-  return confirmationUrlCache.value[orderId] || getConfirmationUrl(orderId)
+  return getConfirmationUrl(orderId)
 }
 
 // Load data on mount

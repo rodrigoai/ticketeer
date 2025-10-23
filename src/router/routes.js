@@ -61,8 +61,8 @@ export const createRoutes = (app) => {
     {
       path: '/qr-checkin',
       name: 'QRCodeCheckin',
-      component: QRCodeCheckin
-      // Note: No authGuard - QR code scanning should be public
+      component: QRCodeCheckin,
+      beforeEnter: authGuard
     }
   ];
 }

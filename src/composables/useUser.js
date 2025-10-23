@@ -97,7 +97,8 @@ export function useUser() {
         }
       }
       
-      console.log('Requesting access token with options:', tokenOptions)
+      // Uncomment for debugging token requests:
+      // console.log('Requesting access token with options:', tokenOptions)
       
       const token = await auth0Instance.getAccessTokenSilently(tokenOptions)
       
@@ -106,7 +107,8 @@ export function useUser() {
       }
       
       accessToken.value = token
-      console.log('Access token retrieved successfully')
+      // Uncomment for debugging:
+      // console.log('Access token retrieved successfully')
       return token
       
     } catch (error) {
@@ -156,10 +158,12 @@ export function useUser() {
       // Use the most minimal configuration possible
       const token = await auth0Instance.getAccessTokenSilently()
       
-      console.log('Simple token request successful')
+      // Uncomment for debugging:
+      // console.log('Simple token request successful')
       return token
       
     } catch (error) {
+      // Only log errors, not every token request
       console.error('Simple token request failed:', error.message)
       tokenError.value = error.message
       return null
