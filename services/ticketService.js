@@ -556,12 +556,23 @@ class TicketService {
         console.log('🔍 [DEBUG] No eventId provided in meta, will search across all user events');
       }
 
-      // Parse table number if present
+      // Parse table number if present (also base64-encoded)
       let tableNumber = null;
       if (meta && meta.tableNumber) {
-        tableNumber = parseInt(meta.tableNumber, 10);
-        if (isNaN(tableNumber)) {
-          throw new Error(`Invalid table number: ${meta.tableNumber}`);
+        try {
+          // Decode Base64 tableNumber
+          const base64TableNumber = meta.tableNumber;
+          const decodedTableNumber = Buffer.from(base64TableNumber, 'base64').toString('utf8');
+          console.log(`🔍 [DEBUG] Decoded tableNumber: ${decodedTableNumber} (from Base64: ${base64TableNumber})`);
+          
+          tableNumber = parseInt(decodedTableNumber, 10);
+          if (isNaN(tableNumber)) {
+            throw new Error(`Invalid decoded table number: ${decodedTableNumber}`);
+          }
+          console.log(`🔍 [DEBUG] Final tableNumber: ${tableNumber} (type: ${typeof tableNumber})`);
+        } catch (decodeError) {
+          console.error('❌ [DEBUG] Failed to decode Base64 tableNumber:', decodeError);
+          throw new Error(`Failed to decode tableNumber from Base64: ${meta.tableNumber}`);
         }
       }
 
