@@ -507,10 +507,17 @@ class TicketService {
   /**
    * Process checkout webhook to confirm ticket purchases
    * Uses quantity-based selection or table-based selection depending on payload
-   * NEW BEHAVIOR: Only the first ticket gets buyer information, all tickets get order field
-   * UPDATED: Supports Base64-encoded eventId in meta.eventId for event-specific ticket selection
+   * 
+   * IMPORTANT REQUIREMENTS:
+   * - For quantity-based selection (no table): eventId and userId are REQUIRED
+   * - For table-based selection: eventId is optional (can filter across all user events)
+   * 
+   * BEHAVIOR:
+   * - Only the first ticket gets buyer information, all tickets get order field
+   * - Supports Base64-encoded eventId in meta.eventId and tableNumber in meta.tableNumber
+   * 
    * @param {Object} webhookPayload - The webhook payload from payment system
-   * @param {string} userId - The user ID to validate ticket ownership
+   * @param {string} userId - The user ID to validate ticket ownership (REQUIRED)
    * @returns {Object} - Processing result with updated tickets info
    */
   async processCheckoutWebhook(webhookPayload, userId) {
@@ -648,6 +655,11 @@ class TicketService {
           // CASE 2: Quantity-based selection - find N unsold tickets without table numbers
           selectionMethod = 'quantity-based';
           
+          // IMPORTANT: For individual ticket sales, eventId is REQUIRED
+          if (!decodedEventId) {
+            throw new Error('eventId is required for individual ticket purchases (quantity-based selection)');
+          }
+          
           // Determine quantity from items array
           let quantity = 0;
           if (items && Array.isArray(items)) {
@@ -659,11 +671,15 @@ class TicketService {
           }
 
           // Build where clause for unsold tickets without table numbers
+          // eventId is REQUIRED for quantity-based selection (validated above)
           console.log(`🔍 [DEBUG] Building WHERE clause for quantity-based selection...`);
-          console.log(`🔍 [DEBUG] quantity: ${quantity}, userId: ${userId}, decodedEventId: ${decodedEventId}`);
+          console.log(`🔍 [DEBUG] quantity: ${quantity}, userId: ${userId}, eventId: ${decodedEventId}`);
           
           const whereClause = {
             AND: [
+              {
+                eventId: decodedEventId  // REQUIRED for individual ticket sales
+              },
               {
                 event: {
                   created_by: userId
@@ -684,18 +700,7 @@ class TicketService {
             ]
           };
           
-          console.log(`🔍 [DEBUG] Initial WHERE clause:`, JSON.stringify(whereClause, null, 2));
-          
-          // If eventId is provided, add event-specific filter
-          if (decodedEventId) {
-            console.log(`🔍 [DEBUG] Adding eventId filter: ${decodedEventId}`);
-            whereClause.AND.push({
-              eventId: decodedEventId
-            });
-            console.log(`✅ [DEBUG] WHERE clause after eventId filter:`, JSON.stringify(whereClause, null, 2));
-          } else {
-            console.log(`🔍 [DEBUG] No eventId filter added - will search across all user events`);
-          }
+          console.log(`✅ [DEBUG] WHERE clause with required eventId:`, JSON.stringify(whereClause, null, 2));
 
           // Find unsold tickets
           console.log(`🔍 [DEBUG] Searching for tickets with Prisma query...`);
@@ -727,13 +732,11 @@ class TicketService {
           }
 
           if (ticketsToUpdate.length === 0) {
-            const eventFilter = decodedEventId ? ` for event ${decodedEventId}` : '';
-            throw new Error(`No available tickets without table numbers found${eventFilter} for user ${userId}`);
+            throw new Error(`No available tickets without table numbers found for event ${decodedEventId} and user ${userId}`);
           }
 
           if (ticketsToUpdate.length < Math.floor(quantity)) {
-            const eventFilter = decodedEventId ? ` for event ${decodedEventId}` : '';
-            throw new Error(`Not enough available tickets${eventFilter}: requested ${Math.floor(quantity)}, found ${ticketsToUpdate.length}`);
+            throw new Error(`Not enough available tickets for event ${decodedEventId}: requested ${Math.floor(quantity)}, found ${ticketsToUpdate.length}`);
           }
         }
 
