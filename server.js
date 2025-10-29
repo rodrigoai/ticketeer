@@ -1070,6 +1070,104 @@ app.delete('/api/tickets/batch', requiresAuth, async (req, res) => {
   }
 });
 
+// Bulk update multiple tickets (JWT authenticated)
+app.post('/api/tickets/bulk-edit', requiresAuth, async (req, res) => {
+  try {
+    const { ticketIds, updates } = req.body;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'ticketIds array is required and must not be empty'
+      });
+    }
+    
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'updates object is required'
+      });
+    }
+    
+    const ticketService = require('./services/ticketService');
+    
+    const updatedTickets = await ticketService.bulkUpdateTickets(ticketIds, updates, userId);
+    
+    // Map response to frontend format
+    const mappedTickets = updatedTickets.map(ticket => ({
+      id: ticket.id,
+      eventId: ticket.eventId,
+      description: ticket.description,
+      identificationNumber: ticket.identificationNumber,
+      location: ticket.location,
+      table: ticket.table,
+      price: parseFloat(ticket.price) || 0,
+      order: ticket.order,
+      buyer: ticket.buyer,
+      buyerDocument: ticket.buyerDocument,
+      buyerEmail: ticket.buyerEmail,
+      buyerPhone: ticket.buyerPhone,
+      salesEndDateTime: ticket.salesEndDateTime,
+      checkedIn: ticket.checkedIn,
+      checkedInAt: ticket.checkedInAt,
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at
+    }));
+    
+    res.json({
+      success: true,
+      tickets: mappedTickets,
+      count: mappedTickets.length,
+      message: `${mappedTickets.length} tickets updated successfully`,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error bulk updating tickets:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to bulk update tickets',
+      message: error.message
+    });
+  }
+});
+
+// Bulk delete multiple tickets (JWT authenticated)
+app.post('/api/tickets/bulk-delete', requiresAuth, async (req, res) => {
+  try {
+    const { ticketIds } = req.body;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'ticketIds array is required and must not be empty'
+      });
+    }
+    
+    const ticketService = require('./services/ticketService');
+    
+    const result = await ticketService.bulkDeleteTickets(ticketIds, userId);
+    
+    res.json({
+      success: true,
+      message: `${result.count} tickets deleted successfully`,
+      deletedCount: result.count,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error bulk deleting tickets:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to bulk delete tickets',
+      message: error.message
+    });
+  }
+});
+
 // ==========================================
 // USER DASHBOARD API ENDPOINTS
 // ==========================================

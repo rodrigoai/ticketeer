@@ -340,6 +340,115 @@ class TicketService {
   }
 
   /**
+   * Bulk update multiple tickets (only updates provided fields)
+   */
+  async bulkUpdateTickets(ticketIds, updateData, userId) {
+    try {
+      if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+        throw new Error('Ticket IDs array is required');
+      }
+
+      // Verify ownership of all tickets
+      for (const ticketId of ticketIds) {
+        await this.getTicketById(ticketId, userId);
+      }
+
+      const {
+        location,
+        table,
+        order,
+        buyer,
+        buyerDocument,
+        buyerEmail,
+        checkedIn,
+        checkedInAt
+      } = updateData;
+
+      // Build update object with only provided fields
+      const updates = {};
+      if (location !== undefined) updates.location = location || null;
+      if (table !== undefined) updates.table = table ? parseInt(table) : null;
+      if (order !== undefined) updates.order = order || null;
+      if (buyer !== undefined) updates.buyer = buyer || null;
+      if (buyerDocument !== undefined) updates.buyerDocument = buyerDocument || null;
+      if (buyerEmail !== undefined) updates.buyerEmail = buyerEmail || null;
+      if (checkedIn !== undefined) updates.checkedIn = Boolean(checkedIn);
+      if (checkedInAt !== undefined) updates.checkedInAt = checkedInAt ? new Date(checkedInAt) : null;
+
+      // If no fields to update, return early
+      if (Object.keys(updates).length === 0) {
+        throw new Error('No fields provided for update');
+      }
+
+      // Update all tickets in a transaction
+      const updatedTickets = await prisma.$transaction(async (tx) => {
+        const results = [];
+        for (const ticketId of ticketIds) {
+          const updated = await tx.ticket.update({
+            where: { id: parseInt(ticketId) },
+            data: updates
+          });
+          results.push(updated);
+        }
+        return results;
+      });
+
+      return updatedTickets;
+    } catch (error) {
+      console.error('Error bulk updating tickets:', error);
+      throw new Error(`Failed to bulk update tickets: ${error.message}`);
+    }
+  }
+
+  /**
+   * Bulk delete multiple tickets (transaction-safe)
+   */
+  async bulkDeleteTickets(ticketIds, userId) {
+    try {
+      if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+        throw new Error('Ticket IDs array is required');
+      }
+
+      // Verify ownership of all tickets in transaction
+      await prisma.$transaction(async (tx) => {
+        // First verify ownership of all tickets
+        for (const ticketId of ticketIds) {
+          const ticket = await tx.ticket.findFirst({
+            where: { id: parseInt(ticketId) },
+            include: {
+              event: {
+                select: { created_by: true }
+              }
+            }
+          });
+
+          if (!ticket) {
+            throw new Error(`Ticket ${ticketId} not found`);
+          }
+
+          if (ticket.event.created_by !== userId) {
+            throw new Error(`Access denied for ticket ${ticketId}`);
+          }
+        }
+
+        // Delete all tickets
+        await tx.ticket.deleteMany({
+          where: {
+            id: {
+              in: ticketIds.map(id => parseInt(id))
+            }
+          }
+        });
+      });
+
+      return { count: ticketIds.length };
+    } catch (error) {
+      console.error('Error bulk deleting tickets:', error);
+      throw new Error(`Failed to bulk delete tickets: ${error.message}`);
+    }
+  }
+
+  /**
    * Get ticket statistics for an event
    */
   async getEventTicketStats(eventId, userId) {

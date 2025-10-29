@@ -112,6 +112,24 @@
             </div>
           </div>
 
+          <!-- Bulk Actions Toolbar -->
+          <div v-if="selectedTicketIds.length > 0" class="alert alert-info d-flex justify-content-between align-items-center mb-3">
+            <span>
+              <strong>{{ selectedTicketIds.length }}</strong> ticket(s) selected
+            </span>
+            <div>
+              <button class="btn btn-sm btn-primary me-2" @click="showBulkEditModal">
+                <i class="fas fa-edit"></i> Edit
+              </button>
+              <button class="btn btn-sm btn-danger me-2" @click="confirmBulkDelete">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+              <button class="btn btn-sm btn-secondary" @click="clearSelection">
+                <i class="fas fa-times"></i> Clear
+              </button>
+            </div>
+          </div>
+
           <!-- Tickets Loading -->
           <div v-if="isLoadingTickets" class="text-center">
             <div class="spinner-border" role="status">
@@ -166,6 +184,18 @@
               border-cell
               alternating
             >
+              <!-- Select Checkbox Column -->
+              <template #item-select="item">
+                <div class="text-center">
+                  <input 
+                    type="checkbox" 
+                    class="form-check-input" 
+                    :checked="selectedTicketIds.includes(item.id)"
+                    @change="toggleTicketSelection(item.id)"
+                  >
+                </div>
+              </template>
+
               <!-- Status Icon Column -->
               <template #item-statusIcon="{ checkedIn }">
                 <div class="text-center">
@@ -543,6 +573,195 @@
         </div>
       </div>
     </div>
+
+    <!-- Bulk Edit Modal -->
+    <div class="modal fade" id="bulkEditModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Bulk Edit {{ selectedTicketIds.length }} Ticket(s)</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> Fill in fields to update them, or check "Clear" to set them as empty.
+            </div>
+            <form @submit.prevent="saveBulkEdit">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="bulkLocation" class="form-label">Location</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      id="bulkLocation" 
+                      v-model="bulkEditForm.location"
+                      :disabled="bulkEditForm.clearLocation"
+                      placeholder="Leave empty to skip"
+                    >
+                    <div class="form-check mt-2">
+                      <input 
+                        type="checkbox" 
+                        class="form-check-input" 
+                        id="clearLocation" 
+                        v-model="bulkEditForm.clearLocation"
+                      >
+                      <label class="form-check-label text-muted" for="clearLocation">
+                        <small>Clear this field</small>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="bulkTable" class="form-label">Table</label>
+                    <input 
+                      type="number" 
+                      class="form-control" 
+                      id="bulkTable" 
+                      v-model="bulkEditForm.table" 
+                      min="1"
+                      :disabled="bulkEditForm.clearTable"
+                      placeholder="Leave empty to skip"
+                    >
+                    <div class="form-check mt-2">
+                      <input 
+                        type="checkbox" 
+                        class="form-check-input" 
+                        id="clearTable" 
+                        v-model="bulkEditForm.clearTable"
+                      >
+                      <label class="form-check-label text-muted" for="clearTable">
+                        <small>Clear this field</small>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="bulkOrder" class="form-label">Order</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="bulkOrder" 
+                  v-model="bulkEditForm.order"
+                  :disabled="bulkEditForm.clearOrder"
+                  placeholder="Leave empty to skip"
+                >
+                <div class="form-check mt-2">
+                  <input 
+                    type="checkbox" 
+                    class="form-check-input" 
+                    id="clearOrder" 
+                    v-model="bulkEditForm.clearOrder"
+                  >
+                  <label class="form-check-label text-muted" for="clearOrder">
+                    <small>Clear this field</small>
+                  </label>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="bulkBuyer" class="form-label">Buyer</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="bulkBuyer" 
+                  v-model="bulkEditForm.buyer"
+                  :disabled="bulkEditForm.clearBuyer"
+                  placeholder="Leave empty to skip"
+                >
+                <div class="form-check mt-2">
+                  <input 
+                    type="checkbox" 
+                    class="form-check-input" 
+                    id="clearBuyer" 
+                    v-model="bulkEditForm.clearBuyer"
+                  >
+                  <label class="form-check-label text-muted" for="clearBuyer">
+                    <small>Clear this field</small>
+                  </label>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="bulkBuyerDocument" class="form-label">Buyer Document</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="bulkBuyerDocument" 
+                  v-model="bulkEditForm.buyerDocument"
+                  :disabled="bulkEditForm.clearBuyerDocument"
+                  placeholder="Leave empty to skip"
+                >
+                <div class="form-check mt-2">
+                  <input 
+                    type="checkbox" 
+                    class="form-check-input" 
+                    id="clearBuyerDocument" 
+                    v-model="bulkEditForm.clearBuyerDocument"
+                  >
+                  <label class="form-check-label text-muted" for="clearBuyerDocument">
+                    <small>Clear this field</small>
+                  </label>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="bulkBuyerEmail" class="form-label">Buyer Email</label>
+                <input 
+                  type="email" 
+                  class="form-control" 
+                  id="bulkBuyerEmail" 
+                  v-model="bulkEditForm.buyerEmail"
+                  :disabled="bulkEditForm.clearBuyerEmail"
+                  placeholder="Leave empty to skip"
+                >
+                <div class="form-check mt-2">
+                  <input 
+                    type="checkbox" 
+                    class="form-check-input" 
+                    id="clearBuyerEmail" 
+                    v-model="bulkEditForm.clearBuyerEmail"
+                  >
+                  <label class="form-check-label text-muted" for="clearBuyerEmail">
+                    <small>Clear this field</small>
+                  </label>
+                </div>
+              </div>
+              <hr class="my-3">
+              <h6 class="mb-3">Check-in Status</h6>
+              <div class="mb-3">
+                <div class="form-check">
+                  <input 
+                    type="checkbox" 
+                    class="form-check-input" 
+                    id="bulkCheckedIn" 
+                    v-model="bulkEditForm.checkedIn"
+                  >
+                  <label class="form-check-label" for="bulkCheckedIn">
+                    Mark as Checked In
+                  </label>
+                </div>
+              </div>
+              <div class="mb-3" v-if="bulkEditForm.checkedIn">
+                <label for="bulkCheckedInAt" class="form-label">Checked In At</label>
+                <input 
+                  type="datetime-local" 
+                  class="form-control" 
+                  id="bulkCheckedInAt" 
+                  v-model="bulkEditForm.checkedInAt"
+                >
+                <div class="form-text">Leave empty to use current date/time</div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="saveBulkEdit" :disabled="isLoading">
+              {{ isLoading ? 'Updating...' : `Update ${selectedTicketIds.length} Ticket(s)` }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -573,6 +792,7 @@ const isEditingTicket = ref(false)
 const currentTicketId = ref(null)
 const isResending = ref(false)
 const searchValue = ref('')
+const selectedTicketIds = ref([])
 
 // Forms
 const ticketForm = reactive({
@@ -602,8 +822,26 @@ const batchForm = reactive({
   salesEndDateTime: ''
 })
 
+const bulkEditForm = reactive({
+  location: '',
+  table: '',
+  order: '',
+  buyer: '',
+  buyerDocument: '',
+  buyerEmail: '',
+  checkedIn: false,
+  checkedInAt: '',
+  clearLocation: false,
+  clearTable: false,
+  clearOrder: false,
+  clearBuyer: false,
+  clearBuyerDocument: false,
+  clearBuyerEmail: false
+})
+
 // DataTable headers configuration
 const headers = [
+  { text: '', value: 'select', sortable: false, width: 50 },
   { text: 'Status', value: 'statusIcon', sortable: false, width: 80 },
   { text: '#', value: 'identificationNumber', sortable: true, width: 80 },
   { text: 'Description', value: 'descriptionLocation', sortable: true },
@@ -618,6 +856,8 @@ const headers = [
 // Bootstrap modals
 let ticketModal = null
 let batchModal = null
+let bulkEditModal = null
+let bulkDeleteModal = null
 
 // Load event data
 const loadEvent = async () => {
@@ -927,6 +1167,161 @@ const preloadConfirmationUrls = async () => {
 const getCachedConfirmationUrl = (orderId) => {
   if (!orderId) return '#'
   return getConfirmationUrl(orderId)
+}
+
+// Toggle ticket selection
+const toggleTicketSelection = (ticketId) => {
+  const index = selectedTicketIds.value.indexOf(ticketId)
+  if (index > -1) {
+    selectedTicketIds.value.splice(index, 1)
+  } else {
+    selectedTicketIds.value.push(ticketId)
+  }
+}
+
+// Clear selection
+const clearSelection = () => {
+  selectedTicketIds.value = []
+}
+
+// Show bulk edit modal
+const showBulkEditModal = () => {
+  resetBulkEditForm()
+  
+  if (!bulkEditModal) {
+    bulkEditModal = new Modal(document.getElementById('bulkEditModal'))
+  }
+  bulkEditModal.show()
+}
+
+// Save bulk edit
+const saveBulkEdit = async () => {
+  try {
+    // Build updates object with only filled fields or cleared fields
+    const updates = {}
+    
+    // Handle location
+    if (bulkEditForm.clearLocation) {
+      updates.location = null
+    } else if (bulkEditForm.location) {
+      updates.location = bulkEditForm.location
+    }
+    
+    // Handle table
+    if (bulkEditForm.clearTable) {
+      updates.table = null
+    } else if (bulkEditForm.table) {
+      updates.table = parseInt(bulkEditForm.table)
+    }
+    
+    // Handle order
+    if (bulkEditForm.clearOrder) {
+      updates.order = null
+    } else if (bulkEditForm.order) {
+      updates.order = bulkEditForm.order
+    }
+    
+    // Handle buyer
+    if (bulkEditForm.clearBuyer) {
+      updates.buyer = null
+    } else if (bulkEditForm.buyer) {
+      updates.buyer = bulkEditForm.buyer
+    }
+    
+    // Handle buyerDocument
+    if (bulkEditForm.clearBuyerDocument) {
+      updates.buyerDocument = null
+    } else if (bulkEditForm.buyerDocument) {
+      updates.buyerDocument = bulkEditForm.buyerDocument
+    }
+    
+    // Handle buyerEmail
+    if (bulkEditForm.clearBuyerEmail) {
+      updates.buyerEmail = null
+    } else if (bulkEditForm.buyerEmail) {
+      updates.buyerEmail = bulkEditForm.buyerEmail
+    }
+    
+    // Handle checkedIn
+    if (bulkEditForm.checkedIn !== undefined) {
+      updates.checkedIn = bulkEditForm.checkedIn
+    }
+    
+    // Handle checkedInAt
+    if (bulkEditForm.checkedInAt) {
+      updates.checkedInAt = bulkEditForm.checkedInAt
+    }
+    
+    if (Object.keys(updates).length === 0) {
+      error.value = 'Please fill at least one field to update or check a "Clear" option'
+      return
+    }
+    
+    const result = await post('/api/tickets/bulk-edit', {
+      ticketIds: selectedTicketIds.value,
+      updates
+    })
+    
+    if (result.success) {
+      // Close modal and reload
+      if (bulkEditModal) bulkEditModal.hide()
+      resetBulkEditForm()
+      clearSelection()
+      await loadTickets()
+      await loadStats()
+      error.value = null
+    }
+  } catch (err) {
+    console.error('Failed to bulk edit tickets:', err)
+    error.value = err.message || 'Failed to bulk edit tickets'
+  }
+}
+
+// Confirm bulk delete
+const confirmBulkDelete = () => {
+  const count = selectedTicketIds.value.length
+  if (confirm(`Are you sure you want to delete ${count} ticket(s)? This action cannot be undone.`)) {
+    performBulkDelete()
+  }
+}
+
+// Perform bulk delete
+const performBulkDelete = async () => {
+  try {
+    const result = await post('/api/tickets/bulk-delete', {
+      ticketIds: selectedTicketIds.value
+    })
+    
+    if (result.success) {
+      clearSelection()
+      await loadTickets()
+      await loadStats()
+      error.value = null
+    }
+  } catch (err) {
+    console.error('Failed to bulk delete tickets:', err)
+    error.value = err.message || 'Failed to bulk delete tickets'
+  }
+}
+
+// Reset bulk edit form
+const resetBulkEditForm = () => {
+  Object.assign(bulkEditForm, {
+    location: '',
+    table: '',
+    order: '',
+    buyer: '',
+    buyerDocument: '',
+    buyerEmail: '',
+    checkedIn: false,
+    checkedInAt: '',
+    clearLocation: false,
+    clearTable: false,
+    clearOrder: false,
+    clearBuyer: false,
+    clearBuyerDocument: false,
+    clearBuyerEmail: false
+  })
 }
 
 // Load data on mount

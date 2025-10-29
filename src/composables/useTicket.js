@@ -177,6 +177,53 @@ export function useTicket() {
     }
   }
 
+  // Bulk update multiple tickets
+  const bulkUpdateTickets = async (ticketIds, updates) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const response = await post('/api/tickets/bulk-edit', {
+        ticketIds,
+        updates
+      })
+      
+      if (response.success) {
+        return response.tickets || []
+      } else {
+        throw new Error(response.message || 'Failed to bulk update tickets')
+      }
+    } catch (err) {
+      error.value = err.message || 'Failed to bulk update tickets'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Bulk delete multiple tickets
+  const bulkDeleteTickets = async (ticketIds) => {
+    try {
+      isLoading.value = true
+      error.value = null
+      
+      const response = await post('/api/tickets/bulk-delete', {
+        ticketIds
+      })
+      
+      if (response.success) {
+        return response
+      } else {
+        throw new Error(response.message || 'Failed to bulk delete tickets')
+      }
+    } catch (err) {
+      error.value = err.message || 'Failed to bulk delete tickets'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // Clear error
   const clearError = () => {
     error.value = null
@@ -196,6 +243,8 @@ export function useTicket() {
     updateTicket,
     deleteTicket,
     deleteTickets,
+    bulkUpdateTickets,
+    bulkDeleteTickets,
     clearError
   }
 }
