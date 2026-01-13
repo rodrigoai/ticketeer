@@ -124,3 +124,6 @@ login_example_app/
 Ticketeer/
 .vercel
 .env*.local
+
+# Database backups
+/backups/*.sql

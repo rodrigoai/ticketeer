@@ -48,6 +48,7 @@
           <p class="text-muted mb-1">{{ ticketData.ticket.buyerDocument || '000.000.000-00' }}</p>
           <p class="text-muted mb-1">{{ ticketData.ticket.location || 'Local' }}</p>
           <p class="text-muted mb-0">{{ ticketData.ticket.description }}</p>
+          <p class="text-muted fw-bold mb-0">Mesa: {{ ticketData.ticket.table }}</p>
         </div>
 
         <!-- Event Information -->
@@ -86,6 +87,7 @@
           <p class="text-muted mb-1">{{ ticketData.ticket.buyerDocument || '000.000.000-00' }}</p>
           <p class="text-muted mb-1">{{ ticketData.ticket.location || 'Local' }}</p>
           <p class="text-muted mb-0">{{ ticketData.ticket.description }}</p>
+          <p class="text-muted fw-bold mb-0">Mesa: {{ ticketData.ticket.table }}</p>
         </div>
 
         <!-- Event Information -->
