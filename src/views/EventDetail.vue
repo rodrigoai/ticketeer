@@ -208,6 +208,18 @@
                 </div>
               </template>
 
+              <!-- Accessory Status Icon Column -->
+              <template #item-accessoryIcon="{ accessoryCollected }">
+                <div class="text-center">
+                  <span v-if="accessoryCollected" class="text-primary" title="Kit Picked Up">
+                    <i class="fas fa-box fa-lg"></i>
+                  </span>
+                  <span v-else class="text-muted" title="Kit Not Picked Up">
+                    <i class="fas fa-box fa-lg" style="opacity: 0.3"></i>
+                  </span>
+                </div>
+              </template>
+
               <!-- Identification Number -->
               <template #item-identificationNumber="{ identificationNumber }">
                 <strong>{{ identificationNumber }}</strong>
@@ -426,9 +438,53 @@
                         v-model="ticketForm.checkedInAt"
                         :disabled="!ticketForm.checkedIn"
                       >
-                      <div class="form-text">Automatically set when checked in</div>
                     </div>
                   </div>
+                </div>
+
+                <!-- Accessory Pickup Status -->
+                <hr class="my-3">
+                <h6 class="mb-3">Accessory Pickup (Kit)</h6>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-check mb-3">
+                      <input 
+                        type="checkbox" 
+                        class="form-check-input" 
+                        id="ticketAccessoryCollected" 
+                        v-model="ticketForm.accessoryCollected"
+                        @change="onAccessoryCollectedChange"
+                      >
+                      <label class="form-check-label" for="ticketAccessoryCollected">
+                        <strong>Kit Picked Up</strong>
+                        <span v-if="ticketForm.accessoryCollected" class="text-primary ms-2">
+                          <i class="fas fa-box"></i>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label for="ticketAccessoryCollectedAt" class="form-label">Picked Up At</label>
+                      <input 
+                        type="datetime-local" 
+                        class="form-control" 
+                        id="ticketAccessoryCollectedAt" 
+                        v-model="ticketForm.accessoryCollectedAt"
+                        :disabled="!ticketForm.accessoryCollected"
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label for="ticketAccessoryCollectedNotes" class="form-label">Pickup Notes</label>
+                  <textarea 
+                    class="form-control" 
+                    id="ticketAccessoryCollectedNotes" 
+                    v-model="ticketForm.accessoryCollectedNotes" 
+                    rows="2"
+                    placeholder="Enter any observations about the kit pickup..."
+                  ></textarea>
                 </div>
               </div>
             </form>
@@ -751,6 +807,41 @@
                 >
                 <div class="form-text">Leave empty to use current date/time</div>
               </div>
+              <hr class="my-3">
+              <h6 class="mb-3">Accessory Pickup Status (Kit)</h6>
+              <div class="mb-3">
+                <div class="form-check">
+                  <input 
+                    type="checkbox" 
+                    class="form-check-input" 
+                    id="bulkAccessoryCollected" 
+                    v-model="bulkEditForm.accessoryCollected"
+                  >
+                  <label class="form-check-label" for="bulkAccessoryCollected">
+                    Mark as Kit Picked Up
+                  </label>
+                </div>
+              </div>
+              <div class="mb-3" v-if="bulkEditForm.accessoryCollected">
+                <label for="bulkAccessoryCollectedAt" class="form-label">Picked Up At</label>
+                <input 
+                  type="datetime-local" 
+                  class="form-control" 
+                  id="bulkAccessoryCollectedAt" 
+                  v-model="bulkEditForm.accessoryCollectedAt"
+                >
+                <div class="form-text">Leave empty to use current date/time</div>
+              </div>
+              <div class="mb-3">
+                <label for="bulkAccessoryCollectedNotes" class="form-label">Pickup Notes</label>
+                <textarea 
+                  class="form-control" 
+                  id="bulkAccessoryCollectedNotes" 
+                  v-model="bulkEditForm.accessoryCollectedNotes" 
+                  rows="2"
+                  placeholder="Leave empty to skip"
+                ></textarea>
+              </div>
             </form>
           </div>
           <div class="modal-footer">
@@ -806,7 +897,10 @@ const ticketForm = reactive({
   order: '',
   salesEndDateTime: '',
   checkedIn: false,
-  checkedInAt: ''
+  checkedInAt: '',
+  accessoryCollected: false,
+  accessoryCollectedAt: '',
+  accessoryCollectedNotes: ''
 })
 
 const batchForm = reactive({
@@ -831,6 +925,9 @@ const bulkEditForm = reactive({
   buyerEmail: '',
   checkedIn: false,
   checkedInAt: '',
+  accessoryCollected: false,
+  accessoryCollectedAt: '',
+  accessoryCollectedNotes: '',
   clearLocation: false,
   clearTable: false,
   clearOrder: false,
@@ -843,6 +940,7 @@ const bulkEditForm = reactive({
 const headers = [
   { text: '', value: 'select', sortable: false, width: 50 },
   { text: 'Status', value: 'statusIcon', sortable: false, width: 80 },
+  { text: 'Kit', value: 'accessoryIcon', sortable: false, width: 80 },
   { text: '#', value: 'identificationNumber', sortable: true, width: 80 },
   { text: 'Description', value: 'descriptionLocation', sortable: true },
   { text: 'Table', value: 'table', sortable: true, width: 100 },
@@ -952,7 +1050,10 @@ const editTicket = (ticket) => {
     order: ticket.order || '',
     salesEndDateTime: ticket.salesEndDateTime ? new Date(ticket.salesEndDateTime).toISOString().slice(0, 16) : '',
     checkedIn: ticket.checkedIn || false,
-    checkedInAt: ticket.checkedInAt ? new Date(ticket.checkedInAt).toISOString().slice(0, 16) : ''
+    checkedInAt: ticket.checkedInAt ? new Date(ticket.checkedInAt).toISOString().slice(0, 16) : '',
+    accessoryCollected: ticket.accessoryCollected || false,
+    accessoryCollectedAt: ticket.accessoryCollectedAt ? new Date(ticket.accessoryCollectedAt).toISOString().slice(0, 16) : '',
+    accessoryCollectedNotes: ticket.accessoryCollectedNotes || ''
   })
   
   if (!ticketModal) {
@@ -1074,7 +1175,10 @@ const resetTicketForm = () => {
     order: '',
     salesEndDateTime: '',
     checkedIn: false,
-    checkedInAt: ''
+    checkedInAt: '',
+    accessoryCollected: false,
+    accessoryCollectedAt: '',
+    accessoryCollectedNotes: ''
   })
 }
 
@@ -1101,6 +1205,17 @@ const onCheckedInChange = () => {
   } else if (!ticketForm.checkedIn) {
     // If unchecking, clear the check-in date
     ticketForm.checkedInAt = ''
+  }
+}
+
+// Handle accessory pickup status change
+const onAccessoryCollectedChange = () => {
+  if (ticketForm.accessoryCollected && !ticketForm.accessoryCollectedAt) {
+    // If marking as collected and no date set, set current date/time
+    ticketForm.accessoryCollectedAt = new Date().toISOString().slice(0, 16)
+  } else if (!ticketForm.accessoryCollected) {
+    // If unmarking, clear the pickup date
+    ticketForm.accessoryCollectedAt = ''
   }
 }
 
@@ -1252,6 +1367,21 @@ const saveBulkEdit = async () => {
       updates.checkedInAt = bulkEditForm.checkedInAt
     }
     
+    // Handle accessoryCollected
+    if (bulkEditForm.accessoryCollected !== undefined) {
+      updates.accessoryCollected = bulkEditForm.accessoryCollected
+    }
+    
+    // Handle accessoryCollectedAt
+    if (bulkEditForm.accessoryCollectedAt) {
+      updates.accessoryCollectedAt = bulkEditForm.accessoryCollectedAt
+    }
+
+    // Handle accessoryCollectedNotes
+    if (bulkEditForm.accessoryCollectedNotes) {
+      updates.accessoryCollectedNotes = bulkEditForm.accessoryCollectedNotes
+    }
+    
     if (Object.keys(updates).length === 0) {
       error.value = 'Please fill at least one field to update or check a "Clear" option'
       return
@@ -1315,6 +1445,9 @@ const resetBulkEditForm = () => {
     buyerEmail: '',
     checkedIn: false,
     checkedInAt: '',
+    accessoryCollected: false,
+    accessoryCollectedAt: '',
+    accessoryCollectedNotes: '',
     clearLocation: false,
     clearTable: false,
     clearOrder: false,

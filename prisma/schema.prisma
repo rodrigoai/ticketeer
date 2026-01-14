@@ -45,6 +45,9 @@ model Ticket {
   salesEndDateTime     DateTime?
   checkedIn            Boolean   @default(false)
   checkedInAt          DateTime?
+  accessoryCollected   Boolean   @default(false)
+  accessoryCollectedAt DateTime?
+  accessoryCollectedNotes String?
   event                Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, identificationNumber])

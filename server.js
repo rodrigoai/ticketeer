@@ -37,14 +37,14 @@ const requiresAuth = (req, res, next) => {
 // CORS middleware with custom logic for public vs private endpoints
 app.use((req, res, next) => {
   const origin = req.get('origin');
-  
+
   // Check if this is a public API endpoint
   if (req.path.startsWith('/api/public/')) {
     // For public endpoints, allow any origin
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    
+
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
       return res.status(200).end();
@@ -58,21 +58,21 @@ app.use((req, res, next) => {
       'http://127.0.0.1:3000',  // Alternative localhost format
       'http://192.168.15.138:5173'  // Network IP access
     ];
-    
+
     if (allowedOrigins.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Access-Control-Allow-Credentials', 'true');
     }
-    
+
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    
+
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
       return res.status(200).end();
     }
   }
-  
+
   next();
 });
 
@@ -90,8 +90,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Ticketeer SPA server is running!',
     timestamp: new Date().toISOString(),
     auth: {
@@ -139,13 +139,13 @@ app.get('/api/events', requiresAuth, async (req, res) => {
   try {
     const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
     const eventService = require('./services/eventService');
-    
+
     // Get events created by the authenticated user
-    const events = await eventService.getEvents({ 
+    const events = await eventService.getEvents({
       created_by: userId,
       status: 'active'
     });
-    
+
     // Map database fields to frontend expectations
     const mappedEvents = events.map(event => ({
       id: event.id,
@@ -162,7 +162,7 @@ app.get('/api/events', requiresAuth, async (req, res) => {
       created_at: event.created_at,
       updated_at: event.updated_at
     }));
-    
+
     res.json({
       success: true,
       events: mappedEvents,
@@ -185,12 +185,12 @@ app.post('/api/events', requiresAuth, async (req, res) => {
     console.log('🔍 DEBUG: Event creation request received');
     console.log('📥 Request body:', req.body);
     console.log('👤 Auth data:', req.auth);
-    
+
     const { title, description, date, venue, price } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
-    
+
     console.log('🎯 Extracted data:', { title, description, date, venue, price, userId });
-    
+
     // Validate required fields
     if (!title || !date || !venue) {
       console.log('❌ Validation failed - missing required fields');
@@ -200,10 +200,10 @@ app.post('/api/events', requiresAuth, async (req, res) => {
         message: 'Title, date, and venue are required'
       });
     }
-    
+
     console.log('🛠️ Loading event service...');
     const eventService = require('./services/eventService');
-    
+
     // Create event data for database
     const eventData = {
       name: title,
@@ -213,12 +213,12 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       venue: venue,
       created_by: userId
     };
-    
+
     console.log('📄 Event data for Prisma:', eventData);
     console.log('⚡ Calling eventService.createEvent...');
     const newEvent = await eventService.createEvent(eventData);
     console.log('✅ Event created successfully via service:', newEvent);
-    
+
     // Map response to frontend format
     const mappedEvent = {
       id: newEvent.id,
@@ -230,7 +230,7 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       price: parseFloat(price) || 0,
       created_by: newEvent.created_by
     };
-    
+
     res.status(201).json({
       success: true,
       event: mappedEvent,
@@ -252,11 +252,11 @@ app.get('/api/events/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     const eventService = require('./services/eventService');
-    
+
     const event = await eventService.getEventById(id, userId);
-    
+
     // Map database fields to frontend expectations
     const mappedEvent = {
       id: event.id,
@@ -272,7 +272,7 @@ app.get('/api/events/:id', requiresAuth, async (req, res) => {
       created_at: event.created_at,
       updated_at: event.updated_at
     };
-    
+
     res.json({
       success: true,
       event: mappedEvent,
@@ -294,9 +294,9 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
     const { id } = req.params;
     const { title, description, date, venue, price } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
-    
+
     const eventService = require('./services/eventService');
-    
+
     // Update event data
     const eventData = {
       name: title,
@@ -305,9 +305,9 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
       closing_datetime: date ? new Date(date) : undefined, // TODO: Add separate closing time
       venue: venue
     };
-    
+
     const updatedEvent = await eventService.updateEvent(id, eventData, userId);
-    
+
     // Map response to frontend format
     const mappedEvent = {
       id: updatedEvent.id,
@@ -319,7 +319,7 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
       price: parseFloat(price) || 0,
       created_by: updatedEvent.created_by
     };
-    
+
     res.json({
       success: true,
       event: mappedEvent,
@@ -341,11 +341,11 @@ app.delete('/api/events/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
-    
+
     const eventService = require('./services/eventService');
-    
+
     const deletedEvent = await eventService.deleteEvent(id, userId);
-    
+
     res.json({
       success: true,
       message: 'Event deleted successfully',
@@ -371,11 +371,11 @@ app.get('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const tickets = await ticketService.getTicketsByEvent(eventId, userId);
-    
+
     // Map tickets to frontend format
     const mappedTickets = tickets.map(ticket => ({
       id: ticket.id,
@@ -393,10 +393,13 @@ app.get('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       salesEndDateTime: ticket.salesEndDateTime,
       checkedIn: ticket.checkedIn,
       checkedInAt: ticket.checkedInAt,
+      accessoryCollected: ticket.accessoryCollected,
+      accessoryCollectedAt: ticket.accessoryCollectedAt,
+      accessoryCollectedNotes: ticket.accessoryCollectedNotes,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
-    
+
     res.json({
       success: true,
       tickets: mappedTickets,
@@ -419,11 +422,11 @@ app.get('/api/events/:eventId/tickets/stats', requiresAuth, async (req, res) => 
   try {
     const { eventId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const stats = await ticketService.getEventTicketStats(eventId, userId);
-    
+
     // Convert decimal strings to numbers for frontend
     const mappedStats = {
       totalTickets: stats.totalTickets,
@@ -436,7 +439,7 @@ app.get('/api/events/:eventId/tickets/stats', requiresAuth, async (req, res) => 
       totalConfirmed: stats.totalConfirmed || 0,
       totalRemaining: stats.totalRemaining || 0
     };
-    
+
     res.json({
       success: true,
       stats: mappedStats,
@@ -459,7 +462,7 @@ app.get('/api/events/:eventId/tickets/search', requiresAuth, async (req, res) =>
     const { eventId } = req.params;
     const { available } = req.query;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     // Validate available parameter if provided
     let availableOnly = false;
     if (available !== undefined) {
@@ -475,11 +478,11 @@ app.get('/api/events/:eventId/tickets/search', requiresAuth, async (req, res) =>
         });
       }
     }
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const tickets = await ticketService.searchTicketsByEvent(eventId, userId, availableOnly);
-    
+
     // Map tickets to frontend format (privacy-protected - no buyer information)
     const mappedTickets = tickets.map(ticket => ({
       id: ticket.id,
@@ -497,7 +500,7 @@ app.get('/api/events/:eventId/tickets/search', requiresAuth, async (req, res) =>
       updated_at: ticket.updated_at
       // Note: buyer, buyerDocument, buyerEmail are excluded for privacy
     }));
-    
+
     res.json({
       success: true,
       tickets: mappedTickets,
@@ -522,7 +525,7 @@ app.get('/api/events/:eventId/tickets/search', requiresAuth, async (req, res) =>
 app.get('/api/public/tickets/search', async (req, res) => {
   try {
     const { userId, eventId, available } = req.query;
-    
+
     // Validate required parameters
     if (!userId) {
       return res.status(400).json({
@@ -531,7 +534,7 @@ app.get('/api/public/tickets/search', async (req, res) => {
         message: 'userId parameter is required'
       });
     }
-    
+
     if (!eventId) {
       return res.status(400).json({
         success: false,
@@ -539,7 +542,7 @@ app.get('/api/public/tickets/search', async (req, res) => {
         message: 'eventId parameter is required'
       });
     }
-    
+
     // Validate eventId is a number
     if (isNaN(parseInt(eventId))) {
       return res.status(400).json({
@@ -548,7 +551,7 @@ app.get('/api/public/tickets/search', async (req, res) => {
         message: 'eventId must be a valid number'
       });
     }
-    
+
     // Validate available parameter if provided
     let availableOnly = false;
     if (available !== undefined) {
@@ -564,11 +567,11 @@ app.get('/api/public/tickets/search', async (req, res) => {
         });
       }
     }
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const result = await ticketService.searchTicketsPublic(eventId, userId, availableOnly);
-    
+
     // Map tickets to frontend format (privacy-protected - no buyer information)
     const mappedTickets = result.tickets.map(ticket => ({
       id: ticket.id,
@@ -582,11 +585,13 @@ app.get('/api/public/tickets/search', async (req, res) => {
       salesEndDateTime: ticket.salesEndDateTime,
       checkedIn: ticket.checkedIn,
       checkedInAt: ticket.checkedInAt,
+      accessoryCollected: ticket.accessoryCollected,
+      accessoryCollectedAt: ticket.accessoryCollectedAt,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
       // Note: buyer, buyerDocument, buyerEmail are excluded for privacy
     }));
-    
+
     res.json({
       success: true,
       tickets: mappedTickets,
@@ -599,7 +604,7 @@ app.get('/api/public/tickets/search', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in public ticket search:', error);
-    
+
     // Handle user not found error specifically
     if (error.message.includes('does not exist or has no events')) {
       return res.status(404).json({
@@ -608,7 +613,7 @@ app.get('/api/public/tickets/search', async (req, res) => {
         message: error.message
       });
     }
-    
+
     // Handle event not found error
     if (error.message.includes('Event not found or does not belong to user')) {
       return res.status(404).json({
@@ -617,7 +622,7 @@ app.get('/api/public/tickets/search', async (req, res) => {
         message: error.message
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to search tickets',
@@ -642,7 +647,7 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       buyerEmail,
       salesEndDateTime
     } = req.body;
-    
+
     // Validate required fields
     if (!description || price === undefined || price === null) {
       return res.status(400).json({
@@ -651,7 +656,7 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
         message: 'Description and price are required'
       });
     }
-    
+
     if (parseFloat(price) < 0) {
       return res.status(400).json({
         success: false,
@@ -659,9 +664,9 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
         message: 'Price must be a positive number'
       });
     }
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const ticketData = {
       description,
       location,
@@ -673,9 +678,9 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       buyerEmail,
       salesEndDateTime
     };
-    
+
     const newTicket = await ticketService.createTicket(eventId, ticketData, userId);
-    
+
     // Map response to frontend format
     const mappedTicket = {
       id: newTicket.id,
@@ -693,10 +698,13 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       salesEndDateTime: newTicket.salesEndDateTime,
       checkedIn: newTicket.checkedIn,
       checkedInAt: newTicket.checkedInAt,
+      accessoryCollected: newTicket.accessoryCollected,
+      accessoryCollectedAt: newTicket.accessoryCollectedAt,
+      accessoryCollectedNotes: newTicket.accessoryCollectedNotes,
       created_at: newTicket.created_at,
       updated_at: newTicket.updated_at
     };
-    
+
     res.status(201).json({
       success: true,
       ticket: mappedTicket,
@@ -730,7 +738,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       salesEndDateTime,
       quantity
     } = req.body;
-    
+
     // Validate required fields
     if (!description || price === undefined || price === null || !quantity) {
       return res.status(400).json({
@@ -739,7 +747,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
         message: 'Description, price, and quantity are required'
       });
     }
-    
+
     if (parseFloat(price) < 0) {
       return res.status(400).json({
         success: false,
@@ -747,7 +755,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
         message: 'Price must be a positive number'
       });
     }
-    
+
     if (parseInt(quantity) < 1 || parseInt(quantity) > 100) {
       return res.status(400).json({
         success: false,
@@ -755,9 +763,9 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
         message: 'Quantity must be between 1 and 100'
       });
     }
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const ticketData = {
       description,
       location,
@@ -769,9 +777,9 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       buyerEmail,
       salesEndDateTime
     };
-    
+
     const newTickets = await ticketService.createTicketsBatch(eventId, ticketData, parseInt(quantity), userId);
-    
+
     // Map response to frontend format
     const mappedTickets = newTickets.map(ticket => ({
       id: ticket.id,
@@ -792,7 +800,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
-    
+
     res.status(201).json({
       success: true,
       tickets: mappedTickets,
@@ -815,11 +823,11 @@ app.get('/api/tickets/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const ticket = await ticketService.getTicketById(id, userId);
-    
+
     // Map response to frontend format
     const mappedTicket = {
       id: ticket.id,
@@ -837,10 +845,13 @@ app.get('/api/tickets/:id', requiresAuth, async (req, res) => {
       salesEndDateTime: ticket.salesEndDateTime,
       checkedIn: ticket.checkedIn,
       checkedInAt: ticket.checkedInAt,
+      accessoryCollected: ticket.accessoryCollected,
+      accessoryCollectedAt: ticket.accessoryCollectedAt,
+      accessoryCollectedNotes: ticket.accessoryCollectedNotes,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     };
-    
+
     res.json({
       success: true,
       ticket: mappedTicket,
@@ -872,9 +883,12 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyerEmail,
       salesEndDateTime,
       checkedIn,
-      checkedInAt
+      checkedInAt,
+      accessoryCollected,
+      accessoryCollectedAt,
+      accessoryCollectedNotes
     } = req.body;
-    
+
     // Validate price if provided
     if (price !== undefined && price !== null && parseFloat(price) < 0) {
       return res.status(400).json({
@@ -883,9 +897,9 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
         message: 'Price must be a positive number'
       });
     }
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const ticketData = {
       description,
       location,
@@ -897,11 +911,14 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyerEmail,
       salesEndDateTime,
       checkedIn,
-      checkedInAt
+      checkedInAt,
+      accessoryCollected,
+      accessoryCollectedAt,
+      accessoryCollectedNotes
     };
-    
+
     const updatedTicket = await ticketService.updateTicket(id, ticketData, userId);
-    
+
     // Map response to frontend format
     const mappedTicket = {
       id: updatedTicket.id,
@@ -919,10 +936,13 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       salesEndDateTime: updatedTicket.salesEndDateTime,
       checkedIn: updatedTicket.checkedIn,
       checkedInAt: updatedTicket.checkedInAt,
+      accessoryCollected: updatedTicket.accessoryCollected,
+      accessoryCollectedAt: updatedTicket.accessoryCollectedAt,
+      accessoryCollectedNotes: updatedTicket.accessoryCollectedNotes,
       created_at: updatedTicket.created_at,
       updated_at: updatedTicket.updated_at
     };
-    
+
     res.json({
       success: true,
       ticket: mappedTicket,
@@ -944,13 +964,13 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     const ticketService = require('./services/ticketService');
     const emailService = require('./services/emailService');
-    
+
     // Get ticket details
     const ticket = await ticketService.getTicketById(id, userId);
-    
+
     // Verify ticket has buyer information
     if (!ticket.buyer || !ticket.buyerEmail) {
       return res.status(400).json({
@@ -959,11 +979,11 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
         message: 'Ticket must have buyer name and email information'
       });
     }
-    
+
     // Get event details
     const eventService = require('./services/eventService');
     const event = await eventService.getEventById(ticket.eventId, userId);
-    
+
     // Send QR code email
     const emailResult = await emailService.sendTicketQrCodeEmail(
       ticket.buyerEmail,
@@ -981,7 +1001,7 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
       },
       userId
     );
-    
+
     res.json({
       success: true,
       message: 'Email resent successfully',
@@ -992,16 +1012,16 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error resending email:', error);
-    
-    if (error.message.includes('Ticket not found') || 
-        error.message.includes('access denied')) {
+
+    if (error.message.includes('Ticket not found') ||
+      error.message.includes('access denied')) {
       return res.status(404).json({
         success: false,
         error: 'Ticket not found',
         message: 'Ticket not found or you do not have access to it'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to resend email',
@@ -1015,11 +1035,11 @@ app.delete('/api/tickets/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const deletedTicket = await ticketService.deleteTicket(id, userId);
-    
+
     res.json({
       success: true,
       message: 'Ticket deleted successfully',
@@ -1041,7 +1061,7 @@ app.delete('/api/tickets/batch', requiresAuth, async (req, res) => {
   try {
     const { ticketIds } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -1049,11 +1069,11 @@ app.delete('/api/tickets/batch', requiresAuth, async (req, res) => {
         message: 'ticketIds array is required and must not be empty'
       });
     }
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const result = await ticketService.deleteTickets(ticketIds, userId);
-    
+
     res.json({
       success: true,
       message: `${result.count} tickets deleted successfully`,
@@ -1075,7 +1095,7 @@ app.post('/api/tickets/bulk-edit', requiresAuth, async (req, res) => {
   try {
     const { ticketIds, updates } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -1083,7 +1103,7 @@ app.post('/api/tickets/bulk-edit', requiresAuth, async (req, res) => {
         message: 'ticketIds array is required and must not be empty'
       });
     }
-    
+
     if (!updates || typeof updates !== 'object') {
       return res.status(400).json({
         success: false,
@@ -1091,11 +1111,11 @@ app.post('/api/tickets/bulk-edit', requiresAuth, async (req, res) => {
         message: 'updates object is required'
       });
     }
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const updatedTickets = await ticketService.bulkUpdateTickets(ticketIds, updates, userId);
-    
+
     // Map response to frontend format
     const mappedTickets = updatedTickets.map(ticket => ({
       id: ticket.id,
@@ -1116,7 +1136,7 @@ app.post('/api/tickets/bulk-edit', requiresAuth, async (req, res) => {
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
-    
+
     res.json({
       success: true,
       tickets: mappedTickets,
@@ -1139,7 +1159,7 @@ app.post('/api/tickets/bulk-delete', requiresAuth, async (req, res) => {
   try {
     const { ticketIds } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -1147,11 +1167,11 @@ app.post('/api/tickets/bulk-delete', requiresAuth, async (req, res) => {
         message: 'ticketIds array is required and must not be empty'
       });
     }
-    
+
     const ticketService = require('./services/ticketService');
-    
+
     const result = await ticketService.bulkDeleteTickets(ticketIds, userId);
-    
+
     res.json({
       success: true,
       message: `${result.count} tickets deleted successfully`,
@@ -1179,23 +1199,23 @@ app.get('/api/dashboard/stats', requiresAuth, async (req, res) => {
     const eventService = require('./services/eventService');
     const { PrismaClient } = require('./generated/prisma');
     const prisma = new PrismaClient();
-    
+
     // Get user's events count (active only)
     const totalActiveEvents = await prisma.event.count({
-      where: { 
+      where: {
         status: 'active',
-        created_by: userId 
+        created_by: userId
       }
     });
-    
+
     // Get total tickets sold for user's events (tickets with orders)
     const userEvents = await prisma.event.findMany({
       where: { created_by: userId },
       select: { id: true }
     });
-    
+
     const userEventIds = userEvents.map(event => event.id);
-    
+
     const totalTicketsSold = await prisma.ticket.count({
       where: {
         eventId: { in: userEventIds },
@@ -1207,7 +1227,7 @@ app.get('/api/dashboard/stats', requiresAuth, async (req, res) => {
         }
       }
     });
-    
+
     // Get total revenue from sold tickets for user's events
     const revenueStats = await prisma.ticket.aggregate({
       where: {
@@ -1223,7 +1243,7 @@ app.get('/api/dashboard/stats', requiresAuth, async (req, res) => {
         price: true
       }
     });
-    
+
     // Get user's upcoming events count
     const upcomingEvents = await prisma.event.count({
       where: {
@@ -1234,9 +1254,9 @@ app.get('/api/dashboard/stats', requiresAuth, async (req, res) => {
         }
       }
     });
-    
+
     await prisma.$disconnect();
-    
+
     res.json({
       success: true,
       stats: {
@@ -1264,15 +1284,15 @@ app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
     const userId = req.auth.payload?.sub || req.auth.sub;
     const { PrismaClient } = require('./generated/prisma');
     const prisma = new PrismaClient();
-    
+
     // Get user's events
     const userEvents = await prisma.event.findMany({
       where: { created_by: userId },
       select: { id: true }
     });
-    
+
     const userEventIds = userEvents.map(event => event.id);
-    
+
     // Get last 10 tickets that have been purchased for user's events
     const recentPurchases = await prisma.ticket.findMany({
       where: {
@@ -1299,7 +1319,7 @@ app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
       },
       take: 10
     });
-    
+
     // Map to safe format (show buyer information since user owns the events)
     const userPurchases = recentPurchases.map(ticket => ({
       id: ticket.id,
@@ -1317,9 +1337,9 @@ app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
       buyerDocument: ticket.buyerDocument,
       purchaseDate: ticket.updated_at
     }));
-    
+
     await prisma.$disconnect();
-    
+
     res.json({
       success: true,
       purchases: userPurchases,
@@ -1345,17 +1365,17 @@ app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
 app.get('/api/public/orders/:hash', async (req, res) => {
   try {
     const { hash } = req.params;
-    
+
     const orderService = require('./services/orderService');
     const orderDetails = await orderService.getOrderByHash(hash);
-    
+
     res.json({
       success: true,
       order: orderDetails
     });
   } catch (error) {
     console.error('Error fetching order by hash:', error);
-    
+
     if (error.message.includes('Invalid hash format')) {
       return res.status(400).json({
         success: false,
@@ -1363,7 +1383,7 @@ app.get('/api/public/orders/:hash', async (req, res) => {
         message: 'The provided hash is not valid'
       });
     }
-    
+
     if (error.message.includes('Order not found')) {
       return res.status(404).json({
         success: false,
@@ -1371,7 +1391,7 @@ app.get('/api/public/orders/:hash', async (req, res) => {
         message: 'No order found for the provided hash'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to fetch order',
@@ -1385,7 +1405,7 @@ app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res)
   try {
     const { orderId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     if (!orderId || typeof orderId !== 'string') {
       return res.status(400).json({
         success: false,
@@ -1393,10 +1413,10 @@ app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res)
         message: 'Order ID is required and must be a string'
       });
     }
-    
+
     const orderService = require('./services/orderService');
     const hash = await orderService.getConfirmationHashByOrderId(orderId, userId);
-    
+
     res.json({
       success: true,
       hash: hash,
@@ -1404,7 +1424,7 @@ app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res)
     });
   } catch (error) {
     console.error('Error fetching confirmation hash:', error);
-    
+
     if (error.message.includes('Order not found')) {
       return res.status(404).json({
         success: false,
@@ -1412,7 +1432,7 @@ app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res)
         message: 'No order found with the provided ID or you do not have access to it'
       });
     }
-    
+
     if (error.message.includes('Access denied')) {
       return res.status(403).json({
         success: false,
@@ -1420,7 +1440,7 @@ app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res)
         message: 'You do not have permission to access this order'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to get confirmation hash',
@@ -1434,7 +1454,7 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
   try {
     const { hash } = req.params;
     const { buyers } = req.body;
-    
+
     if (!buyers || !Array.isArray(buyers)) {
       return res.status(400).json({
         success: false,
@@ -1442,10 +1462,10 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
         message: 'Buyers data must be provided as an array'
       });
     }
-    
+
     const orderService = require('./services/orderService');
     const result = await orderService.saveBuyersForOrder(hash, buyers);
-    
+
     res.json({
       success: true,
       message: result.message,
@@ -1454,7 +1474,7 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
     });
   } catch (error) {
     console.error('Error saving buyers for order:', error);
-    
+
     if (error.message.includes('Invalid hash format')) {
       return res.status(400).json({
         success: false,
@@ -1462,7 +1482,7 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
         message: 'The provided hash is not valid'
       });
     }
-    
+
     if (error.message.includes('Order not found')) {
       return res.status(404).json({
         success: false,
@@ -1470,7 +1490,7 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
         message: 'No order found for the provided hash'
       });
     }
-    
+
     if (error.message.includes('already been completed')) {
       return res.status(409).json({
         success: false,
@@ -1478,17 +1498,17 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
         message: 'This order has already been completed and cannot be modified'
       });
     }
-    
-    if (error.message.includes('All fields are required') || 
-        error.message.includes('Invalid') || 
-        error.message.includes('already used')) {
+
+    if (error.message.includes('All fields are required') ||
+      error.message.includes('Invalid') ||
+      error.message.includes('already used')) {
       return res.status(400).json({
         success: false,
         error: 'Validation failed',
         message: error.message
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to save buyers',
@@ -1505,7 +1525,7 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
 app.get('/api/public/checkin/:hash', async (req, res) => {
   try {
     const { hash } = req.params;
-    
+
     if (!hash || typeof hash !== 'string') {
       return res.status(400).json({
         success: false,
@@ -1513,23 +1533,23 @@ app.get('/api/public/checkin/:hash', async (req, res) => {
         message: 'Hash parameter is required and must be a string'
       });
     }
-    
+
     const checkinService = require('./services/checkinService');
     const status = await checkinService.getCheckinStatus(hash);
-    
+
     res.json(status);
   } catch (error) {
     console.error('Error getting check-in status:', error);
-    
-    if (error.message.includes('Invalid hash format') || 
-        error.message.includes('Ticket not found')) {
+
+    if (error.message.includes('Invalid hash format') ||
+      error.message.includes('Ticket not found')) {
       return res.status(404).json({
         success: false,
         error: 'Ticket not found',
         message: 'No ticket found for the provided hash'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to get check-in status',
@@ -1542,7 +1562,7 @@ app.get('/api/public/checkin/:hash', async (req, res) => {
 app.post('/api/public/checkin/:hash', async (req, res) => {
   try {
     const { hash } = req.params;
-    
+
     if (!hash || typeof hash !== 'string') {
       return res.status(400).json({
         success: false,
@@ -1550,28 +1570,28 @@ app.post('/api/public/checkin/:hash', async (req, res) => {
         message: 'Hash parameter is required and must be a string'
       });
     }
-    
+
     const checkinService = require('./services/checkinService');
     const result = await checkinService.processCheckin(hash);
-    
+
     // Handle already checked in case
     if (!result.success && result.alreadyCheckedIn) {
       return res.status(409).json(result);
     }
-    
+
     res.json(result);
   } catch (error) {
     console.error('Error processing check-in:', error);
-    
-    if (error.message.includes('Invalid hash format') || 
-        error.message.includes('Ticket not found')) {
+
+    if (error.message.includes('Invalid hash format') ||
+      error.message.includes('Ticket not found')) {
       return res.status(404).json({
         success: false,
         error: 'Ticket not found',
         message: 'No ticket found for the provided hash'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to process check-in',
@@ -1585,26 +1605,26 @@ app.get('/api/events/:eventId/checkin/stats', requiresAuth, async (req, res) => 
   try {
     const { eventId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     const checkinService = require('./services/checkinService');
     const stats = await checkinService.getEventCheckinStats(eventId, userId);
-    
+
     res.json({
       ...stats,
       user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
     });
   } catch (error) {
     console.error('Error getting check-in stats:', error);
-    
-    if (error.message.includes('Event not found') || 
-        error.message.includes('access denied')) {
+
+    if (error.message.includes('Event not found') ||
+      error.message.includes('access denied')) {
       return res.status(404).json({
         success: false,
         error: 'Event not found',
         message: 'Event not found or you do not have access to it'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to get check-in statistics',
@@ -1618,10 +1638,10 @@ app.get('/api/tickets/:ticketId/checkin-hash', requiresAuth, async (req, res) =>
   try {
     const { ticketId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    
+
     const checkinService = require('./services/checkinService');
     const hash = await checkinService.generateCheckinHash(ticketId, userId);
-    
+
     res.json({
       success: true,
       ticketId: parseInt(ticketId),
@@ -1631,19 +1651,172 @@ app.get('/api/tickets/:ticketId/checkin-hash', requiresAuth, async (req, res) =>
     });
   } catch (error) {
     console.error('Error generating check-in hash:', error);
-    
-    if (error.message.includes('Ticket not found') || 
-        error.message.includes('access denied')) {
+
+    if (error.message.includes('Ticket not found') ||
+      error.message.includes('access denied')) {
       return res.status(404).json({
         success: false,
         error: 'Ticket not found',
         message: 'Ticket not found or you do not have access to it'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to generate check-in hash',
+      message: error.message
+    });
+  }
+});
+
+// ==========================================
+// ACCESSORY PICKUP API ENDPOINTS
+// ==========================================
+
+// Get accessory pickup status for a ticket by hash (public endpoint)
+app.get('/api/public/accessory-pickup/:hash', async (req, res) => {
+  try {
+    const { hash } = req.params;
+
+    if (!hash || typeof hash !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid hash format',
+        message: 'Hash parameter is required and must be a string'
+      });
+    }
+
+    const accessoryPickupService = require('./services/accessoryPickupService');
+    const status = await accessoryPickupService.getPickupStatus(hash);
+
+    res.json(status);
+  } catch (error) {
+    console.error('Error getting accessory pickup status:', error);
+
+    if (error.message.includes('Invalid hash format') ||
+      error.message.includes('Ticket not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'No ticket found for the provided hash'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get accessory pickup status',
+      message: error.message
+    });
+  }
+});
+
+// Process accessory pickup (public endpoint)
+app.post('/api/public/accessory-pickup/:hash', async (req, res) => {
+  try {
+    const { hash } = req.params;
+    const { notes } = req.body;
+
+    if (!hash || typeof hash !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid hash format',
+        message: 'Hash parameter is required and must be a string'
+      });
+    }
+
+    const accessoryPickupService = require('./services/accessoryPickupService');
+    const result = await accessoryPickupService.processPickup(hash, notes);
+
+    // Handle already collected case
+    if (!result.success && result.alreadyCollected) {
+      return res.status(409).json(result);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error processing accessory pickup:', error);
+
+    if (error.message.includes('Invalid hash format') ||
+      error.message.includes('Ticket not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'No ticket found for the provided hash'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process accessory pickup',
+      message: error.message
+    });
+  }
+});
+
+// Get accessory pickup statistics for an event (JWT authenticated)
+app.get('/api/events/:eventId/accessory-pickup/stats', requiresAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+
+    const accessoryPickupService = require('./services/accessoryPickupService');
+    const stats = await accessoryPickupService.getEventPickupStats(eventId, userId);
+
+    res.json({
+      ...stats,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error getting accessory pickup stats:', error);
+
+    if (error.message.includes('Event not found') ||
+      error.message.includes('access denied')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found',
+        message: 'Event not found or you do not have access to it'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get accessory pickup statistics',
+      message: error.message
+    });
+  }
+});
+
+// Generate accessory pickup hash for a ticket (JWT authenticated - for testing)
+app.get('/api/tickets/:ticketId/accessory-pickup-hash', requiresAuth, async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+
+    const accessoryPickupService = require('./services/accessoryPickupService');
+    const hash = await accessoryPickupService.generatePickupHash(ticketId, userId);
+
+    res.json({
+      success: true,
+      ticketId: parseInt(ticketId),
+      hash: hash,
+      pickupUrl: `${req.protocol}://${req.get('host')}/accessory-pickup/${hash}`,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error generating accessory pickup hash:', error);
+
+    if (error.message.includes('Ticket not found') ||
+      error.message.includes('access denied')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'Ticket not found or you do not have access to it'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate accessory pickup hash',
       message: error.message
     });
   }
@@ -1658,9 +1831,9 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const webhookPayload = req.body;
-    
+
     console.log(`Received checkout webhook for userId: ${userId}`, JSON.stringify(webhookPayload, null, 2));
-    
+
     // Validate userId parameter
     if (!userId || typeof userId !== 'string') {
       return res.status(400).json({
@@ -1669,17 +1842,17 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
         message: 'userId parameter is required and must be a string'
       });
     }
-    
+
     // Validate that the userId exists in the database by checking if they have any events
     const { PrismaClient } = require('./generated/prisma');
     const prisma = new PrismaClient();
-    
+
     try {
       const userExists = await prisma.event.findFirst({
         where: { created_by: userId },
         select: { id: true }
       });
-      
+
       if (!userExists) {
         await prisma.$disconnect();
         return res.status(404).json({
@@ -1688,7 +1861,7 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
           message: `User with ID '${userId}' does not exist or has no events`
         });
       }
-      
+
       await prisma.$disconnect();
     } catch (dbError) {
       console.error('Database error during user validation:', dbError);
@@ -1699,7 +1872,7 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
         message: 'Failed to validate user existence'
       });
     }
-    
+
     // Validate basic webhook structure
     if (!webhookPayload || !webhookPayload.event) {
       return res.status(400).json({
@@ -1708,7 +1881,7 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
         message: 'Missing event field in webhook payload'
       });
     }
-    
+
     // Only process 'order.paid' events
     if (webhookPayload.event !== 'order.paid') {
       console.log(`Ignoring webhook event: ${webhookPayload.event}`);
@@ -1717,14 +1890,14 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
         message: `Webhook event '${webhookPayload.event}' acknowledged but not processed`
       });
     }
-    
+
     const ticketService = require('./services/ticketService');
     console.log("userID: ", userId);
     // Process the webhook with the validated userId
     const result = await ticketService.processCheckoutWebhook(webhookPayload, userId);
-    
+
     console.log('Webhook processed successfully:', result);
-    
+
     res.json({
       success: true,
       message: result.message,
@@ -1755,12 +1928,12 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
 app.get('*', (req, res, next) => {
   // Don't serve SPA for API routes that return 404
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ 
+    return res.status(404).json({
       error: 'API route not found',
       message: 'The requested API endpoint does not exist'
     });
   }
-  
+
   // Serve the Vue SPA index.html for all routes (including /confirmation/:hash)
   // Vue Router will handle client-side routing
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
@@ -1769,7 +1942,7 @@ app.get('*', (req, res, next) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
     message: 'Something went wrong on the server'
   });

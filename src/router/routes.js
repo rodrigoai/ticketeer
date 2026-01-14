@@ -5,12 +5,14 @@ import EventDetail from '@/views/EventDetail.vue'
 import Newpro from '@/views/Newpro.vue'
 import BuyerConfirmation from '@/views/BuyerConfirmation.vue'
 import TicketCheckin from '@/views/TicketCheckin.vue'
+import TicketAccessoryPickup from '@/views/TicketAccessoryPickup.vue'
 import QRCodeCheckin from '@/views/QRCodeCheckin.vue'
+import QRCodeAccessoryPickup from '@/views/QRCodeAccessoryPickup.vue'
 
 import { createAuthGuard } from "@auth0/auth0-vue";
 // Export function that takes app instance to create routes with auth guards
 export const createRoutes = (app) => {
-  
+
   const authGuard = createAuthGuard(app);
 
   return [
@@ -59,9 +61,22 @@ export const createRoutes = (app) => {
       // Note: No authGuard - check-in pages should be public
     },
     {
+      path: '/accessory-pickup/:hash',
+      name: 'TicketAccessoryPickup',
+      component: TicketAccessoryPickup,
+      props: true
+      // Note: No authGuard - accessory pickup pages should be public
+    },
+    {
       path: '/qr-checkin',
       name: 'QRCodeCheckin',
       component: QRCodeCheckin,
+      beforeEnter: authGuard
+    },
+    {
+      path: '/qr-accessory-pickup',
+      name: 'QRCodeAccessoryPickup',
+      component: QRCodeAccessoryPickup,
       beforeEnter: authGuard
     }
   ];

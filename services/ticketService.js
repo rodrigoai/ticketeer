@@ -35,9 +35,9 @@ class TicketService {
 
       // Verify event exists and user owns it
       const event = await prisma.event.findFirst({
-        where: { 
-          id: parseInt(eventId), 
-          created_by: userId 
+        where: {
+          id: parseInt(eventId),
+          created_by: userId
         }
       });
 
@@ -50,8 +50,8 @@ class TicketService {
         // Increment the counter and get the new value
         const updatedEvent = await tx.event.update({
           where: { id: parseInt(eventId) },
-          data: { 
-            nextTicketNumber: { increment: 1 } 
+          data: {
+            nextTicketNumber: { increment: 1 }
           },
           select: { nextTicketNumber: true }
         });
@@ -116,9 +116,9 @@ class TicketService {
 
       // Verify event exists and user owns it
       const event = await prisma.event.findFirst({
-        where: { 
-          id: parseInt(eventId), 
-          created_by: userId 
+        where: {
+          id: parseInt(eventId),
+          created_by: userId
         }
       });
 
@@ -131,8 +131,8 @@ class TicketService {
         // Increment the counter by quantity and get the new value
         const updatedEvent = await tx.event.update({
           where: { id: parseInt(eventId) },
-          data: { 
-            nextTicketNumber: { increment: quantity } 
+          data: {
+            nextTicketNumber: { increment: quantity }
           },
           select: { nextTicketNumber: true }
         });
@@ -181,9 +181,9 @@ class TicketService {
     try {
       // Verify event exists and user owns it
       const event = await prisma.event.findFirst({
-        where: { 
-          id: parseInt(eventId), 
-          created_by: userId 
+        where: {
+          id: parseInt(eventId),
+          created_by: userId
         }
       });
 
@@ -209,8 +209,8 @@ class TicketService {
   async getTicketById(ticketId, userId) {
     try {
       const ticket = await prisma.ticket.findFirst({
-        where: { 
-          id: parseInt(ticketId) 
+        where: {
+          id: parseInt(ticketId)
         },
         include: {
           event: {
@@ -251,7 +251,10 @@ class TicketService {
         buyerEmail,
         salesEndDateTime,
         checkedIn,
-        checkedInAt
+        checkedInAt,
+        accessoryCollected,
+        accessoryCollectedAt,
+        accessoryCollectedNotes
       } = ticketData;
 
       // Get existing ticket and verify ownership
@@ -278,6 +281,9 @@ class TicketService {
       if (salesEndDateTime !== undefined) updateData.salesEndDateTime = salesEndDateTime ? new Date(salesEndDateTime) : null;
       if (checkedIn !== undefined) updateData.checkedIn = Boolean(checkedIn);
       if (checkedInAt !== undefined) updateData.checkedInAt = checkedInAt ? new Date(checkedInAt) : null;
+      if (accessoryCollected !== undefined) updateData.accessoryCollected = Boolean(accessoryCollected);
+      if (accessoryCollectedAt !== undefined) updateData.accessoryCollectedAt = accessoryCollectedAt ? new Date(accessoryCollectedAt) : null;
+      if (accessoryCollectedNotes !== undefined) updateData.accessoryCollectedNotes = accessoryCollectedNotes || null;
 
       const updatedTicket = await prisma.ticket.update({
         where: { id: parseInt(ticketId) },
@@ -325,10 +331,10 @@ class TicketService {
       }
 
       const deletedTickets = await prisma.ticket.deleteMany({
-        where: { 
-          id: { 
-            in: ticketIds.map(id => parseInt(id)) 
-          } 
+        where: {
+          id: {
+            in: ticketIds.map(id => parseInt(id))
+          }
         }
       });
 
@@ -361,7 +367,10 @@ class TicketService {
         buyerDocument,
         buyerEmail,
         checkedIn,
-        checkedInAt
+        checkedInAt,
+        accessoryCollected,
+        accessoryCollectedAt,
+        accessoryCollectedNotes
       } = updateData;
 
       // Build update object with only provided fields
@@ -374,6 +383,9 @@ class TicketService {
       if (buyerEmail !== undefined) updates.buyerEmail = buyerEmail || null;
       if (checkedIn !== undefined) updates.checkedIn = Boolean(checkedIn);
       if (checkedInAt !== undefined) updates.checkedInAt = checkedInAt ? new Date(checkedInAt) : null;
+      if (accessoryCollected !== undefined) updates.accessoryCollected = Boolean(accessoryCollected);
+      if (accessoryCollectedAt !== undefined) updates.accessoryCollectedAt = accessoryCollectedAt ? new Date(accessoryCollectedAt) : null;
+      if (accessoryCollectedNotes !== undefined) updates.accessoryCollectedNotes = accessoryCollectedNotes || null;
 
       // If no fields to update, return early
       if (Object.keys(updates).length === 0) {
@@ -455,9 +467,9 @@ class TicketService {
     try {
       // Verify event exists and user owns it
       const event = await prisma.event.findFirst({
-        where: { 
-          id: parseInt(eventId), 
-          created_by: userId 
+        where: {
+          id: parseInt(eventId),
+          created_by: userId
         }
       });
 
@@ -476,7 +488,7 @@ class TicketService {
 
       // Count tickets that are checked in
       const checkedInCount = await prisma.ticket.count({
-        where: { 
+        where: {
           eventId: parseInt(eventId),
           checkedIn: true
         }
@@ -484,7 +496,7 @@ class TicketService {
 
       // Count tickets that are sold (have order field filled)
       const soldCount = await prisma.ticket.count({
-        where: { 
+        where: {
           eventId: parseInt(eventId),
           AND: [
             { order: { not: null } },
@@ -495,7 +507,7 @@ class TicketService {
 
       // Count tickets with complete buyer information
       const confirmedCount = await prisma.ticket.count({
-        where: { 
+        where: {
           eventId: parseInt(eventId),
           AND: [
             { buyer: { not: null } },
@@ -510,7 +522,7 @@ class TicketService {
 
       // Count tickets that are remaining (not sold yet - no order field)
       const remainingCount = await prisma.ticket.count({
-        where: { 
+        where: {
           eventId: parseInt(eventId),
           OR: [
             { order: null },
@@ -547,9 +559,9 @@ class TicketService {
     try {
       // Verify event exists and user owns it
       const event = await prisma.event.findFirst({
-        where: { 
-          id: parseInt(eventId), 
-          created_by: userId 
+        where: {
+          id: parseInt(eventId),
+          created_by: userId
         }
       });
 
@@ -564,7 +576,7 @@ class TicketService {
 
       if (availableOnly) {
         const currentDateTime = new Date();
-        
+
         whereClause.AND = [
           // No order field filled (unsold)
           {
@@ -638,7 +650,7 @@ class TicketService {
 
       const { payload } = webhookPayload;
       const { meta, customer, id: orderId, items } = payload;
-      
+
       // Validate required fields
       if (!orderId) {
         throw new Error('Invalid webhook payload: missing order ID');
@@ -648,20 +660,20 @@ class TicketService {
       let decodedEventId = null;
       console.log('🔍 [DEBUG] Starting eventId processing...');
       console.log('🔍 [DEBUG] meta object:', JSON.stringify(meta, null, 2));
-      
+
       if (meta && meta.eventId) {
         try {
           // Decode Base64 eventId
           const base64EventId = meta.eventId;
           decodedEventId = Buffer.from(base64EventId, 'base64').toString('utf8');
           console.log(`🔍 [DEBUG] Decoded eventId: ${decodedEventId} (from Base64: ${base64EventId})`);
-          
+
           // Validate that decoded eventId is a valid number
           const eventIdNumber = parseInt(decodedEventId, 10);
           if (isNaN(eventIdNumber) || eventIdNumber <= 0) {
             throw new Error(`Invalid decoded eventId: ${decodedEventId}`);
           }
-          
+
           decodedEventId = eventIdNumber;
           console.log(`🔍 [DEBUG] Final decodedEventId: ${decodedEventId} (type: ${typeof decodedEventId})`);
         } catch (decodeError) {
@@ -680,7 +692,7 @@ class TicketService {
           const base64TableNumber = meta.tableNumber;
           const decodedTableNumber = Buffer.from(base64TableNumber, 'base64').toString('utf8');
           console.log(`🔍 [DEBUG] Decoded tableNumber: ${decodedTableNumber} (from Base64: ${base64TableNumber})`);
-          
+
           tableNumber = parseInt(decodedTableNumber, 10);
           if (isNaN(tableNumber)) {
             throw new Error(`Invalid decoded table number: ${decodedTableNumber}`);
@@ -706,14 +718,14 @@ class TicketService {
             created_by: true
           }
         });
-        
+
         console.log(`🔍 [DEBUG] Event validation result:`, JSON.stringify(event, null, 2));
-        
+
         if (!event) {
           console.error(`❌ [DEBUG] Event with ID ${decodedEventId} not found or does not belong to user ${userId}`);
           throw new Error(`Event with ID ${decodedEventId} not found or does not belong to user ${userId}`);
         }
-        
+
         console.log(`✅ [DEBUG] Event validated: ${event.name} (ID: ${event.id}) for user ${userId}`);
       }
 
@@ -725,7 +737,7 @@ class TicketService {
         if (tableNumber !== null) {
           // CASE 1: Table-based selection - update all tickets for this table
           selectionMethod = 'table-based';
-          
+
           // Build where clause with optional eventId filter
           const whereClause = {
             table: tableNumber,
@@ -733,12 +745,12 @@ class TicketService {
               created_by: userId
             }
           };
-          
+
           // If eventId is provided, filter by specific event
           if (decodedEventId) {
             whereClause.eventId = decodedEventId;
           }
-          
+
           ticketsToUpdate = await tx.ticket.findMany({
             where: whereClause,
             include: {
@@ -763,18 +775,18 @@ class TicketService {
         } else {
           // CASE 2: Quantity-based selection - find N unsold tickets without table numbers
           selectionMethod = 'quantity-based';
-          
+
           // IMPORTANT: For individual ticket sales, eventId is REQUIRED
           if (!decodedEventId) {
             throw new Error('eventId is required for individual ticket purchases (quantity-based selection)');
           }
-          
+
           // Determine quantity from items array
           let quantity = 0;
           if (items && Array.isArray(items)) {
             quantity = items.reduce((total, item) => total + (item.quantity || 0), 0);
           }
-          
+
           if (quantity <= 0) {
             throw new Error('Invalid webhook payload: no valid quantity found in items');
           }
@@ -783,7 +795,7 @@ class TicketService {
           // eventId is REQUIRED for quantity-based selection (validated above)
           console.log(`🔍 [DEBUG] Building WHERE clause for quantity-based selection...`);
           console.log(`🔍 [DEBUG] quantity: ${quantity}, userId: ${userId}, eventId: ${decodedEventId}`);
-          
+
           const whereClause = {
             AND: [
               {
@@ -808,7 +820,7 @@ class TicketService {
               }
             ]
           };
-          
+
           console.log(`✅ [DEBUG] WHERE clause with required eventId:`, JSON.stringify(whereClause, null, 2));
 
           // Find unsold tickets
@@ -829,7 +841,7 @@ class TicketService {
             },
             take: Math.floor(quantity)
           });
-          
+
           console.log(`🔍 [DEBUG] Found ${ticketsToUpdate.length} tickets`);
           if (ticketsToUpdate.length > 0) {
             console.log(`🔍 [DEBUG] First ticket details:`);
@@ -871,17 +883,17 @@ class TicketService {
         // Determine if this is a single ticket purchase (should send QR email immediately)
         // or multiple tickets/table purchase (should send confirmation email)
         const isSingleTicket = ticketsToUpdate.length === 1 && !tableNumber;
-        
+
         let emailSent = false;
         let qrEmailSent = false;
-        
+
         if (customer && customer.email) {
           const emailService = require('./emailService');
-          
+
           if (isSingleTicket && updateResult.buyerInfo) {
             // SINGLE TICKET: Send QR code email directly to the buyer
             console.log('🎫 Single ticket purchase detected - sending QR code email directly');
-            
+
             try {
               const ticketWithBuyerInfo = updateResult.updatedTickets[0];
               const eventData = {
@@ -889,7 +901,7 @@ class TicketService {
                 venue: null, // We'll need to get this from event if available
                 date: null   // We'll need to get this from event if available
               };
-              
+
               // Get full event data for QR email
               const fullEvent = await prisma.event.findUnique({
                 where: { id: ticketsToUpdate[0].eventId },
@@ -900,13 +912,13 @@ class TicketService {
                   created_by: true
                 }
               });
-              
+
               if (fullEvent) {
                 eventData.name = fullEvent.name;
                 eventData.venue = fullEvent.venue;
                 eventData.date = fullEvent.opening_datetime;
               }
-              
+
               const result = await emailService.sendTicketQrCodeEmail(
                 updateResult.buyerInfo.buyerEmail,
                 {
@@ -919,23 +931,23 @@ class TicketService {
                 eventData,
                 userId
               );
-              
+
               qrEmailSent = true;
               console.log(`QR code email sent to ${updateResult.buyerInfo.buyerEmail} for single ticket purchase`);
-              
+
             } catch (emailError) {
               console.error('Failed to send QR code email for single ticket:', emailError);
               // Don't fail the webhook for email issues, but log it
             }
-            
+
           } else {
             // MULTIPLE TICKETS/TABLE: Send confirmation email for buyer information collection
             console.log(`🎟️ Multiple tickets/table purchase detected (${ticketsToUpdate.length} tickets, table: ${tableNumber}) - sending confirmation email`);
-            
+
             try {
               const orderService = require('./orderService');
               const confirmationUrl = orderService.generateConfirmationUrl(orderId.toString());
-              
+
               await emailService.sendConfirmationEmail(customer.email, {
                 eventName: ticketsToUpdate[0].event.name,
                 confirmationUrl,
@@ -1059,8 +1071,8 @@ class TicketService {
     try {
       // First, validate that the userId exists in the database (has created events)
       const userEvents = await prisma.event.findFirst({
-        where: { 
-          created_by: userId 
+        where: {
+          created_by: userId
         },
         select: { id: true }
       });
@@ -1071,9 +1083,9 @@ class TicketService {
 
       // Verify the specific event exists and belongs to the specified userId
       const event = await prisma.event.findFirst({
-        where: { 
-          id: parseInt(eventId), 
-          created_by: userId 
+        where: {
+          id: parseInt(eventId),
+          created_by: userId
         }
       });
 
@@ -1088,7 +1100,7 @@ class TicketService {
 
       if (availableOnly) {
         const currentDateTime = new Date();
-        
+
         whereClause.AND = [
           // No order field filled (unsold)
           {

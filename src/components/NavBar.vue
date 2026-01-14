@@ -36,6 +36,12 @@
                 Check-in
               </router-link>
             </li>
+            <li class="nav-item">
+              <router-link to="/qr-accessory-pickup" class="nav-link" :class="{ active: $route.path === '/qr-accessory-pickup' }">
+                <i class="fas fa-box me-1"></i>
+                Retirada de Kit
+              </router-link>
+            </li>
           </ul>
           <ul class="navbar-nav d-none d-md-block">
             <li v-if="!isAuthenticated && !isLoading" class="nav-item">
