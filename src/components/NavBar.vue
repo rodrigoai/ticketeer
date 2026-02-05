@@ -1,119 +1,181 @@
 <template>
-  <div class="nav-container mb-3">
-    <nav class="navbar navbar-expand-md navbar-dark bg-primary">
-      <div class="container">
-        <router-link to="/" class="navbar-brand">
-          <i class="fas fa-ticket-alt"></i>
-          Ticketeer
-        </router-link>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
+  <header class="bg-white border-b border-slate-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3 gap-4">
+        <router-link
+          to="/"
+          class="flex items-center gap-2 text-lg font-semibold text-slate-900 tracking-tight"
         >
-          <span class="navbar-toggler-icon"></span>
-        </button>
+          <i class="fas fa-ticket-alt text-primary-600 text-xl"></i>
+          <span>Ticketeer</span>
+        </router-link>
 
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav me-auto">
-            <li class="nav-item">
-              <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }">
-                Dashboard
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/events" class="nav-link" :class="{ active: $route.path === '/events' }">
-                Events
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/qr-checkin" class="nav-link" :class="{ active: $route.path === '/qr-checkin' }">
-                <i class="fas fa-qrcode me-1"></i>
-                Check-in
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link to="/qr-accessory-pickup" class="nav-link" :class="{ active: $route.path === '/qr-accessory-pickup' }">
-                <i class="fas fa-box me-1"></i>
-                Retirada de Kit
-              </router-link>
-            </li>
-          </ul>
-          <ul class="navbar-nav d-none d-md-block">
-            <li v-if="!isAuthenticated && !isLoading" class="nav-item">
-              <button
-                id="qsLoginBtn"
-                class="btn btn-primary btn-margin"
-                @click.prevent="login"
-              >Login</button>
-            </li>
-
-            <li class="nav-item dropdown" v-if="isAuthenticated">
-              <a
-                class="nav-link dropdown-toggle"
-                href="#"
-                id="profileDropDown"
-                @click.prevent="toggleDropdown"
-                :aria-expanded="isDropdownOpen"
-                role="button"
-              >
-                <img
-                  :src="user.picture"
-                  alt="User's profile picture"
-                  class="nav-user-profile rounded-circle"
-                  width="50"
-                />
-              </a>
-              <div class="dropdown-menu dropdown-menu-end" :class="{ show: isDropdownOpen }">
-                <div class="dropdown-header">{{ user.name }}</div>
-                <router-link to="/profile" class="dropdown-item dropdown-profile" @click="closeDropdown">
-                  <font-awesome-icon class="mr-3" icon="user" />Profile
-                </router-link>
-                <a id="qsLogoutBtn" href="#" class="dropdown-item" @click.prevent="handleLogout">
-                  <font-awesome-icon class="mr-3" icon="power-off" />Log out
-                </a>
-              </div>
-            </li>
-          </ul>
-
-          <ul class="navbar-nav d-md-none" v-if="!isAuthenticated && !isLoading">
-            <button id="qsLoginBtn" class="btn btn-primary btn-block" @click="login">Log in</button>
-          </ul>
-
-          <ul
-            id="mobileAuthNavBar"
-            class="navbar-nav d-md-none d-flex"
-            v-if="isAuthenticated"
+        <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+          <router-link
+            to="/"
+            class="px-2 py-1 rounded-lg transition hover:text-slate-900 hover:bg-slate-100"
+            :class="{ 'text-slate-900 bg-slate-100': $route.path === '/' }"
           >
-            <li class="nav-item">
-              <span class="user-info">
-                <img
-                  :src="user.picture"
-                  alt="User's profile picture"
-                  class="nav-user-profile d-inline-block rounded-circle mr-3"
-                  width="50"
-                />
-                <h6 class="d-inline-block">{{ user.name }}</h6>
-              </span>
-            </li>
-            <li>
-              <font-awesome-icon icon="user" class="mr-3" />
-              <router-link to="/profile">Profile</router-link>
-            </li>
+            Dashboard
+          </router-link>
+          <router-link
+            to="/events"
+            class="px-2 py-1 rounded-lg transition hover:text-slate-900 hover:bg-slate-100"
+            :class="{ 'text-slate-900 bg-slate-100': $route.path === '/events' }"
+          >
+            Events
+          </router-link>
+          <router-link
+            to="/qr-checkin"
+            class="px-2 py-1 rounded-lg transition hover:text-slate-900 hover:bg-slate-100 inline-flex items-center gap-2"
+            :class="{ 'text-slate-900 bg-slate-100': $route.path === '/qr-checkin' }"
+          >
+            <i class="fas fa-qrcode text-base"></i>
+            Check-in
+          </router-link>
+          <router-link
+            to="/qr-accessory-pickup"
+            class="px-2 py-1 rounded-lg transition hover:text-slate-900 hover:bg-slate-100 inline-flex items-center gap-2"
+            :class="{ 'text-slate-900 bg-slate-100': $route.path === '/qr-accessory-pickup' }"
+          >
+            <i class="fas fa-box text-base"></i>
+            Retirada de Kit
+          </router-link>
+        </div>
 
-            <li>
-              <font-awesome-icon icon="power-off" class="mr-3" />
-              <a id="qsLogoutBtn" href="#" class @click.prevent="logout">Log out</a>
-            </li>
-          </ul>
+        <div class="flex items-center gap-3">
+          <div v-if="!isAuthenticated && !isLoading">
+            <button
+              class="px-4 py-1.5 rounded-full border border-primary-600 bg-primary-600 text-white text-sm font-semibold transition hover:bg-primary-700"
+              @click.prevent="login"
+            >
+              Login
+            </button>
+          </div>
+
+          <div v-else-if="isAuthenticated" class="relative">
+            <button
+              class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 hover:border-slate-300 transition"
+              @click="toggleDropdown"
+              :aria-expanded="isDropdownOpen"
+              ref="dropdownToggle"
+            >
+              <img
+                :src="user.picture"
+                alt="User profile"
+                class="w-9 h-9 rounded-full object-cover"
+              />
+              <div class="hidden sm:flex flex-col text-left text-xs">
+                <span class="font-semibold text-slate-800">{{ user.name }}</span>
+                <small class="text-slate-500">{{ user.email }}</small>
+              </div>
+              <i class="fas fa-chevron-down text-slate-500 text-xs"></i>
+            </button>
+
+            <div
+              v-if="isDropdownOpen"
+              class="absolute right-0 z-10 mt-2 w-44 rounded-2xl bg-white border border-slate-200 shadow-lg py-2"
+              ref="dropdownMenu"
+            >
+              <router-link
+                to="/profile"
+                class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition"
+                @click="closeDropdown"
+              >
+                <i class="fas fa-user text-xs text-slate-500"></i>
+                Profile
+              </router-link>
+              <button
+                class="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition"
+                @click.prevent="handleLogout"
+              >
+                <i class="fas fa-power-off text-xs text-slate-500"></i>
+                Log out
+              </button>
+            </div>
+          </div>
+
+          <button
+            class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition"
+            @click="toggleMobileMenu"
+            ref="mobileToggle"
+            aria-label="Toggle menu"
+          >
+            <i class="fas fa-bars text-lg"></i>
+          </button>
         </div>
       </div>
-    </nav>
-  </div>
+
+      <div
+        v-if="isMobileMenuOpen"
+        class="md:hidden border-t border-slate-200 pb-3"
+        ref="mobileMenu"
+      >
+        <div class="flex flex-col gap-2 px-2 pt-2">
+          <router-link
+            to="/"
+            class="px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
+            :class="{ 'bg-slate-100 text-slate-900': $route.path === '/' }"
+            @click="closeMobileMenu"
+          >
+            Dashboard
+          </router-link>
+          <router-link
+            to="/events"
+            class="px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
+            :class="{ 'bg-slate-100 text-slate-900': $route.path === '/events' }"
+            @click="closeMobileMenu"
+          >
+            Events
+          </router-link>
+          <router-link
+            to="/qr-checkin"
+            class="px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
+            :class="{ 'bg-slate-100 text-slate-900': $route.path === '/qr-checkin' }"
+            @click="closeMobileMenu"
+          >
+            <i class="fas fa-qrcode text-base"></i>
+            Check-in
+          </router-link>
+          <router-link
+            to="/qr-accessory-pickup"
+            class="px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
+            :class="{ 'bg-slate-100 text-slate-900': $route.path === '/qr-accessory-pickup' }"
+            @click="closeMobileMenu"
+          >
+            <i class="fas fa-box text-base"></i>
+            Retirada de Kit
+          </router-link>
+
+          <div class="pt-2 border-t border-slate-100">
+            <div v-if="!isAuthenticated && !isLoading">
+              <button
+                class="w-full px-3 py-2 rounded-lg border border-primary-600 bg-primary-600 text-white font-semibold text-sm"
+                @click.prevent="handleMobileLogin"
+              >
+                Login
+              </button>
+            </div>
+            <div v-else-if="isAuthenticated" class="flex flex-col gap-2 mt-2">
+              <router-link
+                to="/profile"
+                class="px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition"
+                @click="closeMobileMenu"
+              >
+                Profile
+              </router-link>
+              <button
+                class="px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition text-left"
+                @click.prevent="handleLogout"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
 </template>
 
 <script lang="ts">
@@ -125,67 +187,83 @@ export default {
   setup() {
     const auth0 = useAuth0();
     const isDropdownOpen = ref(false);
-    
-    // Toggle dropdown function
+    const isMobileMenuOpen = ref(false);
+    const dropdownToggle = ref<HTMLElement | null>(null);
+    const dropdownMenu = ref<HTMLElement | null>(null);
+    const mobileMenu = ref<HTMLElement | null>(null);
+    const mobileToggle = ref<HTMLElement | null>(null);
+
     const toggleDropdown = () => {
       isDropdownOpen.value = !isDropdownOpen.value;
     };
-    
-    // Close dropdown function
+
     const closeDropdown = () => {
       isDropdownOpen.value = false;
     };
-    
-    // Handle logout and close dropdown
+
+    const toggleMobileMenu = () => {
+      isMobileMenuOpen.value = !isMobileMenuOpen.value;
+    };
+
+    const closeMobileMenu = () => {
+      isMobileMenuOpen.value = false;
+    };
+
+    const login = () => {
+      auth0.loginWithRedirect();
+      closeMobileMenu();
+    };
+
     const handleLogout = () => {
       closeDropdown();
+      closeMobileMenu();
       auth0.logout({
         logoutParams: {
           returnTo: window.location.origin
         }
       });
     };
-    
-    // Close dropdown when clicking outside
+
     const handleClickOutside = (event: Event) => {
-      const dropdown = document.getElementById('profileDropDown');
-      const dropdownMenu = dropdown?.nextElementSibling;
-      
-      if (dropdown && dropdownMenu && 
-          !dropdown.contains(event.target as Node) && 
-          !dropdownMenu.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (dropdownToggle.value && dropdownMenu.value &&
+          !dropdownToggle.value.contains(target) &&
+          !dropdownMenu.value.contains(target)) {
         closeDropdown();
       }
+
+      if (mobileMenu.value && mobileToggle.value &&
+          !mobileMenu.value.contains(target) &&
+          !mobileToggle.value.contains(target)) {
+        closeMobileMenu();
+      }
     };
-    
-    // Add event listeners on mount
+
     onMounted(() => {
       document.addEventListener('click', handleClickOutside);
     });
-    
-    // Clean up event listeners on unmount
+
     onUnmounted(() => {
       document.removeEventListener('click', handleClickOutside);
     });
-    
+
     return {
       isAuthenticated: auth0.isAuthenticated,
       isLoading: auth0.isLoading,
       user: auth0.user,
       isDropdownOpen,
+      isMobileMenuOpen,
       toggleDropdown,
       closeDropdown,
+      toggleMobileMenu,
+      closeMobileMenu,
       handleLogout,
-      login() {
-        auth0.loginWithRedirect();
-      },
-      logout() {
-        auth0.logout({
-          logoutParams: {
-            returnTo: window.location.origin
-          }
-        });
-      }
+      handleMobileLogin: login,
+      dropdownToggle,
+      dropdownMenu,
+      mobileMenu,
+      mobileToggle,
+      login
     }
   }
 };

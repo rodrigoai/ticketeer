@@ -1,234 +1,203 @@
 <template>
-  <div class="container py-5">
-    <div class="row">
-      <div class="col-12">
-        <!-- Hero Section -->
-        <div class="jumbotron bg-light p-5 rounded-3 text-center mb-5">
-          <h1 class="display-4 fw-bold text-primary">Welcome to Ticketeer</h1>
-          <p class="lead">The Ultimate Ticket Sales Management Platform</p>
-          <hr class="my-4">
-          <p class="mb-4">Discover amazing events and purchase tickets securely online</p>
-          <div class="d-grid gap-2 d-md-flex justify-content-md-center" v-if="isAuthenticated">
-            <router-link to="/events" class="btn btn-primary btn-lg me-md-2">Manage Events</router-link>
-            <router-link to="/profile" class="btn btn-outline-secondary btn-lg">My Profile</router-link>
-          </div>
-          <div class="d-grid gap-2 d-md-flex justify-content-md-center" v-else>
-            <button @click="login" class="btn btn-primary btn-lg me-md-2">Get Started</button>
-            <button class="btn btn-outline-secondary btn-lg" disabled>Learn More</button>
-          </div>
+  <div class="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    <section class="rounded-3xl bg-gradient-to-r from-primary-600 to-violet-600 text-white p-6 md:p-10 shadow-xl">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-sm uppercase tracking-[0.35em] text-white/70">Dashboard</p>
+          <h1 class="text-3xl md:text-4xl font-semibold mt-2">
+            {{ isAuthenticated ? `Welcome back, ${userName || user?.name || 'Organizer'}` : 'Welcome to Ticketeer' }}
+          </h1>
+          <p class="mt-3 text-white/80 max-w-2xl">
+            {{ isAuthenticated
+              ? 'View your latest sales, manage attendees, and keep check-in flowing smoothly.'
+              : 'Log in to bring your events online, sell tickets securely, and keep track of every attendee.' }}
+          </p>
         </div>
-      </div>
-    </div>
-    
-    <!-- Dashboard Statistics - Only for Authenticated Users -->
-    <div class="row g-4 mb-5" v-if="isAuthenticated">
-      <div class="col-12">
-        <h2 class="text-center mb-4">Your Dashboard Statistics</h2>
-      </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="card h-100 shadow-sm text-center">
-          <div class="card-body">
-            <div class="mb-3">
-              <i class="fas fa-calendar-alt text-primary" style="font-size: 3rem;"></i>
-            </div>
-            <h3 class="card-title text-primary">{{ stats.totalActiveEvents || 0 }}</h3>
-            <p class="card-text text-muted">Your Active Events</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="card h-100 shadow-sm text-center">
-          <div class="card-body">
-            <div class="mb-3">
-              <i class="fas fa-ticket-alt text-success" style="font-size: 3rem;"></i>
-            </div>
-            <h3 class="card-title text-success">{{ stats.totalTicketsSold || 0 }}</h3>
-            <p class="card-text text-muted">Tickets Sold</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="card h-100 shadow-sm text-center">
-          <div class="card-body">
-            <div class="mb-3">
-              <i class="fas fa-dollar-sign text-warning" style="font-size: 3rem;"></i>
-            </div>
-            <h3 class="card-title text-warning">${{ formatCurrency(stats.totalRevenue || 0) }}</h3>
-            <p class="card-text text-muted">Total Revenue</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="card h-100 shadow-sm text-center">
-          <div class="card-body">
-            <div class="mb-3">
-              <i class="fas fa-clock text-info" style="font-size: 3rem;"></i>
-            </div>
-            <h3 class="card-title text-info">{{ stats.upcomingEvents || 0 }}</h3>
-            <p class="card-text text-muted">Upcoming Events</p>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Recent Ticket Purchases - Only for Authenticated Users -->
-    <div class="row" v-if="isAuthenticated">
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">
-              <i class="fas fa-shopping-cart me-2"></i>
-              Recent Ticket Sales
-            </h4>
-          </div>
-          <div class="card-body">
-            <div v-if="loading" class="text-center py-4">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <p class="mt-2 text-muted">Loading recent sales...</p>
-            </div>
-            
-            <div v-else-if="recentPurchases.length === 0" class="text-center py-4">
-              <i class="fas fa-ticket-alt text-muted" style="font-size: 3rem;"></i>
-              <p class="mt-3 text-muted">No ticket sales yet</p>
-              <router-link to="/events" class="btn btn-primary mt-2">
-                Create Your First Event
-              </router-link>
-            </div>
-            
-            <div v-else class="table-responsive">
-              <table class="table table-hover">
-                <thead class="table-light">
-                  <tr>
-                    <th scope="col">Ticket #</th>
-                    <th scope="col">Event</th>
-                    <th scope="col">Venue</th>
-                    <th scope="col">Location</th>
-                    <th scope="col">Price</th>
-                    <th scope="col">Buyer</th>
-                    <th scope="col">Contact</th>
-                    <th scope="col">Sale Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="purchase in recentPurchases" :key="purchase.id">
-                    <td>
-                      <span class="badge bg-secondary">#{{ purchase.identificationNumber }}</span>
-                    </td>
-                    <td>
-                      <strong>{{ purchase.eventName }}</strong>
-                      <br>
-                      <small class="text-muted">{{ formatEventDate(purchase.eventDate) }}</small>
-                    </td>
-                    <td>{{ purchase.venue }}</td>
-                    <td>
-                      <span v-if="purchase.location">{{ purchase.location }}</span>
-                      <span v-if="purchase.table" class="badge bg-info ms-1">Table {{ purchase.table }}</span>
-                      <span v-if="!purchase.location && !purchase.table" class="text-muted">General</span>
-                    </td>
-                    <td>
-                      <span class="fw-bold text-success">${{ formatCurrency(purchase.price) }}</span>
-                    </td>
-                    <td>
-                      <i class="fas fa-user me-1"></i>
-                      {{ purchase.buyerDisplayName }}
-                    </td>
-                    <td>
-                      <small v-if="purchase.buyerEmail" class="text-muted">
-                        <i class="fas fa-envelope me-1"></i>
-                        {{ purchase.buyerEmail }}
-                      </small>
-                      <small v-else class="text-muted">No contact</small>
-                    </td>
-                    <td>
-                      <small class="text-muted">{{ formatPurchaseDate(purchase.purchaseDate) }}</small>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+        <div class="flex flex-wrap gap-3 justify-start md:justify-end">
+          <router-link
+            to="/events"
+            class="px-4 py-2 rounded-full font-semibold bg-white text-primary-600 shadow-md hover:bg-slate-100 transition"
+            v-if="isAuthenticated"
+          >
+            Manage Events
+          </router-link>
+          <button
+            v-if="!isAuthenticated"
+            class="px-4 py-2 rounded-full font-semibold border border-white/60 text-white hover:bg-white/10 transition flex items-center gap-2"
+            @click="login"
+          >
+            <i class="fas fa-sign-in-alt"></i>
+            Get Started
+          </button>
+          <router-link
+            v-else
+            to="/profile"
+            class="px-4 py-2 rounded-full font-semibold border border-white/50 text-white hover:bg-white/10 transition flex items-center gap-2"
+          >
+            <i class="fas fa-user"></i>
+            View Profile
+          </router-link>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Welcome Section for Non-Authenticated Users -->
-    <div class="row" v-if="!isAuthenticated">
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-body text-center py-5">
-            <i class="fas fa-ticket-alt text-primary" style="font-size: 5rem;"></i>
-            <h3 class="mt-4 mb-3">Start Managing Your Events Today</h3>
-            <p class="lead text-muted mb-4">
-              Create events, sell tickets, and manage your ticket sales all in one place.
-            </p>
-            <div class="row g-3 justify-content-center">
-              <div class="col-md-4">
-                <div class="d-flex align-items-center">
-                  <i class="fas fa-plus-circle text-primary me-3" style="font-size: 2rem;"></i>
-                  <div class="text-start">
-                    <h5 class="mb-1">Create Events</h5>
-                    <small class="text-muted">Set up your events with ease</small>
+    <section v-if="isAuthenticated" class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-lg text-slate-500">Active Events</span>
+          <i class="fas fa-calendar-days text-primary-500 text-xl"></i>
+        </div>
+        <p class="mt-6 text-3xl font-semibold text-slate-900">{{ stats.totalActiveEvents || 0 }}</p>
+        <p class="mt-1 text-xs uppercase tracking-[0.35em] text-slate-400">Live</p>
+      </div>
+      <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-lg text-slate-500">Tickets Sold</span>
+          <i class="fas fa-ticket-alt text-emerald-500 text-xl"></i>
+        </div>
+        <p class="mt-6 text-3xl font-semibold text-slate-900">{{ stats.totalTicketsSold || 0 }}</p>
+        <p class="mt-1 text-xs uppercase tracking-[0.35em] text-slate-400">All time</p>
+      </div>
+      <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-lg text-slate-500">Revenue</span>
+          <i class="fas fa-dollar-sign text-amber-500 text-xl"></i>
+        </div>
+        <p class="mt-6 text-3xl font-semibold text-slate-900">${{ formatCurrency(stats.totalRevenue || 0) }}</p>
+        <p class="mt-1 text-xs uppercase tracking-[0.35em] text-slate-400">Collected</p>
+      </div>
+      <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-lg text-slate-500">Upcoming Events</span>
+          <i class="fas fa-clock text-sky-500 text-xl"></i>
+        </div>
+        <p class="mt-6 text-3xl font-semibold text-slate-900">{{ stats.upcomingEvents || 0 }}</p>
+        <p class="mt-1 text-xs uppercase tracking-[0.35em] text-slate-400">Next 90 days</p>
+      </div>
+    </section>
+
+    <section v-if="isAuthenticated" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Recent ticket sales</p>
+          <h2 class="text-xl font-semibold text-slate-900">Recent Purchases</h2>
+        </div>
+        <router-link to="/events" class="text-sm font-semibold text-primary-600 hover:text-primary-500">
+          View all events →
+        </router-link>
+      </div>
+
+      <div class="rounded-3xl border border-slate-100 bg-white shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="min-w-full caption-bottom text-left text-sm text-slate-600">
+            <caption class="sr-only">List of recent ticket purchases</caption>
+            <thead class="border-b bg-slate-50 text-slate-500 uppercase text-[0.65rem] tracking-[0.4em]">
+              <tr>
+                <th class="px-5 py-3 font-semibold">Ticket</th>
+                <th class="px-5 py-3 font-semibold">Event</th>
+                <th class="px-5 py-3 font-semibold">Location</th>
+                <th class="px-5 py-3 font-semibold">Price</th>
+                <th class="px-5 py-3 font-semibold">Buyer</th>
+                <th class="px-5 py-3 font-semibold text-right">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="loading" class="divide-y">
+                <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                  <div class="inline-flex items-center gap-2 text-slate-500">
+                    <span class="w-4 h-4 rounded-full border-2 border-slate-500 border-t-transparent animate-spin"></span>
+                    Loading recent sales...
                   </div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="d-flex align-items-center">
-                  <i class="fas fa-credit-card text-success me-3" style="font-size: 2rem;"></i>
-                  <div class="text-start">
-                    <h5 class="mb-1">Sell Tickets</h5>
-                    <small class="text-muted">Secure online payments</small>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="d-flex align-items-center">
-                  <i class="fas fa-chart-line text-info me-3" style="font-size: 2rem;"></i>
-                  <div class="text-start">
-                    <h5 class="mb-1">Track Sales</h5>
-                    <small class="text-muted">Real-time analytics</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button @click="login" class="btn btn-primary btn-lg mt-4 px-5">
-              <i class="fas fa-sign-in-alt me-2"></i>
-              Get Started Now
-            </button>
-          </div>
+                </td>
+              </tr>
+              <tr v-else-if="recentPurchases.length === 0" class="divide-y">
+                <td colspan="6" class="px-5 py-8 text-center text-slate-500">
+                  No purchases yet. Create an event to start selling tickets!
+                </td>
+              </tr>
+              <tr
+                v-else
+                v-for="purchase in recentPurchases"
+                :key="purchase.id"
+                class="border-b last:border-b-0"
+              >
+                <td class="px-5 py-4">
+                  <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    #{{ purchase.identificationNumber }}
+                  </span>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="font-semibold text-slate-900">{{ purchase.eventName }}</p>
+                  <p class="text-xs text-slate-500">{{ formatEventDate(purchase.eventDate) }}</p>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="text-slate-700">{{ purchase.venue }}</p>
+                  <p class="text-xs text-slate-500">
+                    {{ purchase.table ? `Table ${purchase.table}` : purchase.location || 'General' }}
+                  </p>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="text-sm font-semibold text-emerald-600">${{ formatCurrency(purchase.price) }}</span>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="font-semibold">{{ purchase.buyerDisplayName }}</p>
+                  <p class="text-xs text-slate-500">{{ purchase.buyerEmail || 'No contact' }}</p>
+                </td>
+                <td class="px-5 py-4 text-right">
+                  <p class="text-sm font-semibold text-slate-900">{{ formatPurchaseDate(purchase.purchaseDate) }}</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Action Cards -->
-    <div class="row g-4 justify-content-center mt-5" v-if="isAuthenticated">
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body text-center">
-            <div class="mb-3">
-              <i class="fas fa-plus-circle text-primary" style="font-size: 3rem;"></i>
-            </div>
-            <h5 class="card-title">Create Event</h5>
-            <p class="card-text">Set up new events with ticket sales, venues, and dates all from one dashboard.</p>
-            <router-link to="/events" class="btn btn-primary">Create Event</router-link>
+    <section v-else class="grid gap-6 md:grid-cols-3">
+      <div class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm space-y-3">
+        <div class="flex items-center gap-3">
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+            <i class="fas fa-plus-circle text-xl"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-slate-900">Create Events</p>
+            <p class="text-xs text-slate-500">Launch ticketed experiences in minutes.</p>
           </div>
         </div>
+        <p class="text-sm text-slate-500">
+          Tailor every detail—venue, pricing, and sales windows—then publish instantly.
+        </p>
       </div>
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body text-center">
-            <div class="mb-3">
-              <i class="fas fa-chart-bar text-success" style="font-size: 3rem;"></i>
-            </div>
-            <h5 class="card-title">Analytics</h5>
-            <p class="card-text">Track sales performance, customer insights, and revenue analytics.</p>
-            <router-link to="/events" class="btn btn-success">View Analytics</router-link>
+      <div class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm space-y-3">
+        <div class="flex items-center gap-3">
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+            <i class="fas fa-credit-card text-xl"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-slate-900">Sell Tickets</p>
+            <p class="text-xs text-slate-500">Secure checkout with QR code delivery.</p>
           </div>
         </div>
+        <p class="text-sm text-slate-500">
+          Accept orders online, assign seats, and keep buyers informed with email confirmations.
+        </p>
       </div>
-    </div>
-
+      <div class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm space-y-3">
+        <div class="flex items-center gap-3">
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
+            <i class="fas fa-chart-line text-xl"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-slate-900">Track Sales</p>
+            <p class="text-xs text-slate-500">Analytics and reconcilation at a glance.</p>
+          </div>
+        </div>
+        <p class="text-sm text-slate-500">
+          Monitor revenue, see ticket availability, and verify check-ins in real time.
+        </p>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -360,26 +329,3 @@ onMounted(() => {
   }
 })
 </script>
-
-<style scoped>
-.jumbotron {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.jumbotron .text-primary {
-  color: white !important;
-}
-
-.card {
-  transition: transform 0.2s ease-in-out;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-}
-
-.display-1 {
-  font-size: 4rem;
-}
-</style>

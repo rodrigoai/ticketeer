@@ -1,177 +1,144 @@
 <template>
-  <div class="container py-5">
+  <div class="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-6">
     <!-- Loading State -->
-    <div v-if="isLoadingEvent" class="text-center">
-      <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading event...</span>
+    <div v-if="isLoadingEvent" class="rounded-3xl border border-slate-100 bg-white px-6 py-10 text-center shadow-md">
+      <div class="inline-flex items-center gap-2 text-slate-600">
+        <span class="h-4 w-4 rounded-full border-2 border-slate-600 border-t-transparent animate-spin"></span>
+        Loading event...
       </div>
     </div>
 
     <!-- Event Not Found -->
-    <div v-else-if="!event" class="text-center py-5">
-      <div class="mb-4">
-        <span class="display-1">❌</span>
-      </div>
-      <h4>Event Not Found</h4>
-      <p class="text-muted">The event you're looking for doesn't exist or you don't have access to it.</p>
-      <router-link to="/events" class="btn btn-primary">Back to Events</router-link>
+    <div v-else-if="!event" class="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center space-y-4">
+      <div class="text-6xl">❌</div>
+      <h4 class="text-xl font-semibold text-slate-900">Event Not Found</h4>
+      <p class="text-slate-500">The event you're looking for doesn't exist or you don't have access to it.</p>
+      <router-link to="/events" class="inline-flex items-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-700 transition">Back to Events</router-link>
     </div>
 
     <!-- Event Detail -->
-    <div v-else>
+    <div v-else class="space-y-6">
       <!-- Event Header -->
-      <div class="row mb-4">
-        <div class="col-12">
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-              <li class="breadcrumb-item">
-                <router-link to="/events">Events</router-link>
-              </li>
-              <li class="breadcrumb-item active">{{ event.title }}</li>
-            </ol>
+      <header class="rounded-3xl bg-white border border-slate-100 px-6 py-6 shadow-lg flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <nav class="text-sm text-slate-500 mb-2">
+            <router-link to="/events" class="hover:text-primary-600">Events</router-link>
+            <span class="mx-2">/</span>
+            <span class="text-slate-900">{{ event.title }}</span>
           </nav>
-          
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <div>
-              <h1>{{ event.title }}</h1>
-              <p class="text-muted mb-2" v-if="event.description">{{ event.description }}</p>
-              <div class="d-flex gap-3 text-muted">
-                <span><i class="fas fa-calendar"></i> {{ formatDate(event.date) }}</span>
-                <span v-if="event.venue"><i class="fas fa-map-marker-alt"></i> {{ event.venue }}</span>
-              </div>
-            </div>
-            <div class="text-end">
-              <router-link :to="`/events`" class="btn btn-outline-secondary me-2">
-                <i class="fas fa-arrow-left"></i> Back
-              </router-link>
-            </div>
+          <h1 class="text-3xl font-semibold text-slate-900">{{ event.title }}</h1>
+          <p class="text-sm text-slate-500 mt-1" v-if="event.description">{{ event.description }}</p>
+          <div class="flex flex-wrap gap-4 mt-3 text-sm text-slate-600">
+            <span class="inline-flex items-center gap-2"><i class="fas fa-calendar"></i> {{ formatDate(event.date) }}</span>
+            <span v-if="event.venue" class="inline-flex items-center gap-2"><i class="fas fa-map-marker-alt"></i> {{ event.venue }}</span>
           </div>
         </div>
-      </div>
+        <div class="flex gap-3 flex-wrap items-center">
+          <router-link :to="`/events`" class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+            <i class="fas fa-arrow-left"></i> Back
+          </router-link>
+        </div>
+      </header>
 
       <!-- Ticket Statistics -->
-      <div class="row mb-4" v-if="stats">
-        <div class="col-12">
-          <div class="row">
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="card bg-primary text-white">
-                <div class="card-body text-center">
-                  <h5 class="card-title">{{ stats.totalTickets }}</h5>
-                  <p class="card-text mb-0">Total Tickets</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="card bg-success text-white">
-                <div class="card-body text-center">
-                  <h5 class="card-title">{{ stats.totalSold || 0 }}</h5>
-                  <p class="card-text mb-0">Total Sold</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="card bg-secondary text-white">
-                <div class="card-body text-center">
-                  <h5 class="card-title">{{ stats.totalRemaining || 0 }}</h5>
-                  <p class="card-text mb-0">Total Remaining</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="card bg-info text-white">
-                <div class="card-body text-center">
-                  <h5 class="card-title">{{ stats.totalConfirmed || 0 }}</h5>
-                  <p class="card-text mb-0">Total Confirmed</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="card bg-warning text-white">
-                <div class="card-body text-center">
-                  <h5 class="card-title">{{ stats.checkedInTickets || 0 }}</h5>
-                  <p class="card-text mb-0">Checked-In</p>
-                </div>
-              </div>
-            </div>
-          </div>
+      <section v-if="stats" class="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div class="rounded-2xl bg-primary-600 text-white p-5 shadow-sm">
+          <p class="text-3xl font-semibold">{{ stats.totalTickets }}</p>
+          <p class="text-sm text-white/80 mt-1">Total Tickets</p>
         </div>
-      </div>
+        <div class="rounded-2xl bg-emerald-500 text-white p-5 shadow-sm">
+          <p class="text-3xl font-semibold">{{ stats.totalSold || 0 }}</p>
+          <p class="text-sm text-white/80 mt-1">Total Sold</p>
+        </div>
+        <div class="rounded-2xl bg-slate-500 text-white p-5 shadow-sm">
+          <p class="text-3xl font-semibold">{{ stats.totalRemaining || 0 }}</p>
+          <p class="text-sm text-white/80 mt-1">Total Remaining</p>
+        </div>
+        <div class="rounded-2xl bg-sky-500 text-white p-5 shadow-sm">
+          <p class="text-3xl font-semibold">{{ stats.totalConfirmed || 0 }}</p>
+          <p class="text-sm text-white/80 mt-1">Total Confirmed</p>
+        </div>
+        <div class="rounded-2xl bg-amber-500 text-white p-5 shadow-sm">
+          <p class="text-3xl font-semibold">{{ stats.checkedInTickets || 0 }}</p>
+          <p class="text-sm text-white/80 mt-1">Checked-In</p>
+        </div>
+      </section>
 
       <!-- Ticket Management -->
-      <div class="row">
-        <div class="col-12">
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>Tickets</h3>
-            <div>
-              <button class="btn btn-success me-2" @click="showCreateModal">
-                <i class="fas fa-plus"></i> Add Ticket
-              </button>
-              <button class="btn btn-info" @click="showBatchCreateModal">
-                <i class="fas fa-layer-group"></i> Batch Create
+      <section class="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 py-4 border-b border-slate-100">
+          <h3 class="text-xl font-semibold text-slate-900">Tickets</h3>
+          <div class="flex gap-3 flex-wrap">
+            <button class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition" @click="showCreateModal">
+              <i class="fas fa-plus"></i> Add Ticket
+            </button>
+            <button class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-sky-600 transition" @click="showBatchCreateModal">
+              <i class="fas fa-layer-group"></i> Batch Create
+            </button>
+          </div>
+        </div>
+
+        <!-- Bulk Actions Toolbar -->
+        <div v-if="selectedTicketIds.length > 0" class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-6 py-3 bg-sky-50 border-b border-sky-100">
+          <span class="text-sm text-sky-700">
+            <strong>{{ selectedTicketIds.length }}</strong> ticket(s) selected
+          </span>
+          <div class="flex gap-2 flex-wrap">
+            <button class="inline-flex items-center gap-1 rounded-full bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 transition" @click="showBulkEditModal">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="inline-flex items-center gap-1 rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 transition" @click="confirmBulkDelete">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+            <button class="inline-flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition" @click="clearSelection">
+              <i class="fas fa-times"></i> Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- Tickets Loading -->
+        <div v-if="isLoadingTickets" class="px-6 py-10 text-center">
+          <div class="inline-flex items-center gap-2 text-slate-600">
+            <span class="h-4 w-4 rounded-full border-2 border-slate-600 border-t-transparent animate-spin"></span>
+            Loading tickets...
+          </div>
+        </div>
+
+        <!-- No Tickets -->
+        <div v-else-if="tickets.length === 0" class="px-6 py-10 text-center space-y-4">
+          <div class="text-6xl">🎫</div>
+          <h4 class="text-xl font-semibold text-slate-900">No Tickets Yet</h4>
+          <p class="text-sm text-slate-500">Create your first ticket for this event!</p>
+          <div class="flex gap-3 justify-center flex-wrap">
+            <button class="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition" @click="showCreateModal">Create Ticket</button>
+            <button class="rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-sky-600 transition" @click="showBatchCreateModal">Batch Create</button>
+          </div>
+        </div>
+
+        <!-- Tickets DataTable -->
+        <div v-else class="px-6 py-4">
+          <!-- Search Filter -->
+          <div class="mb-4">
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <i class="fas fa-search"></i>
+              </span>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 pl-10 pr-10 py-2.5 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
+                placeholder="Search tickets by description, location, buyer, email, or order..."
+                v-model="searchValue"
+              >
+              <button 
+                v-if="searchValue" 
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                @click="searchValue = ''"
+                title="Clear search"
+              >
+                <i class="fas fa-times"></i>
               </button>
             </div>
           </div>
-
-          <!-- Bulk Actions Toolbar -->
-          <div v-if="selectedTicketIds.length > 0" class="alert alert-info d-flex justify-content-between align-items-center mb-3">
-            <span>
-              <strong>{{ selectedTicketIds.length }}</strong> ticket(s) selected
-            </span>
-            <div>
-              <button class="btn btn-sm btn-primary me-2" @click="showBulkEditModal">
-                <i class="fas fa-edit"></i> Edit
-              </button>
-              <button class="btn btn-sm btn-danger me-2" @click="confirmBulkDelete">
-                <i class="fas fa-trash"></i> Delete
-              </button>
-              <button class="btn btn-sm btn-secondary" @click="clearSelection">
-                <i class="fas fa-times"></i> Clear
-              </button>
-            </div>
-          </div>
-
-          <!-- Tickets Loading -->
-          <div v-if="isLoadingTickets" class="text-center">
-            <div class="spinner-border" role="status">
-              <span class="visually-hidden">Loading tickets...</span>
-            </div>
-          </div>
-
-          <!-- No Tickets -->
-          <div v-else-if="tickets.length === 0" class="text-center py-5">
-            <div class="mb-4">
-              <span class="display-1">🎟️</span>
-            </div>
-            <h4>No Tickets Yet</h4>
-            <p class="text-muted">Create your first ticket for this event!</p>
-            <button class="btn btn-success me-2" @click="showCreateModal">Create Ticket</button>
-            <button class="btn btn-info" @click="showBatchCreateModal">Batch Create</button>
-          </div>
-
-          <!-- Tickets DataTable -->
-          <div v-else>
-            <!-- Search Filter -->
-            <div class="mb-3">
-              <div class="input-group">
-                <span class="input-group-text">
-                  <i class="fas fa-search"></i>
-                </span>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  placeholder="Search tickets by description, location, buyer, email, or order..."
-                  v-model="searchValue"
-                >
-                <button 
-                  v-if="searchValue" 
-                  class="btn btn-outline-secondary" 
-                  @click="searchValue = ''"
-                  title="Clear search"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
 
             <EasyDataTable
               :headers="headers"
@@ -269,35 +236,36 @@
 
               <!-- Actions Column -->
               <template #item-actions="item">
-                <div class="btn-group btn-group-sm">
-                  <button class="btn btn-outline-primary" @click="editTicket(item)" title="Edit">
+                <div class="flex gap-1">
+                  <button class="rounded-lg border border-primary-300 px-2.5 py-1.5 text-primary-600 hover:bg-primary-50 transition" @click="editTicket(item)" title="Edit">
                     <i class="fas fa-edit"></i>
                   </button>
                   <button 
                     v-if="item.buyer && item.buyerEmail" 
-                    class="btn btn-outline-info" 
+                    class="rounded-lg border border-sky-300 px-2.5 py-1.5 text-sky-600 hover:bg-sky-50 transition"
                     @click="resendEmail(item)" 
                     title="Resend email with QR code"
                     :disabled="isResending"
                   >
                     <i class="fas fa-envelope"></i>
                   </button>
-                  <button class="btn btn-outline-danger" @click="deleteTicket(item.id)" title="Delete">
+                  <button class="rounded-lg border border-rose-300 px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 transition" @click="deleteTicket(item.id)" title="Delete">
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
               </template>
             </EasyDataTable>
           </div>
+        </section>
+
+        <!-- Error Messages -->
+        <div v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm text-rose-700 flex items-center justify-between gap-3">
+          <div>
+            <strong>Error:</strong> {{ error }}
+          </div>
+          <button class="text-xs font-semibold text-rose-600 underline" @click="loadTickets">Retry</button>
         </div>
       </div>
-
-      <!-- Error Messages -->
-      <div v-if="error" class="alert alert-danger mt-3" role="alert">
-        <strong>Error:</strong> {{ error }}
-        <button class="btn btn-sm btn-outline-danger ms-2" @click="loadTickets">Retry</button>
-      </div>
-    </div>
 
     <!-- Create/Edit Ticket Modal -->
     <div class="modal fade" id="ticketModal" tabindex="-1">

@@ -1,90 +1,100 @@
 <template>
-  <div class="container py-5">
-    <div class="row">
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h2>Events Management</h2>
-            <small class="text-muted" v-if="isAuthenticated">
-              <i class="fas fa-user"></i> {{ userName }} ({{ userEmail }})
-            </small>
-          </div>
-          <button class="btn btn-primary" @click="showCreateModal" v-if="isAuthenticated">
-            <i class="fas fa-plus"></i> Create Event
-          </button>
+  <div class="max-w-6xl mx-auto space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header class="rounded-3xl bg-white border border-slate-100 px-6 py-6 shadow-lg flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="text-xs uppercase tracking-[0.4em] text-slate-400">Events</p>
+        <h1 class="text-3xl font-semibold text-slate-900">Event Management</h1>
+        <p class="text-sm text-slate-500 mt-1">
+          {{ isAuthenticated ? `${userName || user?.name || 'Organizer'} — ${userEmail || ''}` : 'Authentication required to manage events.' }}
+        </p>
+      </div>
+      <div class="flex gap-3 flex-wrap items-center">
+        <button
+          v-if="isAuthenticated"
+          class="inline-flex items-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-700 transition"
+          @click="showCreateModal"
+        >
+          <i class="fas fa-plus"></i>
+          Create Event
+        </button>
+        <router-link v-else to="/" class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+          <i class="fas fa-lock"></i>
+          Login to Manage
+        </router-link>
+      </div>
+    </header> 
+
+    <div v-if="!isAuthenticated && !isLoading" class="rounded-3xl border border-amber-300 bg-amber-50 px-6 py-5 text-sm text-amber-700 shadow-sm flex items-start gap-3">
+      <i class="fas fa-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
+      <p>Please log in to view and manage your events. You can only create or edit events after authentication.</p>
+    </div>
+
+    <section v-if="isAuthenticated" class="space-y-5">
+      <div v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm text-rose-700 flex items-center justify-between gap-3">
+        <div>
+          <strong>Error:</strong> {{ error }}
+        </div>
+        <button class="text-xs font-semibold text-rose-600 underline" @click="loadEvents">Retry</button>
+      </div>
+
+      <div v-if="isLoading" class="rounded-3xl border border-slate-100 bg-white px-6 py-8 text-center text-slate-500 shadow-sm">
+        <div class="inline-flex items-center gap-2 text-slate-600">
+          <span class="w-4 h-4 rounded-full border-2 border-slate-600 border-t-transparent animate-spin"></span>
+          Loading events...
         </div>
       </div>
-    </div>
-    
-    <!-- Authentication Warning -->
-    <div v-if="!isAuthenticated && !isLoading" class="alert alert-warning" role="alert">
-      <i class="fas fa-exclamation-triangle"></i>
-      <strong>Please log in</strong> to view and manage your events.
-    </div>
 
-    <!-- Events List -->
-    <div class="row" v-if="isAuthenticated">
-      <div class="col-12">
-        <div v-if="isLoading" class="text-center">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading events...</span>
-          </div>
-        </div>
+      <div v-else-if="events.length === 0" class="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center space-y-3">
+        <div class="text-4xl">🎪</div>
+        <h3 class="text-xl font-semibold text-slate-900">No events yet</h3>
+        <p class="text-sm text-slate-500">Create your first event and start selling tickets in minutes.</p>
+        <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-700 transition" @click="showCreateModal">
+          Create Event
+        </button>
+      </div>
 
-        <div v-else-if="events.length === 0 && isAuthenticated" class="text-center py-5">
-          <div class="mb-4">
-            <span class="display-1">🎪</span>
-          </div>
-          <h4>No Events Yet</h4>
-          <p class="text-muted">Create your first event to get started!</p>
-          <button class="btn btn-primary" @click="showCreateModal">Create Event</button>
-        </div>
-
-        <div v-else class="row g-4">
-          <div v-for="event in events" :key="event.id" class="col-md-6 col-lg-4">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5 class="card-title">{{ event.title }}</h5>
-                <p class="card-text">{{ event.description }}</p>
-                <div class="mb-2">
-                  <small class="text-muted">
-                    <i class="fas fa-calendar"></i> {{ formatDate(event.date) }}
-                  </small>
-                </div>
-                <div class="mb-2">
-                  <small class="text-muted">
-                    <i class="fas fa-map-marker-alt"></i> {{ event.venue }}
-                  </small>
-                </div>
-              </div>
-              <div class="card-footer">
-                <div class="d-flex gap-2 mb-2">
-                  <router-link :to="`/events/${event.id}`" class="btn btn-success btn-sm flex-fill">
-                    <i class="fas fa-ticket-alt"></i> Manage Tickets
-                  </router-link>
-                </div>
-                <div class="btn-group w-100" role="group">
-                  <button class="btn btn-outline-primary btn-sm" @click="editEvent(event)">
-                    <i class="fas fa-edit"></i> Edit
-                  </button>
-                  <button class="btn btn-outline-danger btn-sm" @click="deleteEvent(event.id)">
-                    <i class="fas fa-trash"></i> Delete
-                  </button>
-                </div>
-              </div>
+      <div v-else class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <article
+          v-for="event in events"
+          :key="event.id"
+          class="flex flex-col rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden"
+        >
+          <div class="px-5 py-6 flex-1 space-y-3">
+            <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.4em] text-slate-400">
+              <span>{{ formatDate(event.date) }}</span>
+            </div>
+            <div>
+              <h3 class="text-2xl font-semibold text-slate-900">{{ event.title }}</h3>
+              <p class="text-sm text-slate-500 mt-1 max-h-16 overflow-hidden">{{ event.description || 'No description yet.' }}</p>
+            </div>
+            <div class="text-sm text-slate-600 flex flex-wrap gap-3 mt-3">
+              <span class="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-slate-500">
+                <i class="fas fa-map-marker-alt"></i>
+                {{ event.venue || 'Venue TBD' }}
+              </span>
             </div>
           </div>
-        </div>
-
-        <!-- Error Message -->
-        <div v-if="error" class="alert alert-danger mt-3" role="alert">
-          <strong>Error:</strong> {{ error }}
-          <button class="btn btn-sm btn-outline-danger ms-2" @click="loadEvents">Retry</button>
-        </div>
+          <div class="border-t border-slate-100 bg-slate-50 px-5 py-4 space-y-3">
+            <router-link
+              :to="`/events/${event.id}`"
+              class="inline-flex items-center justify-center w-full rounded-full border border-emerald-500 bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600 transition"
+            >
+              <i class="fas fa-ticket-alt mr-2"></i> Manage Tickets
+            </router-link>
+            <div class="flex gap-2">
+              <button class="flex-1 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="editEvent(event)">
+                <i class="fas fa-edit mr-2"></i>Edit
+              </button>
+              <button class="flex-1 rounded-full border border-rose-300 bg-white px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition" @click="deleteEvent(event.id)">
+                <i class="fas fa-trash mr-2"></i>Delete
+              </button>
+            </div>
+          </div>
+        </article>
       </div>
-    </div>
+    </section>
 
-    <!-- Create/Edit Event Modal -->
+    <!-- Bootstrap modal remains unchanged -->
     <div class="modal fade" id="eventModal" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">

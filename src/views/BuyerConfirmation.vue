@@ -1,66 +1,84 @@
 <template>
-  <div class="container mt-4">
+  <div class="max-w-4xl mx-auto px-4 py-8">
     <!-- Loading State -->
-    <div v-if="isLoading" class="text-center">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading confirmation...</span>
+    <div v-if="isLoading" class="text-center py-12">
+      <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-500 border-r-transparent align-[-0.125em]" role="status">
+        <span class="sr-only">Loading confirmation...</span>
       </div>
-      <p class="mt-3">Loading order confirmation...</p>
+      <p class="mt-4 text-slate-500 font-medium">Loading order confirmation...</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="alert alert-danger">
-      <h4>Invalid Confirmation Link</h4>
-      <p>{{ error }}</p>
+    <div v-else-if="error" class="rounded-2xl bg-red-50 p-6 border border-red-100 text-center">
+      <div class="inline-flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+      </div>
+      <h4 class="text-lg font-bold text-red-800 mb-2">Invalid Confirmation Link</h4>
+      <p class="text-red-600">{{ error }}</p>
     </div>
 
     <!-- Completed Order State -->
-    <div v-else-if="orderData.isCompleted" class="row justify-content-center">
-      <div class="col-lg-8">
-        <div class="card">
-          <div class="card-header bg-success text-white">
-            <h3 class="mb-0">✅ Pedido Já Confirmado</h3>
+    <div v-else-if="orderData.isCompleted" class="max-w-3xl mx-auto">
+      <div class="bg-white shadow-lg rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 bg-emerald-50 border-b border-emerald-100 flex items-center gap-3">
+          <div class="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+            <i class="fas fa-check"></i>
           </div>
-          <div class="card-body">
-            <!-- Event Info -->
-            <div v-if="orderData.event" class="mb-4">
-              <h5>{{ orderData.event.name }}</h5>
-              <p><strong>Local:</strong> {{ orderData.event.venue }}</p>
-              <p><strong>Data:</strong> {{ formatDate(orderData.event.date) }}</p>
-            </div>
-
-            <div class="alert alert-info">
-              <h5>Informação</h5>
-              <p>Este pedido já foi confirmado e os dados dos compradores já foram preenchidos.</p>
-            </div>
-
-            <!-- Confirmed Tickets -->
-            <div class="mb-4">
-              <h6>Ingressos Confirmados ({{ orderData.totalTickets }})</h6>
-              <div class="table-responsive">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Descrição</th>
-                      <th>Local</th>
-                      <th>Mesa</th>
-                      <th>Preço</th>
-                      <th>Comprador</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="ticket in orderData.tickets" :key="ticket.id">
-                      <td><strong>{{ ticket.identificationNumber }}</strong></td>
-                      <td>{{ ticket.description }}</td>
-                      <td>{{ ticket.location || '-' }}</td>
-                      <td>{{ ticket.table || '-' }}</td>
-                      <td>${{ ticket.price.toFixed(2) }}</td>
-                      <td>{{ ticket.buyer }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+          <h3 class="text-lg font-bold text-emerald-800 m-0">Pedido Já Confirmado</h3>
+        </div>
+        
+        <div class="p-6 md:p-8 space-y-8">
+          <!-- Event Info -->
+          <div v-if="orderData.event" class="text-center md:text-left border-b border-slate-100 pb-6">
+            <h5 class="text-2xl font-bold text-slate-900 mb-2">{{ orderData.event.name }}</h5>
+            <div class="flex flex-col md:flex-row gap-4 text-slate-500 text-sm">
+              <div class="flex items-center gap-2">
+                <i class="fas fa-map-marker-alt text-slate-400 w-4"></i>
+                <strong>Local:</strong> {{ orderData.event.venue }}
               </div>
+              <div class="flex items-center gap-2">
+                <i class="fas fa-calendar-alt text-slate-400 w-4"></i>
+                <strong>Data:</strong> {{ formatDate(orderData.event.date) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-xl bg-sky-50 p-4 border border-sky-100 flex gap-3">
+             <i class="fas fa-info-circle text-sky-500 mt-0.5"></i>
+             <div>
+               <h5 class="font-semibold text-sky-800 text-sm mb-1">Informação</h5>
+               <p class="text-sky-700 text-sm">Este pedido já foi confirmado e os dados dos compradores já foram preenchidos.</p>
+             </div>
+          </div>
+
+          <!-- Confirmed Tickets -->
+          <div>
+            <h6 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-l-4 border-emerald-500 pl-3">
+              Ingressos Confirmados ({{ orderData.totalTickets }})
+            </h6>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+              <table class="w-full text-left text-sm text-slate-600">
+                <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500">
+                  <tr>
+                    <th class="px-4 py-3 border-b border-slate-200">#</th>
+                    <th class="px-4 py-3 border-b border-slate-200">Descrição</th>
+                    <th class="px-4 py-3 border-b border-slate-200">Local</th>
+                    <th class="px-4 py-3 border-b border-slate-200">Mesa</th>
+                    <th class="px-4 py-3 border-b border-slate-200">Preço</th>
+                    <th class="px-4 py-3 border-b border-slate-200">Comprador</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  <tr v-for="ticket in orderData.tickets" :key="ticket.id" class="hover:bg-slate-50/50 transition">
+                    <td class="px-4 py-3 font-mono text-slate-900 font-medium">{{ ticket.identificationNumber }}</td>
+                    <td class="px-4 py-3">{{ ticket.description }}</td>
+                    <td class="px-4 py-3">{{ ticket.location || '-' }}</td>
+                    <td class="px-4 py-3">{{ ticket.table || '-' }}</td>
+                    <td class="px-4 py-3 font-mono text-slate-900">${{ ticket.price.toFixed(2) }}</td>
+                    <td class="px-4 py-3 font-medium text-slate-900">{{ ticket.buyer }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -68,95 +86,123 @@
     </div>
 
     <!-- Success State - Confirmation Form -->
-    <div v-else class="row justify-content-center">
-      <div class="col-lg-8">
-        <div class="card">
-          <div class="card-header bg-primary text-white">
-            <h3 class="mb-0">Confirmação de Dados dos Ingressos</h3>
-          </div>
-          <div class="card-body">
-            <!-- Event Info -->
-            <div v-if="orderData.event" class="mb-4">
-              <h5>{{ orderData.event.name }}</h5>
-              <p class="text-muted">{{ orderData.event.description }}</p>
-              <p><strong>Local:</strong> {{ orderData.event.venue }}</p>
-              <p><strong>Data:</strong> {{ formatDate(orderData.event.date) }}</p>
+    <div v-else class="max-w-3xl mx-auto">
+      <div class="bg-white shadow-xl rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
+          <h3 class="text-lg font-bold m-0 flex items-center gap-2">
+            <i class="fas fa-ticket-alt text-primary-400"></i>
+            Confirmação de Dados dos Ingressos
+          </h3>
+        </div>
+        
+        <div class="p-6 md:p-8">
+          <!-- Event Info -->
+          <div v-if="orderData.event" class="mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100">
+            <h5 class="text-2xl font-bold text-slate-900 mb-2">{{ orderData.event.name }}</h5>
+            <p class="text-slate-600 mb-4">{{ orderData.event.description }}</p>
+            <div class="flex flex-col sm:flex-row gap-4 sm:gap-8 text-sm text-slate-500">
+              <div class="flex items-center gap-2">
+                <i class="fas fa-map-marker-alt text-primary-500"></i>
+                <span><strong>Local:</strong> {{ orderData.event.venue }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <i class="fas fa-calendar-alt text-primary-500"></i>
+                <span><strong>Data:</strong> {{ formatDate(orderData.event.date) }}</span>
+              </div>
             </div>
+          </div>
 
-            <!-- Confirmation Form -->
-            <form @submit.prevent="submitConfirmation" data-confirmation-form>
-              <div v-for="(ticket, index) in orderData.tickets" :key="ticket.id" 
-                   :data-ticket-index="index" class="mb-4 p-3 border rounded">
-                <h6>Ingresso {{ ticket.identificationNumber }} - {{ ticket.description }}</h6>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Nome Completo *</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      name="name"
-                      v-model="buyerForms[index].name" 
-                      required 
-                    />
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">CPF *</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      name="document"
-                      v-model="buyerForms[index].document" 
-                      @input="formatCPF(index)"
-                      required 
-                    />
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Email *</label>
-                    <input 
-                      type="email" 
-                      class="form-control" 
-                      name="email"
-                      v-model="buyerForms[index].email" 
-                      required 
-                    />
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Telefone</label>
-                    <input 
-                      type="tel" 
-                      class="form-control" 
-                      name="phone"
-                      v-model="buyerForms[index].phone" 
-                    />
-                  </div>
+          <!-- Confirmation Form -->
+          <form @submit.prevent="submitConfirmation" data-confirmation-form class="space-y-6">
+            <div v-for="(ticket, index) in orderData.tickets" :key="ticket.id" 
+                 :data-ticket-index="index" 
+                 class="relative p-6 rounded-2xl border-2 border-slate-100 hover:border-slate-200 transition bg-white"
+            >
+              <div class="absolute -top-3 left-6 px-3 bg-white text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                 <i class="fas fa-ticket-alt"></i> Ingresso {{ ticket.identificationNumber }}
+              </div>
+              
+              <h6 class="font-semibold text-slate-900 mb-4 text-lg">{{ ticket.description }}</h6>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="block text-sm font-semibold text-slate-700">Nome Completo <span class="text-red-500">*</span></label>
+                  <input 
+                    type="text" 
+                    class="block w-full rounded-xl border-slate-200 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:ring-primary-500 transition shadow-sm"
+                    name="name"
+                    v-model="buyerForms[index].name" 
+                    required 
+                    placeholder="Nome do titular"
+                  />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="block text-sm font-semibold text-slate-700">CPF <span class="text-red-500">*</span></label>
+                  <input 
+                    type="text" 
+                    class="block w-full rounded-xl border-slate-200 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:ring-primary-500 transition shadow-sm"
+                    name="document"
+                    v-model="buyerForms[index].document" 
+                    @input="formatCPF(index)"
+                    required 
+                    placeholder="000.000.000-00"
+                  />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="block text-sm font-semibold text-slate-700">Email <span class="text-red-500">*</span></label>
+                  <input 
+                    type="email" 
+                    class="block w-full rounded-xl border-slate-200 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:ring-primary-500 transition shadow-sm"
+                    name="email"
+                    v-model="buyerForms[index].email" 
+                    required 
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="block text-sm font-semibold text-slate-700">Telefone</label>
+                  <input 
+                    type="tel" 
+                    class="block w-full rounded-xl border-slate-200 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:ring-primary-500 transition shadow-sm"
+                    name="phone"
+                    v-model="buyerForms[index].phone" 
+                    placeholder="(00) 00000-0000"
+                  />
                 </div>
               </div>
+            </div>
 
-              <!-- Error Messages -->
-              <div v-if="validationErrors.length > 0" class="alert alert-danger error-message">
-                <ul class="mb-0">
+            <!-- Error Messages -->
+            <div v-if="validationErrors.length > 0" class="rounded-xl bg-red-50 p-4 border border-red-100 text-red-700 error-message animate-shake">
+              <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-circle mt-1"></i>
+                <ul class="list-disc list-inside text-sm space-y-1">
                   <li v-for="error in validationErrors" :key="error">{{ error }}</li>
                 </ul>
               </div>
-
-              <!-- Submit Button -->
-              <div class="text-center">
-                <button 
-                  type="submit" 
-                  class="btn btn-primary btn-lg"
-                  :disabled="isSubmitting"
-                >
-                  <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
-                  {{ isSubmitting ? 'Enviando...' : 'Confirmar Dados' }}
-                </button>
-              </div>
-            </form>
-
-            <!-- Success Message -->
-            <div v-if="isSuccess" class="alert alert-success success-message mt-3">
-              <h5>✅ Confirmação realizada com sucesso!</h5>
-              <p>Os dados dos ingressos foram confirmados. Você receberá um email de confirmação em breve.</p>
             </div>
+
+            <!-- Submit Button -->
+            <div class="pt-4 text-center">
+              <button 
+                type="submit" 
+                class="inline-flex items-center justify-center gap-2 rounded-full bg-primary-600 px-8 py-4 text-lg font-bold text-white shadow-lg hover:bg-primary-500 hover:scale-105 active:scale-95 transition disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                :disabled="isSubmitting"
+              >
+                <span v-if="isSubmitting" class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                {{ isSubmitting ? 'Enviando...' : 'Confirmar Dados' }}
+                <i v-if="!isSubmitting" class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </form>
+
+          <!-- Success Message -->
+          <div v-if="isSuccess" class="mt-8 rounded-2xl bg-emerald-50 p-6 border border-emerald-100 text-emerald-800 success-message text-center animate-fade-in">
+            <div class="h-16 w-16 mx-auto bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4 text-2xl">
+              <i class="fas fa-check"></i>
+            </div>
+            <h5 class="text-xl font-bold mb-2">Confirmação realizada com sucesso!</h5>
+            <p class="text-emerald-700">Os dados dos ingressos foram confirmados. Você receberá um email de confirmação em breve.</p>
           </div>
         </div>
       </div>
@@ -312,30 +358,22 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.card {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
 }
 
-.card-header {
-  border-bottom: none;
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
 
-.border {
-  border-color: #e9ecef !important;
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
 }
 
-.form-control:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-.btn-primary {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-}
-
-.btn-primary:hover {
-  background-color: #0b5ed7;
-  border-color: #0a58ca;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

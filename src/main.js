@@ -4,10 +4,7 @@ import { createAuth0 } from '@auth0/auth0-vue'
 import App from './App.vue'
 import { createRoutes } from './router/routes.js'
 import { auth0Config } from './config/auth0.js'
-
-// Import Bootstrap CSS
-import 'bootstrap/dist/css/bootstrap.min.css'
-import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import './assets/main.css'
 
 // Create Vue app instance
 const app = createApp(App)

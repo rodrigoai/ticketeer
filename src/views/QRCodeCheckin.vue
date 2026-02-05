@@ -1,31 +1,31 @@
 <template>
-  <div class="min-vh-100 bg-light py-4 px-3">
-    <div class="container" style="max-width: 640px;">
+  <div class="min-h-screen bg-slate-50 py-8 px-4">
+    <div class="max-w-xl mx-auto space-y-6">
       <!-- Back Button -->
-      <div class="mb-3">
-        <button @click="goBack" class="btn btn-link text-success p-0 text-decoration-none">
-          <i class="fas fa-arrow-left me-2"></i>
-          <span class="fw-medium">Voltar</span>
+      <div>
+        <button @click="goBack" class="inline-flex items-center gap-2 text-slate-500 hover:text-slate-700 transition font-medium">
+          <i class="fas fa-arrow-left"></i>
+          <span>Voltar</span>
         </button>
       </div>
 
       <!-- Scanning State -->
-      <div v-if="!scannedHash" class="fade-in">
+      <div v-if="!scannedHash" class="animate-fade-in space-y-6">
         <!-- Header Card -->
-        <div class="bg-white rounded-4 shadow-sm text-center p-4 mb-3">
-          <h1 class="h3 fw-bold text-success mb-2">CHECKIN</h1>
-          <p class="text-muted mb-0 small">Verifique se os dados a seguir batem com a compra</p>
+        <div class="bg-white rounded-3xl shadow-sm p-6 text-center border border-slate-100">
+          <h1 class="text-2xl font-bold text-emerald-600 mb-2">CHECKIN</h1>
+          <p class="text-slate-500 text-sm">Verifique se os dados a seguir batem com a compra</p>
         </div>
 
         <!-- Camera Preview (if using device camera) -->
-        <div v-if="showCamera" class="mb-3">
-          <div id="qr-reader" class="camera-container rounded-4 overflow-hidden shadow-sm"></div>
+        <div v-if="showCamera" class="rounded-3xl overflow-hidden shadow-lg border border-slate-100 relative bg-black aspect-[4/3]">
+          <div id="qr-reader" class="absolute inset-0 w-full h-full"></div>
         </div>
 
         <!-- QR Code Icon (shown when camera is not active) -->
-        <div v-else class="d-flex justify-content-center mb-3">
-          <div class="qr-icon-wrapper">
-            <svg width="206" height="206" viewBox="0 0 206 206" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div v-else class="flex justify-center py-4">
+          <div class="qr-icon-wrapper text-slate-900 animate-pulse">
+            <svg width="206" height="206" viewBox="0 0 206 206" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
               <rect x="103" y="103" width="103" height="103" rx="12" fill="currentColor"/>
               <rect x="116" y="116" width="25" height="25" rx="4" fill="white"/>
               <rect x="155" y="116" width="25" height="25" rx="4" fill="white"/>
@@ -44,37 +44,37 @@
         <button 
           @click="startScanning" 
           :disabled="scanning"
-          class="btn btn-success btn-lg w-100 rounded-4 fw-semibold py-3"
+          class="w-full rounded-full bg-emerald-500 py-4 text-white text-lg font-semibold shadow-md hover:bg-emerald-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           type="button"
         >
-          <span v-if="scanning" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          <span v-if="scanning" class="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
           {{ scanning ? 'Escaneando...' : 'Ler QRCODE' }}
         </button>
 
         <!-- Manual Entry Link -->
-        <div class="text-center mt-3">
-          <button @click="showManualEntry" class="btn btn-link text-muted text-decoration-none small">
+        <div class="text-center">
+          <button @click="showManualEntry" class="text-slate-500 hover:text-slate-700 text-sm font-medium underline-offset-4 hover:underline">
             Inserir código manualmente
           </button>
         </div>
       </div>
 
       <!-- Manual Entry Modal -->
-      <div v-if="showManual" class="modal-overlay fade-in" @click.self="closeManualEntry">
-        <div class="modal-content bg-white rounded-4 shadow-lg p-4">
-          <h3 class="h5 fw-bold mb-3">Inserir Código Manualmente</h3>
+      <div v-if="showManual" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" @click.self="closeManualEntry">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-sm p-6 space-y-4">
+          <h3 class="text-lg font-bold text-slate-900">Inserir Código Manualmente</h3>
           <input 
             v-model="manualHash" 
             type="text" 
-            class="form-control mb-3" 
+            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             placeholder="Cole o código do ticket"
             @keyup.enter="submitManualHash"
           />
-          <div class="d-flex gap-2">
-            <button @click="closeManualEntry" class="btn btn-outline-secondary flex-fill">
+          <div class="flex gap-3">
+            <button @click="closeManualEntry" class="flex-1 rounded-xl border border-slate-200 py-3 text-slate-600 font-medium hover:bg-slate-50 transition">
               Cancelar
             </button>
-            <button @click="submitManualHash" class="btn btn-success flex-fill" :disabled="!manualHash.trim()">
+            <button @click="submitManualHash" class="flex-1 rounded-xl bg-emerald-500 py-3 text-white font-medium hover:bg-emerald-600 transition disabled:opacity-50 disabled:cursor-not-allowed" :disabled="!manualHash.trim()">
               Confirmar
             </button>
           </div>
@@ -82,9 +82,9 @@
       </div>
 
       <!-- Error Message -->
-      <div v-if="error" class="alert alert-warning rounded-4 text-center fade-in mt-3">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        <div class="small">{{ error }}</div>
+      <div v-if="error" class="rounded-3xl bg-amber-50 border border-amber-100 p-4 text-amber-800 text-center animate-fade-in flex items-center justify-center gap-2">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span class="text-sm font-medium">{{ error }}</span>
       </div>
     </div>
   </div>
@@ -251,93 +251,7 @@ export default {
 </script>
 
 <style scoped>
-.qr-icon-wrapper {
-  width: 206px;
-  height: 206px;
-  color: #1c1a27;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-.camera-container {
-  position: relative;
-  background: #000;
-  width: 100%;
-  min-height: 300px;
-  max-height: 500px;
-}
-
-/* Make camera take more space on mobile */
-@media (min-width: 576px) {
-  .camera-container {
-    aspect-ratio: 4/3;
-  }
-}
-
-/* Full viewport height on small screens when camera is active */
-@media (max-width: 575px) {
-  .camera-container {
-    min-height: 400px;
-  }
-}
-
-.camera-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.scan-frame {
-  width: 250px;
-  height: 250px;
-  border: 3px solid #02864a;
-  border-radius: 12px;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
-  animation: scan 2s ease-in-out infinite;
-}
-
-@keyframes scan {
-  0%, 100% {
-    border-color: #02864a;
-  }
-  50% {
-    border-color: #04a85a;
-  }
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1050;
-  padding: 1rem;
-}
-
-.modal-content {
-  max-width: 400px;
-  width: 100%;
-}
-
-.fade-in {
+.animate-fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
 
@@ -349,24 +263,6 @@ export default {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-video {
-  display: block;
-  object-fit: cover;
-}
-
-/* Responsive adjustments */
-@media (max-width: 575px) {
-  .qr-icon-wrapper {
-    width: 160px;
-    height: 160px;
-  }
-  
-  .qr-icon-wrapper svg {
-    width: 100%;
-    height: 100%;
   }
 }
 </style>
