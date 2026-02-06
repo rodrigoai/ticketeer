@@ -2,10 +2,30 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const { auth } = require('express-oauth2-jwt-bearer');
+const fetch = require('node-fetch');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const normalizeNovaTenant = (tenant) => {
+  if (!tenant) return '';
+  let cleaned = tenant.trim();
+  cleaned = cleaned.replace(/^https?:\/\//i, '');
+  cleaned = cleaned.replace(/\/.*$/, '');
+  cleaned = cleaned.replace(/\.?pay\.nova\.money$/i, '');
+  cleaned = cleaned.replace(/\.$/, '');
+  return cleaned;
+};
+
+const buildNovaCheckoutUrl = (tenant, checkoutPageId, eventId) => {
+  const normalizedTenant = normalizeNovaTenant(tenant);
+  if (!normalizedTenant || !checkoutPageId) return null;
+  const baseUrl = `https://${normalizedTenant}.pay.nova.money/checkout/${checkoutPageId}`;
+  if (!eventId) return baseUrl;
+  const encodedEventId = Buffer.from(String(eventId)).toString('base64').replace(/=+$/, '');
+  return `${baseUrl}?meta.eventId=${encodedEventId}`;
+};
 
 // Auth0 configuration for JWT validation
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || 'novamoney.us.auth0.com';
@@ -134,6 +154,147 @@ app.get('/api/test/protected', requiresAuth, (req, res) => {
   }
 });
 
+// ==========================================
+// USER PROFILE - NOVA.MONEY SETTINGS
+// ==========================================
+
+// Get Nova.Money settings for current user (JWT authenticated)
+app.get('/api/profile/nova-money', requiresAuth, async (req, res) => {
+  try {
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const userProfileService = require('./services/userProfileService');
+
+    const profile = await userProfileService.getProfileByUserId(userId);
+
+    res.json({
+      success: true,
+      profile: {
+        novaMoneyTenant: profile?.nova_money_tenant || '',
+        hasNovaMoneyApiKey: Boolean(profile?.nova_money_api_key)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching Nova.Money profile:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch Nova.Money profile',
+      message: error.message
+    });
+  }
+});
+
+// Update Nova.Money settings for current user (JWT authenticated)
+app.put('/api/profile/nova-money', requiresAuth, async (req, res) => {
+  try {
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const { novaMoneyTenant, novaMoneyApiKey } = req.body;
+    const userProfileService = require('./services/userProfileService');
+
+    if (!novaMoneyTenant) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'Nova.Money tenant is required'
+      });
+    }
+
+    const existingProfile = await userProfileService.getProfileByUserId(userId);
+    const existingKey = existingProfile?.nova_money_api_key || '';
+    const normalizedKey = novaMoneyApiKey ? String(novaMoneyApiKey).trim() : '';
+    const resolvedKey = normalizedKey || existingKey;
+
+    if (!resolvedKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'Nova.Money API key is required'
+      });
+    }
+
+    await userProfileService.upsertProfile(userId, {
+      nova_money_api_key: resolvedKey,
+      nova_money_tenant: String(novaMoneyTenant).trim()
+    });
+
+    res.json({
+      success: true,
+      profile: {
+        novaMoneyTenant: String(novaMoneyTenant).trim(),
+        hasNovaMoneyApiKey: true
+      },
+      message: 'Nova.Money settings saved successfully'
+    });
+  } catch (error) {
+    console.error('Error saving Nova.Money profile:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save Nova.Money profile',
+      message: error.message
+    });
+  }
+});
+
+// ==========================================
+// NOVA.MONEY API - CHECKOUT PAGES
+// ==========================================
+
+// Fetch Nova.Money checkout pages (JWT authenticated)
+app.get('/api/nova/checkout-pages', requiresAuth, async (req, res) => {
+  try {
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const userProfileService = require('./services/userProfileService');
+
+    const profile = await userProfileService.getProfileByUserId(userId);
+    const tenant = normalizeNovaTenant(profile?.nova_money_tenant || '');
+    const apiKey = profile?.nova_money_api_key || '';
+
+    if (!tenant || !apiKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nova.Money integration not configured',
+        message: 'Please configure your Nova.Money tenant and API key in your profile first'
+      });
+    }
+
+    const url = `https://${tenant}.pay.nova.money/api/v1/checkout_pages`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'X-Api-Key': apiKey
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        success: false,
+        error: 'Failed to fetch checkout pages',
+        message: data?.message || data?.error || 'Nova.Money API request failed',
+        details: data
+      });
+    }
+
+    const pages = Array.isArray(data)
+      ? data
+      : (data?.data || data?.checkout_pages || data?.items || []);
+
+    res.json({
+      success: true,
+      pages
+    });
+  } catch (error) {
+    console.error('Error fetching Nova.Money checkout pages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch checkout pages',
+      message: error.message
+    });
+  }
+});
+
 // Get events from database (JWT authenticated)
 app.get('/api/events', requiresAuth, async (req, res) => {
   try {
@@ -155,9 +316,12 @@ app.get('/api/events', requiresAuth, async (req, res) => {
       date: event.opening_datetime,
       opening_datetime: event.opening_datetime,
       closing_datetime: event.closing_datetime,
+      eventImageUrl: event.event_image_url,
       venue: event.venue,
       price: 0, // We'll need to add price to schema or calculate from tickets
       status: event.status,
+      checkoutPageId: event.checkout_page_id,
+      checkoutPageTitle: event.checkout_page_title,
       created_by: event.created_by,
       created_at: event.created_at,
       updated_at: event.updated_at
@@ -186,7 +350,7 @@ app.post('/api/events', requiresAuth, async (req, res) => {
     console.log('📥 Request body:', req.body);
     console.log('👤 Auth data:', req.auth);
 
-    const { title, description, date, venue, price } = req.body;
+    const { title, description, date, venue, price, eventImageUrl, checkoutPageId, checkoutPageTitle } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
 
     console.log('🎯 Extracted data:', { title, description, date, venue, price, userId });
@@ -201,6 +365,14 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       });
     }
 
+    if ((checkoutPageId && !checkoutPageTitle) || (!checkoutPageId && checkoutPageTitle)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid checkout page selection',
+        message: 'Checkout page ID and title must be provided together'
+      });
+    }
+
     console.log('🛠️ Loading event service...');
     const eventService = require('./services/eventService');
 
@@ -208,9 +380,12 @@ app.post('/api/events', requiresAuth, async (req, res) => {
     const eventData = {
       name: title,
       description: description || '',
+      event_image_url: eventImageUrl || null,
       opening_datetime: new Date(date),
       closing_datetime: new Date(date), // For now, same as opening. TODO: Add separate closing time
       venue: venue,
+      checkout_page_id: checkoutPageId || null,
+      checkout_page_title: checkoutPageTitle || null,
       created_by: userId
     };
 
@@ -226,8 +401,11 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       name: newEvent.name,
       description: newEvent.description,
       date: newEvent.opening_datetime,
+      eventImageUrl: newEvent.event_image_url,
       venue: newEvent.venue,
       price: parseFloat(price) || 0,
+      checkoutPageId: newEvent.checkout_page_id,
+      checkoutPageTitle: newEvent.checkout_page_title,
       created_by: newEvent.created_by
     };
 
@@ -266,8 +444,11 @@ app.get('/api/events/:id', requiresAuth, async (req, res) => {
       date: event.opening_datetime,
       opening_datetime: event.opening_datetime,
       closing_datetime: event.closing_datetime,
+      eventImageUrl: event.event_image_url,
       venue: event.venue,
       status: event.status,
+      checkoutPageId: event.checkout_page_id,
+      checkoutPageTitle: event.checkout_page_title,
       created_by: event.created_by,
       created_at: event.created_at,
       updated_at: event.updated_at
@@ -292,18 +473,29 @@ app.get('/api/events/:id', requiresAuth, async (req, res) => {
 app.put('/api/events/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, date, venue, price } = req.body;
+    const { title, description, date, venue, price, eventImageUrl, checkoutPageId, checkoutPageTitle } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
 
     const eventService = require('./services/eventService');
+
+    if ((checkoutPageId && !checkoutPageTitle) || (!checkoutPageId && checkoutPageTitle)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid checkout page selection',
+        message: 'Checkout page ID and title must be provided together'
+      });
+    }
 
     // Update event data
     const eventData = {
       name: title,
       description: description || '',
+      event_image_url: eventImageUrl || null,
       opening_datetime: date ? new Date(date) : undefined,
       closing_datetime: date ? new Date(date) : undefined, // TODO: Add separate closing time
-      venue: venue
+      venue: venue,
+      checkout_page_id: checkoutPageId || null,
+      checkout_page_title: checkoutPageTitle || null
     };
 
     const updatedEvent = await eventService.updateEvent(id, eventData, userId);
@@ -315,8 +507,11 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
       name: updatedEvent.name,
       description: updatedEvent.description,
       date: updatedEvent.opening_datetime,
+      eventImageUrl: updatedEvent.event_image_url,
       venue: updatedEvent.venue,
       price: parseFloat(price) || 0,
+      checkoutPageId: updatedEvent.checkout_page_id,
+      checkoutPageTitle: updatedEvent.checkout_page_title,
       created_by: updatedEvent.created_by
     };
 
@@ -365,6 +560,61 @@ app.delete('/api/events/:id', requiresAuth, async (req, res) => {
 // ==========================================
 // TICKET API ENDPOINTS
 // ==========================================
+
+// Public event landing data (no auth required)
+app.get('/api/public/events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const eventService = require('./services/eventService');
+    const userProfileService = require('./services/userProfileService');
+
+    const event = await eventService.getEventById(id);
+
+    if (!event || event.status !== 'active') {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found',
+        message: 'Event does not exist or is not available'
+      });
+    }
+
+    const profile = await userProfileService.getProfileByUserId(event.created_by);
+    const checkoutUrl = buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, event.id);
+
+    res.json({
+      success: true,
+      event: {
+        id: event.id,
+        title: event.name,
+        name: event.name,
+        description: event.description,
+        date: event.opening_datetime,
+        opening_datetime: event.opening_datetime,
+        closing_datetime: event.closing_datetime,
+        eventImageUrl: event.event_image_url,
+        venue: event.venue,
+        checkoutPageId: event.checkout_page_id,
+        checkoutPageTitle: event.checkout_page_title,
+        created_by: event.created_by
+      },
+      checkoutUrl
+    });
+  } catch (error) {
+    console.error('Error fetching public event:', error);
+    if (error.message && error.message.includes('Event not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found',
+        message: 'Event does not exist or is not available'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch event',
+      message: error.message
+    });
+  }
+});
 
 // Get all tickets for an event (JWT authenticated)
 app.get('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {

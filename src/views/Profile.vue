@@ -172,6 +172,62 @@
       </div>
     </div>
 
+    <!-- Nova.Money Integration -->
+    <div class="bg-white shadow-sm rounded-2xl border border-slate-200 mb-8 overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+        <h5 class="text-lg font-semibold text-slate-900">Nova.Money Integration</h5>
+      </div>
+      <div class="p-6 space-y-4">
+        <div v-if="isLoadingNovaProfile" class="text-center py-6 text-slate-500">
+          Loading Nova.Money settings...
+        </div>
+
+        <div v-else>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Tenant</label>
+              <input
+                type="text"
+                class="block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                v-model="novaMoneyTenant"
+                placeholder="your-tenant"
+              />
+              <p class="mt-2 text-xs text-slate-500">Subdomain used to access Nova.Money APIs.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-2">API Key</label>
+              <input
+                type="password"
+                class="block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                v-model="novaMoneyApiKey"
+                placeholder="••••••••••••"
+              />
+              <p class="mt-2 text-xs text-slate-500">
+                {{ hasNovaMoneyApiKey ? 'A key is already saved. Leave blank to keep it.' : 'Required to connect Nova.Money.' }}
+              </p>
+            </div>
+          </div>
+
+          <div v-if="novaProfileError" class="rounded-xl bg-red-50 p-3 border border-red-100 text-red-700 text-sm">
+            {{ novaProfileError }}
+          </div>
+          <div v-if="novaProfileSuccess" class="rounded-xl bg-emerald-50 p-3 border border-emerald-100 text-emerald-700 text-sm">
+            {{ novaProfileSuccess }}
+          </div>
+
+          <div class="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+            <button
+              class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 transition"
+              @click="saveNovaProfile"
+              :disabled="isSavingNovaProfile"
+            >
+              <i class="fas fa-save"></i> {{ isSavingNovaProfile ? 'Saving...' : 'Save Settings' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- User Information -->
     <div class="bg-white shadow-sm rounded-2xl border border-slate-200 overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -224,6 +280,7 @@
 
 <script lang="ts">
 import { useUser } from '@/composables/useUser';
+import { useApi } from '@/composables/useApi';
 import { ref, onMounted, computed } from 'vue';
 
 export default {
@@ -240,8 +297,16 @@ export default {
       getAccessToken, 
       refreshAccessToken 
     } = useUser();
+    const { get, put } = useApi();
     
     const testResult = ref<any>(null);
+    const novaMoneyTenant = ref('');
+    const novaMoneyApiKey = ref('');
+    const hasNovaMoneyApiKey = ref(false);
+    const isLoadingNovaProfile = ref(false);
+    const isSavingNovaProfile = ref(false);
+    const novaProfileError = ref('');
+    const novaProfileSuccess = ref('');
     
     // Computed webhook URL based on current domain and userId
     const webhookUrl = computed(() => {
@@ -258,6 +323,53 @@ export default {
     // Refresh token function (wrapper around centralized function)
     const refreshToken = async () => {
       return await refreshAccessToken();
+    };
+
+    const loadNovaProfile = async () => {
+      if (!isAuthenticated.value) return;
+      isLoadingNovaProfile.value = true;
+      novaProfileError.value = '';
+      novaProfileSuccess.value = '';
+
+      try {
+        const data = await get('/api/profile/nova-money');
+        novaMoneyTenant.value = data?.profile?.novaMoneyTenant || '';
+        hasNovaMoneyApiKey.value = Boolean(data?.profile?.hasNovaMoneyApiKey);
+      } catch (error: any) {
+        novaProfileError.value = error?.data?.message || error?.message || 'Failed to load Nova.Money settings';
+      } finally {
+        isLoadingNovaProfile.value = false;
+      }
+    };
+
+    const saveNovaProfile = async () => {
+      if (!novaMoneyTenant.value) {
+        novaProfileError.value = 'Nova.Money tenant is required';
+        return;
+      }
+
+      if (!novaMoneyApiKey.value && !hasNovaMoneyApiKey.value) {
+        novaProfileError.value = 'Nova.Money API key is required';
+        return;
+      }
+
+      isSavingNovaProfile.value = true;
+      novaProfileError.value = '';
+      novaProfileSuccess.value = '';
+
+      try {
+        await put('/api/profile/nova-money', {
+          novaMoneyTenant: novaMoneyTenant.value,
+          novaMoneyApiKey: novaMoneyApiKey.value
+        });
+        hasNovaMoneyApiKey.value = true;
+        novaMoneyApiKey.value = '';
+        novaProfileSuccess.value = 'Nova.Money settings saved successfully';
+      } catch (error: any) {
+        novaProfileError.value = error?.data?.message || error?.message || 'Failed to save Nova.Money settings';
+      } finally {
+        isSavingNovaProfile.value = false;
+      }
     };
     
     // Copy token to clipboard
@@ -333,6 +445,7 @@ export default {
       if (isAuthenticated.value && !isLoading.value) {
         getToken();
       }
+      loadNovaProfile();
     });
     
     return {
@@ -348,7 +461,15 @@ export default {
       copyToken,
       copyUserId,
       copyWebhookUrl,
-      testToken
+      testToken,
+      novaMoneyTenant,
+      novaMoneyApiKey,
+      hasNovaMoneyApiKey,
+      isLoadingNovaProfile,
+      isSavingNovaProfile,
+      novaProfileError,
+      novaProfileSuccess,
+      saveNovaProfile
     }
   }
 };

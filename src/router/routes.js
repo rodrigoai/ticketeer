@@ -8,6 +8,7 @@ import TicketCheckin from '@/views/TicketCheckin.vue'
 import TicketAccessoryPickup from '@/views/TicketAccessoryPickup.vue'
 import QRCodeCheckin from '@/views/QRCodeCheckin.vue'
 import QRCodeAccessoryPickup from '@/views/QRCodeAccessoryPickup.vue'
+import PublicEventLanding from '@/views/PublicEventLanding.vue'
 
 import { createAuthGuard } from "@auth0/auth0-vue";
 // Export function that takes app instance to create routes with auth guards
@@ -52,6 +53,13 @@ export const createRoutes = (app) => {
       component: BuyerConfirmation,
       props: true
       // Note: No authGuard - confirmation pages should be public
+    },
+    {
+      path: '/event/:id',
+      name: 'PublicEventLanding',
+      component: PublicEventLanding,
+      props: true
+      // Note: No authGuard - public event landing page
     },
     {
       path: '/checkin/:hash',

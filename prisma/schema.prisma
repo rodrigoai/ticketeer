@@ -11,12 +11,15 @@ datasource db {
 model Event {
   id                Int      @id @default(autoincrement())
   name              String
+  event_image_url   String?
   promotional_image String?
   opening_datetime  DateTime
   closing_datetime  DateTime
   map_image         String?
   description       String?
   venue             String?
+  checkout_page_id  String?
+  checkout_page_title String?
   created_by        String
   nextTicketNumber  Int      @default(1)
   created_at        DateTime @default(now())
@@ -25,6 +28,16 @@ model Event {
   tickets           Ticket[]
 
   @@map("events")
+}
+
+model UserProfile {
+  id                  String   @id
+  nova_money_api_key  String
+  nova_money_tenant   String
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@map("user_profiles")
 }
 
 model Ticket {

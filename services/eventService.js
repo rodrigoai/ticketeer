@@ -11,24 +11,30 @@ class EventService {
     try {
       const {
         name,
+        event_image_url,
         promotional_image,
         opening_datetime,
         closing_datetime,
         map_image,
         description,
         venue,
+        checkout_page_id,
+        checkout_page_title,
         created_by
       } = eventData;
 
       const event = await prisma.event.create({
         data: {
           name,
+          event_image_url,
           promotional_image,
           opening_datetime: new Date(opening_datetime),
           closing_datetime: new Date(closing_datetime),
           map_image,
           description,
           venue,
+          checkout_page_id,
+          checkout_page_title,
           created_by
         }
       });
@@ -105,13 +111,16 @@ class EventService {
     try {
       const {
         name,
+        event_image_url,
         promotional_image,
         opening_datetime,
         closing_datetime,
         map_image,
         description,
         venue,
-        status
+        status,
+        checkout_page_id,
+        checkout_page_title
       } = eventData;
 
       // First check if the event exists and user owns it
@@ -135,13 +144,16 @@ class EventService {
         },
         data: {
           name,
+          event_image_url,
           promotional_image,
           opening_datetime: opening_datetime ? new Date(opening_datetime) : undefined,
           closing_datetime: closing_datetime ? new Date(closing_datetime) : undefined,
           map_image,
           description,
           venue,
-          status
+          status,
+          checkout_page_id,
+          checkout_page_title
         }
       });
 

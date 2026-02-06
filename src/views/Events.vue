@@ -94,44 +94,66 @@
       </div>
     </section>
 
-    <!-- Bootstrap modal remains unchanged -->
-    <div class="modal fade" id="eventModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ isEditing ? 'Edit Event' : 'Create Event' }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form @submit.prevent="saveEvent">
-              <div class="mb-3">
-                <label for="eventTitle" class="form-label">Title</label>
-                <input type="text" class="form-control" id="eventTitle" v-model="eventForm.title" required>
-              </div>
-              <div class="mb-3">
-                <label for="eventDescription" class="form-label">Description</label>
-                <textarea class="form-control" id="eventDescription" rows="3" v-model="eventForm.description"></textarea>
-              </div>
-              <div class="row">
-                <div class="col-md-12">
-                  <div class="mb-3">
-                    <label for="eventDate" class="form-label">Date</label>
-                    <input type="datetime-local" class="form-control" id="eventDate" v-model="eventForm.date" required>
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="eventVenue" class="form-label">Venue</label>
-                <input type="text" class="form-control" id="eventVenue" v-model="eventForm.venue" required>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveEvent" :disabled="isLoading">
-              {{ isLoading ? 'Saving...' : 'Save Event' }}
-            </button>
-          </div>
+    <div v-if="isEventModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="closeEventModal">
+      <div class="w-full max-w-2xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <h5 class="text-lg font-semibold text-slate-900">{{ isEditing ? 'Edit Event' : 'Create Event' }}</h5>
+          <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="closeEventModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="p-6">
+          <form class="space-y-4" @submit.prevent="saveEvent">
+            <div>
+              <label for="eventTitle" class="block text-sm font-semibold text-slate-700 mb-2">Title</label>
+              <input type="text" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventTitle" v-model="eventForm.title" required>
+            </div>
+            <div>
+              <label for="eventDescription" class="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+              <textarea class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDescription" rows="3" v-model="eventForm.description"></textarea>
+            </div>
+            <div>
+              <label for="eventDate" class="block text-sm font-semibold text-slate-700 mb-2">Date</label>
+              <input type="datetime-local" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDate" v-model="eventForm.date" required>
+            </div>
+            <div>
+              <label for="eventVenue" class="block text-sm font-semibold text-slate-700 mb-2">Venue</label>
+              <input type="text" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventVenue" v-model="eventForm.venue" required>
+            </div>
+            <div>
+              <label for="eventImageUrl" class="block text-sm font-semibold text-slate-700 mb-2">Event Image URL</label>
+              <input type="url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventImageUrl" v-model="eventForm.eventImageUrl">
+              <p class="mt-2 text-xs text-slate-500">Public image URL displayed on the event landing page.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Nova.Money Checkout Page</label>
+              <select
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                v-model="eventForm.checkoutPageId"
+                @change="handleCheckoutSelection"
+                :disabled="isLoadingCheckoutPages || Boolean(checkoutPagesError)"
+              >
+                <option value="">Select a checkout page</option>
+                <option
+                  v-for="page in checkoutPages"
+                  :key="getCheckoutPageId(page)"
+                  :value="getCheckoutPageId(page)"
+                >
+                  {{ getCheckoutPageTitle(page) }}
+                </option>
+              </select>
+              <p class="mt-2 text-xs text-slate-500">This will be used to build the public ticket checkout link.</p>
+              <div v-if="isLoadingCheckoutPages" class="text-xs text-slate-500 mt-1">Loading checkout pages...</div>
+              <div v-else-if="checkoutPagesError" class="text-xs text-rose-600 mt-1">{{ checkoutPagesError }}</div>
+              <div v-else-if="checkoutPages.length === 0" class="text-xs text-slate-500 mt-1">No checkout pages found.</div>
+            </div>
+          </form>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
+          <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="closeEventModal">Cancel</button>
+          <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-500 transition disabled:opacity-60" @click="saveEvent" :disabled="isLoading">
+            {{ isLoading ? 'Saving...' : 'Save Event' }}
+          </button>
         </div>
       </div>
     </div>
@@ -143,13 +165,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
 
-
-// Import Bootstrap for modal functionality
-import { Modal } from 'bootstrap'
-if (typeof window !== 'undefined' && !window.bootstrap) {
-  window.bootstrap = { Modal }
-}
-
 // API composable
 const { isLoading, error, get, post, put, delete: deleteApi } = useApi()
 
@@ -160,13 +175,20 @@ const { userId, user, userName, userEmail, isAuthenticated } = useUser()
 const events = ref([])
 const isEditing = ref(false)
 const currentEventId = ref(null)
+const isEventModalOpen = ref(false)
+const checkoutPages = ref([])
+const isLoadingCheckoutPages = ref(false)
+const checkoutPagesError = ref(null)
 
 // Event form
 const eventForm = reactive({
   title: '',
   description: '',
   date: '',
-  venue: ''
+  venue: '',
+  eventImageUrl: '',
+  checkoutPageId: '',
+  checkoutPageTitle: ''
 })
 
 // Load events
@@ -185,17 +207,16 @@ const loadEvents = async () => {
 }
 
 // Show create modal
-const showCreateModal = () => {
+const showCreateModal = async () => {
   isEditing.value = false
   currentEventId.value = null
   resetForm()
-  const modalElement = document.getElementById('eventModal')
-  const modal = new Modal(modalElement)
-  modal.show()
+  await loadCheckoutPages()
+  isEventModalOpen.value = true
 }
 
 // Edit event
-const editEvent = (event) => {
+const editEvent = async (event) => {
   isEditing.value = true
   currentEventId.value = event.id
   
@@ -205,12 +226,15 @@ const editEvent = (event) => {
     description: event.description || '',
     date: event.date ? formatDateForInput(event.date) : '',
     venue: event.venue || '',
+    eventImageUrl: event.eventImageUrl || '',
+    checkoutPageId: event.checkoutPageId || '',
+    checkoutPageTitle: event.checkoutPageTitle || '',
     createdBy: userId
   })
+
+  await loadCheckoutPages()
   
-  const modalElement = document.getElementById('eventModal')
-  const modal = new Modal(modalElement)
-  modal.show()
+  isEventModalOpen.value = true
 }
 
 // Save event
@@ -219,7 +243,18 @@ const saveEvent = async () => {
     error.value = 'Please fill in all required fields'
     return
   }
-  
+
+  if (eventForm.checkoutPageId) {
+    const selectedPage = checkoutPages.value.find(page => getCheckoutPageId(page) === eventForm.checkoutPageId)
+    if (!selectedPage) {
+      error.value = 'Please select a valid checkout page'
+      return
+    }
+    eventForm.checkoutPageTitle = getCheckoutPageTitle(selectedPage)
+  } else {
+    eventForm.checkoutPageTitle = ''
+  }
+
   if (!isAuthenticated.value) {
     error.value = 'You must be logged in to create events'
     return
@@ -235,10 +270,7 @@ const saveEvent = async () => {
       console.log('Event created:', result)
     }
     
-    // Close modal and reload events
-    const modalElement = document.getElementById('eventModal')
-    const modal = Modal.getInstance(modalElement) || new Modal(modalElement)
-    modal.hide()
+    closeEventModal()
     resetForm()
     await loadEvents()
     
@@ -274,8 +306,49 @@ const resetForm = () => {
     title: '',
     description: '',
     date: '',
-    venue: ''
+    venue: '',
+    eventImageUrl: '',
+    checkoutPageId: '',
+    checkoutPageTitle: ''
   })
+}
+
+const closeEventModal = () => {
+  isEventModalOpen.value = false
+}
+
+const getCheckoutPageId = (page) => {
+  return String(page?.id || page?.checkout_page_id || page?.checkoutPageId || '')
+}
+
+const getCheckoutPageTitle = (page) => {
+  return page?.page_title || page?.title || page?.checkout_page_title || page?.checkoutPageTitle || 'Untitled'
+}
+
+const handleCheckoutSelection = () => {
+  if (!eventForm.checkoutPageId) {
+    eventForm.checkoutPageTitle = ''
+    return
+  }
+  const selectedPage = checkoutPages.value.find(page => getCheckoutPageId(page) === eventForm.checkoutPageId)
+  eventForm.checkoutPageTitle = selectedPage ? getCheckoutPageTitle(selectedPage) : ''
+}
+
+const loadCheckoutPages = async () => {
+  if (!isAuthenticated.value) return
+  isLoadingCheckoutPages.value = true
+  checkoutPagesError.value = null
+
+  try {
+    const data = await get('/api/nova/checkout-pages')
+    checkoutPages.value = data.pages || []
+  } catch (err) {
+    console.error('Failed to load checkout pages:', err)
+    checkoutPages.value = []
+    checkoutPagesError.value = err?.data?.message || err?.message || 'Failed to load checkout pages'
+  } finally {
+    isLoadingCheckoutPages.value = false
+  }
 }
 
 // Format date for display
