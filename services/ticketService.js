@@ -1158,6 +1158,46 @@ class TicketService {
   }
 
   /**
+   * Get tickets for public event landing page (sales still open)
+   * Includes sold tickets to allow sold-out states to be shown.
+   * @param {number} eventId - Event ID to fetch tickets for
+   * @returns {Array} Tickets with sales still open (privacy-protected)
+   */
+  async getLandingTicketsByEvent(eventId) {
+    try {
+      const currentDateTime = new Date();
+
+      const tickets = await prisma.ticket.findMany({
+        where: {
+          eventId: parseInt(eventId),
+          OR: [
+            { salesEndDateTime: null },
+            { salesEndDateTime: { gt: currentDateTime } }
+          ]
+        },
+        orderBy: { identificationNumber: 'asc' },
+        select: {
+          id: true,
+          eventId: true,
+          description: true,
+          identificationNumber: true,
+          table: true,
+          price: true,
+          order: true,
+          salesEndDateTime: true,
+          created_at: true,
+          updated_at: true
+        }
+      });
+
+      return tickets;
+    } catch (error) {
+      console.error('Error fetching landing tickets:', error);
+      throw new Error(`Failed to fetch landing tickets: ${error.message}`);
+    }
+  }
+
+  /**
    * Close the Prisma connection
    */
   async disconnect() {

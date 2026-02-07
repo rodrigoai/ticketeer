@@ -567,6 +567,7 @@ app.get('/api/public/events/:id', async (req, res) => {
     const { id } = req.params;
     const eventService = require('./services/eventService');
     const userProfileService = require('./services/userProfileService');
+    const ticketService = require('./services/ticketService');
 
     const event = await eventService.getEventById(id);
 
@@ -580,6 +581,20 @@ app.get('/api/public/events/:id', async (req, res) => {
 
     const profile = await userProfileService.getProfileByUserId(event.created_by);
     const checkoutUrl = buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, event.id);
+    const checkoutBaseUrl = buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, null);
+    const landingTickets = await ticketService.getLandingTicketsByEvent(event.id);
+    const tickets = landingTickets.map((ticket) => ({
+      id: ticket.id,
+      eventId: ticket.eventId,
+      description: ticket.description,
+      identificationNumber: ticket.identificationNumber,
+      table: ticket.table,
+      price: parseFloat(ticket.price) || 0,
+      order: ticket.order,
+      salesEndDateTime: ticket.salesEndDateTime,
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at
+    }));
 
     res.json({
       success: true,
@@ -597,7 +612,9 @@ app.get('/api/public/events/:id', async (req, res) => {
         checkoutPageTitle: event.checkout_page_title,
         created_by: event.created_by
       },
-      checkoutUrl
+      checkoutUrl,
+      checkoutBaseUrl,
+      tickets
     });
   } catch (error) {
     console.error('Error fetching public event:', error);

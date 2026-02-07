@@ -34,6 +34,15 @@
           </div>
         </div>
         <div class="flex gap-3 flex-wrap items-center">
+          <a
+            v-if="publicLandingUrl"
+            :href="publicLandingUrl"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+          >
+            <i class="fas fa-external-link-alt"></i> Public Landing
+          </a>
           <router-link :to="`/events`" class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
             <i class="fas fa-arrow-left"></i> Back
           </router-link>
@@ -836,6 +845,7 @@ import 'vue3-easy-data-table/dist/style.css'
 // Props and route
 const route = useRoute()
 const eventId = computed(() => route.params.id)
+const publicLandingUrl = computed(() => (eventId.value ? `/event/${eventId.value}` : ''))
 
 // Composables
 const { isLoading, error, get, post, put, delete: deleteApi } = useApi()
