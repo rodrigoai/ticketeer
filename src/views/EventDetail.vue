@@ -277,556 +277,535 @@
       </div>
 
     <!-- Create/Edit Ticket Modal -->
-    <div class="modal fade" id="ticketModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ isEditingTicket ? 'Edit Ticket' : 'Create Ticket' }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form @submit.prevent="saveTicket">
-              <div class="mb-3">
-                <label for="ticketDescription" class="form-label">Description *</label>
+    <div v-if="isTicketModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="isTicketModalOpen = false">
+      <div class="w-full max-w-2xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <h5 class="text-lg font-semibold text-slate-900">{{ isEditingTicket ? 'Edit Ticket' : 'Create Ticket' }}</h5>
+          <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="isTicketModalOpen = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="p-6 max-h-[70vh] overflow-y-auto">
+          <form class="space-y-4" @submit.prevent="saveTicket">
+            <div>
+              <label for="ticketDescription" class="block text-sm font-semibold text-slate-700 mb-2">Description *</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="ticketDescription" 
+                v-model="ticketForm.description" 
+                required
+              >
+            </div>
+            <div>
+              <label for="ticketPrice" class="block text-sm font-semibold text-slate-700 mb-2">Price *</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 text-sm">$</span>
                 <input 
-                  type="text" 
-                  class="form-control" 
-                  id="ticketDescription" 
-                  v-model="ticketForm.description" 
+                  type="number" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                  id="ticketPrice" 
+                  v-model="ticketForm.price" 
+                  step="0.01" 
+                  min="0"
                   required
                 >
               </div>
-              <div class="mb-3">
-                <label for="ticketPrice" class="form-label">Price *</label>
-                <div class="input-group">
-                  <span class="input-group-text">$</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="ticketLocation" class="block text-sm font-semibold text-slate-700 mb-2">Location</label>
+                <input 
+                  type="text" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                  id="ticketLocation" 
+                  v-model="ticketForm.location"
+                >
+              </div>
+              <div>
+                <label for="ticketTable" class="block text-sm font-semibold text-slate-700 mb-2">Table</label>
+                <input 
+                  type="number" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                  id="ticketTable" 
+                  v-model="ticketForm.table" 
+                  min="1"
+                >
+              </div>
+            </div>
+            <div>
+              <label for="ticketBuyer" class="block text-sm font-semibold text-slate-700 mb-2">Buyer</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="ticketBuyer" 
+                v-model="ticketForm.buyer"
+              >
+            </div>
+            <div>
+              <label for="ticketBuyerDocument" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Document</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="ticketBuyerDocument" 
+                v-model="ticketForm.buyerDocument"
+              >
+            </div>
+            <div>
+              <label for="ticketBuyerEmail" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Email</label>
+              <input 
+                type="email" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="ticketBuyerEmail" 
+                v-model="ticketForm.buyerEmail"
+              >
+            </div>
+            <div>
+              <label for="ticketOrder" class="block text-sm font-semibold text-slate-700 mb-2">Order</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="ticketOrder" 
+                v-model="ticketForm.order"
+              >
+            </div>
+            <div>
+              <label for="ticketSalesEndDateTime" class="block text-sm font-semibold text-slate-700 mb-2">Sales End Date & Time</label>
+              <input 
+                type="datetime-local" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="ticketSalesEndDateTime" 
+                v-model="ticketForm.salesEndDateTime"
+              >
+              <p class="mt-2 text-xs text-slate-500">Optional: Set when ticket sales should end</p>
+            </div>
+            
+            <!-- Check-in Status Section -->
+            <div v-if="isEditingTicket" class="space-y-4 pt-4 border-t border-slate-100">
+              <h6 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Check-in Status</h6>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                <div class="flex items-center gap-3 h-[42px]">
                   <input 
-                    type="number" 
-                    class="form-control" 
-                    id="ticketPrice" 
-                    v-model="ticketForm.price" 
-                    step="0.01" 
-                    min="0"
-                    required
+                    type="checkbox" 
+                    class="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                    id="ticketCheckedIn" 
+                    v-model="ticketForm.checkedIn"
+                    @change="onCheckedInChange"
+                  >
+                  <label class="text-sm font-semibold text-slate-700 flex items-center gap-2" for="ticketCheckedIn">
+                    Checked In
+                    <span v-if="ticketForm.checkedIn" class="text-emerald-500">
+                      <i class="fas fa-check-circle"></i>
+                    </span>
+                  </label>
+                </div>
+                <div>
+                  <label for="ticketCheckedInAt" class="block text-sm font-semibold text-slate-700 mb-2">Checked In At</label>
+                  <input 
+                    type="datetime-local" 
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                    id="ticketCheckedInAt" 
+                    v-model="ticketForm.checkedInAt"
+                    :disabled="!ticketForm.checkedIn"
                   >
                 </div>
               </div>
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="ticketLocation" class="form-label">Location</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      id="ticketLocation" 
-                      v-model="ticketForm.location"
-                    >
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="ticketTable" class="form-label">Table</label>
-                    <input 
-                      type="number" 
-                      class="form-control" 
-                      id="ticketTable" 
-                      v-model="ticketForm.table" 
-                      min="1"
-                    >
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="ticketBuyer" class="form-label">Buyer</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="ticketBuyer" 
-                  v-model="ticketForm.buyer"
-                >
-              </div>
-              <div class="mb-3">
-                <label for="ticketBuyerDocument" class="form-label">Buyer Document</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="ticketBuyerDocument" 
-                  v-model="ticketForm.buyerDocument"
-                >
-              </div>
-              <div class="mb-3">
-                <label for="ticketBuyerEmail" class="form-label">Buyer Email</label>
-                <input 
-                  type="email" 
-                  class="form-control" 
-                  id="ticketBuyerEmail" 
-                  v-model="ticketForm.buyerEmail"
-                >
-              </div>
-              <div class="mb-3">
-                <label for="ticketOrder" class="form-label">Order</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="ticketOrder" 
-                  v-model="ticketForm.order"
-                >
-              </div>
-              <div class="mb-3">
-                <label for="ticketSalesEndDateTime" class="form-label">Sales End Date & Time</label>
-                <input 
-                  type="datetime-local" 
-                  class="form-control" 
-                  id="ticketSalesEndDateTime" 
-                  v-model="ticketForm.salesEndDateTime"
-                >
-                <div class="form-text">Optional: Set when ticket sales should end</div>
-              </div>
-              
-              <!-- Check-in Status Section -->
-              <div class="mb-3" v-if="isEditingTicket">
-                <hr class="my-3">
-                <h6 class="mb-3">Check-in Status</h6>
-                <div class="row">
-                  <div class="col-md-6">
-                    <div class="form-check mb-3">
-                      <input 
-                        type="checkbox" 
-                        class="form-check-input" 
-                        id="ticketCheckedIn" 
-                        v-model="ticketForm.checkedIn"
-                        @change="onCheckedInChange"
-                      >
-                      <label class="form-check-label" for="ticketCheckedIn">
-                        <strong>Checked In</strong>
-                        <span v-if="ticketForm.checkedIn" class="text-success ms-2">
-                          <i class="fas fa-check-circle"></i>
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                  <div class="col-md-6">
-                    <div class="mb-3">
-                      <label for="ticketCheckedInAt" class="form-label">Checked In At</label>
-                      <input 
-                        type="datetime-local" 
-                        class="form-control" 
-                        id="ticketCheckedInAt" 
-                        v-model="ticketForm.checkedInAt"
-                        :disabled="!ticketForm.checkedIn"
-                      >
-                    </div>
-                  </div>
-                </div>
 
-                <!-- Accessory Pickup Status -->
-                <hr class="my-3">
-                <h6 class="mb-3">Accessory Pickup (Kit)</h6>
-                <div class="row">
-                  <div class="col-md-6">
-                    <div class="form-check mb-3">
-                      <input 
-                        type="checkbox" 
-                        class="form-check-input" 
-                        id="ticketAccessoryCollected" 
-                        v-model="ticketForm.accessoryCollected"
-                        @change="onAccessoryCollectedChange"
-                      >
-                      <label class="form-check-label" for="ticketAccessoryCollected">
-                        <strong>Kit Picked Up</strong>
-                        <span v-if="ticketForm.accessoryCollected" class="text-primary ms-2">
-                          <i class="fas fa-box"></i>
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                  <div class="col-md-6">
-                    <div class="mb-3">
-                      <label for="ticketAccessoryCollectedAt" class="form-label">Picked Up At</label>
-                      <input 
-                        type="datetime-local" 
-                        class="form-control" 
-                        id="ticketAccessoryCollectedAt" 
-                        v-model="ticketForm.accessoryCollectedAt"
-                        :disabled="!ticketForm.accessoryCollected"
-                      >
-                    </div>
-                  </div>
+              <!-- Accessory Pickup Status -->
+              <h6 class="text-sm font-bold text-slate-900 uppercase tracking-wider pt-2">Accessory Pickup (Kit)</h6>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                <div class="flex items-center gap-3 h-[42px]">
+                  <input 
+                    type="checkbox" 
+                    class="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                    id="ticketAccessoryCollected" 
+                    v-model="ticketForm.accessoryCollected"
+                    @change="onAccessoryCollectedChange"
+                  >
+                  <label class="text-sm font-semibold text-slate-700 flex items-center gap-2" for="ticketAccessoryCollected">
+                    Kit Picked Up
+                    <span v-if="ticketForm.accessoryCollected" class="text-primary-500">
+                      <i class="fas fa-box"></i>
+                    </span>
+                  </label>
                 </div>
-                <div class="mb-3">
-                  <label for="ticketAccessoryCollectedNotes" class="form-label">Pickup Notes</label>
-                  <textarea 
-                    class="form-control" 
-                    id="ticketAccessoryCollectedNotes" 
-                    v-model="ticketForm.accessoryCollectedNotes" 
-                    rows="2"
-                    placeholder="Enter any observations about the kit pickup..."
-                  ></textarea>
+                <div>
+                  <label for="ticketAccessoryCollectedAt" class="block text-sm font-semibold text-slate-700 mb-2">Picked Up At</label>
+                  <input 
+                    type="datetime-local" 
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                    id="ticketAccessoryCollectedAt" 
+                    v-model="ticketForm.accessoryCollectedAt"
+                    :disabled="!ticketForm.accessoryCollected"
+                  >
                 </div>
               </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveTicket" :disabled="isLoading">
-              {{ isLoading ? 'Saving...' : 'Save Ticket' }}
-            </button>
-          </div>
+              <div>
+                <label for="ticketAccessoryCollectedNotes" class="block text-sm font-semibold text-slate-700 mb-2">Pickup Notes</label>
+                <textarea 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                  id="ticketAccessoryCollectedNotes" 
+                  v-model="ticketForm.accessoryCollectedNotes" 
+                  rows="2"
+                  placeholder="Enter any observations about the kit pickup..."
+                ></textarea>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
+          <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="isTicketModalOpen = false">Cancel</button>
+          <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-500 transition disabled:opacity-60" @click="saveTicket" :disabled="isLoading">
+            {{ isLoading ? 'Saving...' : 'Save Ticket' }}
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Batch Create Modal -->
-    <div class="modal fade" id="batchModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Batch Create Tickets</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form @submit.prevent="saveBatchTickets">
-              <div class="mb-3">
-                <label for="batchDescription" class="form-label">Description *</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="batchDescription" 
-                  v-model="batchForm.description" 
-                  required
-                >
-              </div>
-              <div class="mb-3">
-                <label for="batchPrice" class="form-label">Price *</label>
-                <div class="input-group">
-                  <span class="input-group-text">$</span>
-                  <input 
-                    type="number" 
-                    class="form-control" 
-                    id="batchPrice" 
-                    v-model="batchForm.price" 
-                    step="0.01" 
-                    min="0"
-                    required
-                  >
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="batchQuantity" class="form-label">Quantity *</label>
+    <div v-if="isBatchModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="isBatchModalOpen = false">
+      <div class="w-full max-w-2xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <h5 class="text-lg font-semibold text-slate-900">Batch Create Tickets</h5>
+          <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="isBatchModalOpen = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="p-6 max-h-[70vh] overflow-y-auto">
+          <form class="space-y-4" @submit.prevent="saveBatchTickets">
+            <div>
+              <label for="batchDescription" class="block text-sm font-semibold text-slate-700 mb-2">Description *</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="batchDescription" 
+                v-model="batchForm.description" 
+                required
+              >
+            </div>
+            <div>
+              <label for="batchPrice" class="block text-sm font-semibold text-slate-700 mb-2">Price *</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 text-sm">$</span>
                 <input 
                   type="number" 
-                  class="form-control" 
-                  id="batchQuantity" 
-                  v-model="batchForm.quantity" 
-                  min="1" 
-                  max="100"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                  id="batchPrice" 
+                  v-model="batchForm.price" 
+                  step="0.01" 
+                  min="0"
                   required
                 >
-                <div class="form-text">Create between 1 and 100 tickets at once</div>
               </div>
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="batchLocation" class="form-label">Location</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      id="batchLocation" 
-                      v-model="batchForm.location"
-                    >
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="batchTable" class="form-label">Table</label>
-                    <input 
-                      type="number" 
-                      class="form-control" 
-                      id="batchTable" 
-                      v-model="batchForm.table" 
-                      min="1"
-                    >
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="batchBuyer" class="form-label">Buyer</label>
+            </div>
+            <div>
+              <label for="batchQuantity" class="block text-sm font-semibold text-slate-700 mb-2">Quantity *</label>
+              <input 
+                type="number" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="batchQuantity" 
+                v-model="batchForm.quantity" 
+                min="1" 
+                max="100"
+                required
+              >
+              <p class="mt-2 text-xs text-slate-500">Create between 1 and 100 tickets at once</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="batchLocation" class="block text-sm font-semibold text-slate-700 mb-2">Location</label>
                 <input 
                   type="text" 
-                  class="form-control" 
-                  id="batchBuyer" 
-                  v-model="batchForm.buyer"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                  id="batchLocation" 
+                  v-model="batchForm.location"
                 >
               </div>
-              <div class="mb-3">
-                <label for="batchBuyerDocument" class="form-label">Buyer Document</label>
+              <div>
+                <label for="batchTable" class="block text-sm font-semibold text-slate-700 mb-2">Table</label>
                 <input 
-                  type="text" 
-                  class="form-control" 
-                  id="batchBuyerDocument" 
-                  v-model="batchForm.buyerDocument"
+                  type="number" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                  id="batchTable" 
+                  v-model="batchForm.table" 
+                  min="1"
                 >
               </div>
-              <div class="mb-3">
-                <label for="batchBuyerEmail" class="form-label">Buyer Email</label>
-                <input 
-                  type="email" 
-                  class="form-control" 
-                  id="batchBuyerEmail" 
-                  v-model="batchForm.buyerEmail"
-                >
-              </div>
-              <div class="mb-3">
-                <label for="batchOrder" class="form-label">Order</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="batchOrder" 
-                  v-model="batchForm.order"
-                >
-              </div>
-              <div class="mb-3">
-                <label for="batchSalesEndDateTime" class="form-label">Sales End Date & Time</label>
-                <input 
-                  type="datetime-local" 
-                  class="form-control" 
-                  id="batchSalesEndDateTime" 
-                  v-model="batchForm.salesEndDateTime"
-                >
-                <div class="form-text">Optional: Set when ticket sales should end (applies to all tickets)</div>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-info" @click="saveBatchTickets" :disabled="isLoading">
-              {{ isLoading ? 'Creating...' : `Create ${batchForm.quantity || 0} Tickets` }}
-            </button>
-          </div>
+            </div>
+            <div>
+              <label for="batchBuyer" class="block text-sm font-semibold text-slate-700 mb-2">Buyer</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="batchBuyer" 
+                v-model="batchForm.buyer"
+              >
+            </div>
+            <div>
+              <label for="batchBuyerDocument" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Document</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="batchBuyerDocument" 
+                v-model="batchForm.buyerDocument"
+              >
+            </div>
+            <div>
+              <label for="batchBuyerEmail" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Email</label>
+              <input 
+                type="email" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="batchBuyerEmail" 
+                v-model="batchForm.buyerEmail"
+              >
+            </div>
+            <div>
+              <label for="batchOrder" class="block text-sm font-semibold text-slate-700 mb-2">Order</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="batchOrder" 
+                v-model="batchForm.order"
+              >
+            </div>
+            <div>
+              <label for="batchSalesEndDateTime" class="block text-sm font-semibold text-slate-700 mb-2">Sales End Date & Time</label>
+              <input 
+                type="datetime-local" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="batchSalesEndDateTime" 
+                v-model="batchForm.salesEndDateTime"
+              >
+              <p class="mt-2 text-xs text-slate-500">Optional: Set when ticket sales should end (applies to all tickets)</p>
+            </div>
+          </form>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
+          <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="isBatchModalOpen = false">Cancel</button>
+          <button class="rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-sky-600 transition disabled:opacity-60" @click="saveBatchTickets" :disabled="isLoading">
+            {{ isLoading ? 'Creating...' : `Create ${batchForm.quantity || 0} Tickets` }}
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Bulk Edit Modal -->
-    <div class="modal fade" id="bulkEditModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Bulk Edit {{ selectedTicketIds.length }} Ticket(s)</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div v-if="isBulkEditModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="isBulkEditModalOpen = false">
+      <div class="w-full max-w-2xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <h5 class="text-lg font-semibold text-slate-900">Bulk Edit {{ selectedTicketIds.length }} Ticket(s)</h5>
+          <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="isBulkEditModalOpen = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="p-6 max-h-[70vh] overflow-y-auto">
+          <div class="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700 flex items-start gap-3 mb-6">
+            <i class="fas fa-info-circle text-sky-500 text-lg mt-0.5"></i>
+            <p>Fill in fields to update them, or check "Clear" to set them as empty.</p>
           </div>
-          <div class="modal-body">
-            <div class="alert alert-info">
-              <i class="fas fa-info-circle"></i> Fill in fields to update them, or check "Clear" to set them as empty.
+          <form class="space-y-4" @submit.prevent="saveBulkEdit">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="bulkLocation" class="block text-sm font-semibold text-slate-700 mb-2">Location</label>
+                <input 
+                  type="text" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                  id="bulkLocation" 
+                  v-model="bulkEditForm.location"
+                  :disabled="bulkEditForm.clearLocation"
+                  placeholder="Leave empty to skip"
+                >
+                <div class="flex items-center gap-2 mt-2">
+                  <input 
+                    type="checkbox" 
+                    class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                    id="clearLocation" 
+                    v-model="bulkEditForm.clearLocation"
+                  >
+                  <label class="text-xs text-slate-500 font-medium" for="clearLocation">
+                    Clear this field
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label for="bulkTable" class="block text-sm font-semibold text-slate-700 mb-2">Table</label>
+                <input 
+                  type="number" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                  id="bulkTable" 
+                  v-model="bulkEditForm.table" 
+                  min="1"
+                  :disabled="bulkEditForm.clearTable"
+                  placeholder="Leave empty to skip"
+                >
+                <div class="flex items-center gap-2 mt-2">
+                  <input 
+                    type="checkbox" 
+                    class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                    id="clearTable" 
+                    v-model="bulkEditForm.clearTable"
+                  >
+                  <label class="text-xs text-slate-500 font-medium" for="clearTable">
+                    Clear this field
+                  </label>
+                </div>
+              </div>
             </div>
-            <form @submit.prevent="saveBulkEdit">
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="bulkLocation" class="form-label">Location</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      id="bulkLocation" 
-                      v-model="bulkEditForm.location"
-                      :disabled="bulkEditForm.clearLocation"
-                      placeholder="Leave empty to skip"
-                    >
-                    <div class="form-check mt-2">
-                      <input 
-                        type="checkbox" 
-                        class="form-check-input" 
-                        id="clearLocation" 
-                        v-model="bulkEditForm.clearLocation"
-                      >
-                      <label class="form-check-label text-muted" for="clearLocation">
-                        <small>Clear this field</small>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="bulkTable" class="form-label">Table</label>
-                    <input 
-                      type="number" 
-                      class="form-control" 
-                      id="bulkTable" 
-                      v-model="bulkEditForm.table" 
-                      min="1"
-                      :disabled="bulkEditForm.clearTable"
-                      placeholder="Leave empty to skip"
-                    >
-                    <div class="form-check mt-2">
-                      <input 
-                        type="checkbox" 
-                        class="form-check-input" 
-                        id="clearTable" 
-                        v-model="bulkEditForm.clearTable"
-                      >
-                      <label class="form-check-label text-muted" for="clearTable">
-                        <small>Clear this field</small>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label for="bulkOrder" class="form-label">Order</label>
+            <div>
+              <label for="bulkOrder" class="block text-sm font-semibold text-slate-700 mb-2">Order</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                id="bulkOrder" 
+                v-model="bulkEditForm.order"
+                :disabled="bulkEditForm.clearOrder"
+                placeholder="Leave empty to skip"
+              >
+              <div class="flex items-center gap-2 mt-2">
                 <input 
-                  type="text" 
-                  class="form-control" 
-                  id="bulkOrder" 
-                  v-model="bulkEditForm.order"
-                  :disabled="bulkEditForm.clearOrder"
-                  placeholder="Leave empty to skip"
+                  type="checkbox" 
+                  class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                  id="clearOrder" 
+                  v-model="bulkEditForm.clearOrder"
                 >
-                <div class="form-check mt-2">
-                  <input 
-                    type="checkbox" 
-                    class="form-check-input" 
-                    id="clearOrder" 
-                    v-model="bulkEditForm.clearOrder"
-                  >
-                  <label class="form-check-label text-muted" for="clearOrder">
-                    <small>Clear this field</small>
-                  </label>
-                </div>
+                <label class="text-xs text-slate-500 font-medium" for="clearOrder">
+                  Clear this field
+                </label>
               </div>
-              <div class="mb-3">
-                <label for="bulkBuyer" class="form-label">Buyer</label>
+            </div>
+            <div>
+              <label for="bulkBuyer" class="block text-sm font-semibold text-slate-700 mb-2">Buyer</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                id="bulkBuyer" 
+                v-model="bulkEditForm.buyer"
+                :disabled="bulkEditForm.clearBuyer"
+                placeholder="Leave empty to skip"
+              >
+              <div class="flex items-center gap-2 mt-2">
                 <input 
-                  type="text" 
-                  class="form-control" 
-                  id="bulkBuyer" 
-                  v-model="bulkEditForm.buyer"
-                  :disabled="bulkEditForm.clearBuyer"
-                  placeholder="Leave empty to skip"
+                  type="checkbox" 
+                  class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                  id="clearBuyer" 
+                  v-model="bulkEditForm.clearBuyer"
                 >
-                <div class="form-check mt-2">
-                  <input 
-                    type="checkbox" 
-                    class="form-check-input" 
-                    id="clearBuyer" 
-                    v-model="bulkEditForm.clearBuyer"
-                  >
-                  <label class="form-check-label text-muted" for="clearBuyer">
-                    <small>Clear this field</small>
-                  </label>
-                </div>
+                <label class="text-xs text-slate-500 font-medium" for="clearBuyer">
+                  Clear this field
+                </label>
               </div>
-              <div class="mb-3">
-                <label for="bulkBuyerDocument" class="form-label">Buyer Document</label>
+            </div>
+            <div>
+              <label for="bulkBuyerDocument" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Document</label>
+              <input 
+                type="text" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                id="bulkBuyerDocument" 
+                v-model="bulkEditForm.buyerDocument"
+                :disabled="bulkEditForm.clearBuyerDocument"
+                placeholder="Leave empty to skip"
+              >
+              <div class="flex items-center gap-2 mt-2">
                 <input 
-                  type="text" 
-                  class="form-control" 
-                  id="bulkBuyerDocument" 
-                  v-model="bulkEditForm.buyerDocument"
-                  :disabled="bulkEditForm.clearBuyerDocument"
-                  placeholder="Leave empty to skip"
+                  type="checkbox" 
+                  class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                  id="clearBuyerDocument" 
+                  v-model="bulkEditForm.clearBuyerDocument"
                 >
-                <div class="form-check mt-2">
-                  <input 
-                    type="checkbox" 
-                    class="form-check-input" 
-                    id="clearBuyerDocument" 
-                    v-model="bulkEditForm.clearBuyerDocument"
-                  >
-                  <label class="form-check-label text-muted" for="clearBuyerDocument">
-                    <small>Clear this field</small>
-                  </label>
-                </div>
+                <label class="text-xs text-slate-500 font-medium" for="clearBuyerDocument">
+                  Clear this field
+                </label>
               </div>
-              <div class="mb-3">
-                <label for="bulkBuyerEmail" class="form-label">Buyer Email</label>
+            </div>
+            <div>
+              <label for="bulkBuyerEmail" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Email</label>
+              <input 
+                type="email" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                id="bulkBuyerEmail" 
+                v-model="bulkEditForm.buyerEmail"
+                :disabled="bulkEditForm.clearBuyerEmail"
+                placeholder="Leave empty to skip"
+              >
+              <div class="flex items-center gap-2 mt-2">
                 <input 
-                  type="email" 
-                  class="form-control" 
-                  id="bulkBuyerEmail" 
-                  v-model="bulkEditForm.buyerEmail"
-                  :disabled="bulkEditForm.clearBuyerEmail"
-                  placeholder="Leave empty to skip"
+                  type="checkbox" 
+                  class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                  id="clearBuyerEmail" 
+                  v-model="bulkEditForm.clearBuyerEmail"
                 >
-                <div class="form-check mt-2">
-                  <input 
-                    type="checkbox" 
-                    class="form-check-input" 
-                    id="clearBuyerEmail" 
-                    v-model="bulkEditForm.clearBuyerEmail"
-                  >
-                  <label class="form-check-label text-muted" for="clearBuyerEmail">
-                    <small>Clear this field</small>
-                  </label>
-                </div>
+                <label class="text-xs text-slate-500 font-medium" for="clearBuyerEmail">
+                  Clear this field
+                </label>
               </div>
-              <hr class="my-3">
-              <h6 class="mb-3">Check-in Status</h6>
-              <div class="mb-3">
-                <div class="form-check">
-                  <input 
-                    type="checkbox" 
-                    class="form-check-input" 
-                    id="bulkCheckedIn" 
-                    v-model="bulkEditForm.checkedIn"
-                  >
-                  <label class="form-check-label" for="bulkCheckedIn">
-                    Mark as Checked In
-                  </label>
-                </div>
+            </div>
+            
+            <div class="space-y-4 pt-4 border-t border-slate-100">
+              <h6 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Check-in Status</h6>
+              <div class="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
+                  class="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                  id="bulkCheckedIn" 
+                  v-model="bulkEditForm.checkedIn"
+                >
+                <label class="text-sm font-semibold text-slate-700" for="bulkCheckedIn">
+                  Mark as Checked In
+                </label>
               </div>
-              <div class="mb-3" v-if="bulkEditForm.checkedIn">
-                <label for="bulkCheckedInAt" class="form-label">Checked In At</label>
+              <div v-if="bulkEditForm.checkedIn">
+                <label for="bulkCheckedInAt" class="block text-sm font-semibold text-slate-700 mb-2">Checked In At</label>
                 <input 
                   type="datetime-local" 
-                  class="form-control" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
                   id="bulkCheckedInAt" 
                   v-model="bulkEditForm.checkedInAt"
                 >
-                <div class="form-text">Leave empty to use current date/time</div>
+                <p class="mt-2 text-xs text-slate-500">Leave empty to use current date/time</p>
               </div>
-              <hr class="my-3">
-              <h6 class="mb-3">Accessory Pickup Status (Kit)</h6>
-              <div class="mb-3">
-                <div class="form-check">
-                  <input 
-                    type="checkbox" 
-                    class="form-check-input" 
-                    id="bulkAccessoryCollected" 
-                    v-model="bulkEditForm.accessoryCollected"
-                  >
-                  <label class="form-check-label" for="bulkAccessoryCollected">
-                    Mark as Kit Picked Up
-                  </label>
-                </div>
+            </div>
+
+            <div class="space-y-4 pt-4 border-t border-slate-100">
+              <h6 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Accessory Pickup Status (Kit)</h6>
+              <div class="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
+                  class="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                  id="bulkAccessoryCollected" 
+                  v-model="bulkEditForm.accessoryCollected"
+                >
+                <label class="text-sm font-semibold text-slate-700" for="bulkAccessoryCollected">
+                  Mark as Kit Picked Up
+                </label>
               </div>
-              <div class="mb-3" v-if="bulkEditForm.accessoryCollected">
-                <label for="bulkAccessoryCollectedAt" class="form-label">Picked Up At</label>
+              <div v-if="bulkEditForm.accessoryCollected">
+                <label for="bulkAccessoryCollectedAt" class="block text-sm font-semibold text-slate-700 mb-2">Picked Up At</label>
                 <input 
                   type="datetime-local" 
-                  class="form-control" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
                   id="bulkAccessoryCollectedAt" 
                   v-model="bulkEditForm.accessoryCollectedAt"
                 >
-                <div class="form-text">Leave empty to use current date/time</div>
+                <p class="mt-2 text-xs text-slate-500">Leave empty to use current date/time</p>
               </div>
-              <div class="mb-3">
-                <label for="bulkAccessoryCollectedNotes" class="form-label">Pickup Notes</label>
+              <div>
+                <label for="bulkAccessoryCollectedNotes" class="block text-sm font-semibold text-slate-700 mb-2">Pickup Notes</label>
                 <textarea 
-                  class="form-control" 
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
                   id="bulkAccessoryCollectedNotes" 
                   v-model="bulkEditForm.accessoryCollectedNotes" 
                   rows="2"
                   placeholder="Leave empty to skip"
                 ></textarea>
               </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="saveBulkEdit" :disabled="isLoading">
-              {{ isLoading ? 'Updating...' : `Update ${selectedTicketIds.length} Ticket(s)` }}
-            </button>
-          </div>
+            </div>
+          </form>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
+          <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="isBulkEditModalOpen = false">Cancel</button>
+          <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-500 transition disabled:opacity-60" @click="saveBulkEdit" :disabled="isLoading">
+            {{ isLoading ? 'Updating...' : `Update ${selectedTicketIds.length} Ticket(s)` }}
+          </button>
         </div>
       </div>
     </div>
@@ -838,7 +817,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
-import { Modal } from 'bootstrap'
+// REMOVED: import { Modal } from 'bootstrap'
 import EasyDataTable from 'vue3-easy-data-table'
 import 'vue3-easy-data-table/dist/style.css'
 
@@ -862,6 +841,11 @@ const currentTicketId = ref(null)
 const isResending = ref(false)
 const searchValue = ref('')
 const selectedTicketIds = ref([])
+
+// Modal States
+const isTicketModalOpen = ref(false)
+const isBatchModalOpen = ref(false)
+const isBulkEditModalOpen = ref(false)
 
 // Forms
 const ticketForm = reactive({
@@ -929,11 +913,7 @@ const headers = [
   { text: 'Actions', value: 'actions', sortable: false, width: 150 }
 ]
 
-// Bootstrap modals
-let ticketModal = null
-let batchModal = null
-let bulkEditModal = null
-let bulkDeleteModal = null
+// REMOVED: Bootstrap modals
 
 // Load event data
 const loadEvent = async () => {
@@ -994,21 +974,13 @@ const showCreateModal = () => {
   isEditingTicket.value = false
   currentTicketId.value = null
   resetTicketForm()
-  
-  if (!ticketModal) {
-    ticketModal = new Modal(document.getElementById('ticketModal'))
-  }
-  ticketModal.show()
+  isTicketModalOpen.value = true
 }
 
 // Show batch create modal
 const showBatchCreateModal = () => {
   resetBatchForm()
-  
-  if (!batchModal) {
-    batchModal = new Modal(document.getElementById('batchModal'))
-  }
-  batchModal.show()
+  isBatchModalOpen.value = true
 }
 
 // Edit ticket
@@ -1034,10 +1006,7 @@ const editTicket = (ticket) => {
     accessoryCollectedNotes: ticket.accessoryCollectedNotes || ''
   })
   
-  if (!ticketModal) {
-    ticketModal = new Modal(document.getElementById('ticketModal'))
-  }
-  ticketModal.show()
+  isTicketModalOpen.value = true
 }
 
 // Save ticket
@@ -1058,7 +1027,7 @@ const saveTicket = async () => {
     console.log('Ticket saved:', result)
     
     // Close modal and reload
-    if (ticketModal) ticketModal.hide()
+    isTicketModalOpen.value = false
     resetTicketForm()
     await loadTickets()
     await loadStats()
@@ -1082,7 +1051,7 @@ const saveBatchTickets = async () => {
     console.log('Batch tickets created:', result)
     
     // Close modal and reload
-    if (batchModal) batchModal.hide()
+    isBatchModalOpen.value = false
     resetBatchForm()
     await loadTickets()
     await loadStats()
@@ -1280,11 +1249,7 @@ const clearSelection = () => {
 // Show bulk edit modal
 const showBulkEditModal = () => {
   resetBulkEditForm()
-  
-  if (!bulkEditModal) {
-    bulkEditModal = new Modal(document.getElementById('bulkEditModal'))
-  }
-  bulkEditModal.show()
+  isBulkEditModalOpen.value = true
 }
 
 // Save bulk edit
@@ -1372,7 +1337,7 @@ const saveBulkEdit = async () => {
     
     if (result.success) {
       // Close modal and reload
-      if (bulkEditModal) bulkEditModal.hide()
+      isBulkEditModalOpen.value = false
       resetBulkEditForm()
       clearSelection()
       await loadTickets()
@@ -1448,37 +1413,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.breadcrumb {
-  background: none;
-  padding: 0;
-}
-
-.table th {
-  font-weight: 600;
-}
-
-.btn-group-sm .btn {
-  padding: 0.25rem 0.5rem;
-}
-
-.card {
-  transition: transform 0.2s ease-in-out;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-}
-
-.table-responsive {
-  border-radius: 0.375rem;
-  overflow: hidden;
-}
-
-.modal-body {
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
 /* DataTable Customization */
 :deep(.customize-table) {
   --easy-table-border: 1px solid #dee2e6;
