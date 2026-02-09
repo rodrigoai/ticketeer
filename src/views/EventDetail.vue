@@ -75,197 +75,197 @@
 
       <!-- Ticket Management -->
       <section class="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 py-4 border-b border-slate-100">
-          <h3 class="text-xl font-semibold text-slate-900">Tickets</h3>
-          <div class="flex gap-3 flex-wrap">
-            <button class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition" @click="showCreateModal">
-              <i class="fas fa-plus"></i> Add Ticket
-            </button>
-            <button class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-sky-600 transition" @click="showBatchCreateModal">
-              <i class="fas fa-layer-group"></i> Batch Create
-            </button>
-          </div>
-        </div>
-
-        <!-- Bulk Actions Toolbar -->
-        <div v-if="selectedTicketIds.length > 0" class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-6 py-3 bg-sky-50 border-b border-sky-100">
-          <span class="text-sm text-sky-700">
-            <strong>{{ selectedTicketIds.length }}</strong> ticket(s) selected
-          </span>
-          <div class="flex gap-2 flex-wrap">
-            <button class="inline-flex items-center gap-1 rounded-full bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 transition" @click="showBulkEditModal">
-              <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="inline-flex items-center gap-1 rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 transition" @click="confirmBulkDelete">
-              <i class="fas fa-trash"></i> Delete
-            </button>
-            <button class="inline-flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition" @click="clearSelection">
-              <i class="fas fa-times"></i> Clear
-            </button>
-          </div>
-        </div>
-
-        <!-- Tickets Loading -->
-        <div v-if="isLoadingTickets" class="px-6 py-10 text-center">
-          <div class="inline-flex items-center gap-2 text-slate-600">
-            <span class="h-4 w-4 rounded-full border-2 border-slate-600 border-t-transparent animate-spin"></span>
-            Loading tickets...
-          </div>
-        </div>
-
-        <!-- No Tickets -->
-        <div v-else-if="tickets.length === 0" class="px-6 py-10 text-center space-y-4">
-          <div class="text-6xl">🎫</div>
-          <h4 class="text-xl font-semibold text-slate-900">No Tickets Yet</h4>
-          <p class="text-sm text-slate-500">Create your first ticket for this event!</p>
-          <div class="flex gap-3 justify-center flex-wrap">
-            <button class="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition" @click="showCreateModal">Create Ticket</button>
-            <button class="rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-sky-600 transition" @click="showBatchCreateModal">Batch Create</button>
-          </div>
-        </div>
-
-        <!-- Tickets DataTable -->
-        <div v-else class="px-6 py-4">
-          <!-- Search Filter -->
-          <div class="mb-4">
-            <div class="relative">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
+            <h3 class="text-xl font-semibold text-slate-900">Tickets</h3>
+            <div class="relative flex-1 max-w-sm">
               <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <i class="fas fa-search"></i>
+                <i class="fas fa-search text-xs"></i>
               </span>
               <input 
                 type="text" 
-                class="w-full rounded-xl border border-slate-200 pl-10 pr-10 py-2.5 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                placeholder="Search tickets by description, location, buyer, email, or order..."
+                class="w-full rounded-full border border-slate-200 pl-10 pr-10 py-2 text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition bg-white"
+                placeholder="Search tickets..."
                 v-model="searchValue"
               >
               <button 
                 v-if="searchValue" 
                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                 @click="searchValue = ''"
-                title="Clear search"
               >
-                <i class="fas fa-times"></i>
+                <i class="fas fa-times text-xs"></i>
               </button>
             </div>
           </div>
+          <div class="flex gap-3 flex-wrap">
+            <button class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition" @click="showCreateModal">
+              <i class="fas fa-plus text-xs"></i> Add Ticket
+            </button>
+            <button class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-sky-600 transition" @click="showBatchCreateModal">
+              <i class="fas fa-layer-group text-xs"></i> Batch Create
+            </button>
+          </div>
+        </div>
 
-            <EasyDataTable
-              :headers="headers"
-              :items="tickets"
-              :rows-per-page="500"
-              :search-value="searchValue"
-              table-class-name="customize-table"
-              header-text-direction="left"
-              body-text-direction="left"
-              border-cell
-              alternating
-            >
-              <!-- Select Checkbox Column -->
-              <template #item-select="item">
-                <div class="text-center">
+        <!-- Bulk Actions Toolbar -->
+        <div v-if="selectedTicketIds.length > 0" class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-6 py-3 bg-sky-50 border-b border-sky-100">
+          <span class="text-sm text-sky-700 font-medium">
+            <strong>{{ selectedTicketIds.length }}</strong> ticket(s) selected
+          </span>
+          <div class="flex gap-2 flex-wrap">
+            <button class="inline-flex items-center gap-1.5 rounded-full bg-primary-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 transition shadow-sm" @click="showBulkEditModal">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="inline-flex items-center gap-1.5 rounded-full bg-rose-500 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 transition shadow-sm" @click="confirmBulkDelete">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+            <button class="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition" @click="clearSelection">
+              <i class="fas fa-times"></i> Clear
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full caption-bottom text-left text-sm text-slate-600">
+            <thead class="border-b bg-slate-50 text-slate-500 uppercase text-[0.65rem] tracking-[0.4em]">
+              <tr>
+                <th class="px-5 py-3 w-10 text-center">
                   <input 
                     type="checkbox" 
-                    class="form-check-input" 
-                    :checked="selectedTicketIds.includes(item.id)"
-                    @change="toggleTicketSelection(item.id)"
+                    :checked="isAllSelected" 
+                    @change="toggleSelectAll"
+                    class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                   >
-                </div>
-              </template>
-
-              <!-- Status Icon Column -->
-              <template #item-statusIcon="{ checkedIn }">
-                <div class="text-center">
-                  <span v-if="checkedIn" class="text-success" title="Checked In">
-                    <i class="fas fa-check-circle fa-lg"></i>
-                  </span>
-                  <span v-else class="text-muted" title="Not Checked In">
-                    <i class="far fa-circle fa-lg"></i>
-                  </span>
-                </div>
-              </template>
-
-              <!-- Accessory Status Icon Column -->
-              <template #item-accessoryIcon="{ accessoryCollected }">
-                <div class="text-center">
-                  <span v-if="accessoryCollected" class="text-primary" title="Kit Picked Up">
-                    <i class="fas fa-box fa-lg"></i>
-                  </span>
-                  <span v-else class="text-muted" title="Kit Not Picked Up">
-                    <i class="fas fa-box fa-lg" style="opacity: 0.3"></i>
-                  </span>
-                </div>
-              </template>
-
-              <!-- Identification Number -->
-              <template #item-identificationNumber="{ identificationNumber }">
-                <strong>{{ identificationNumber }}</strong>
-              </template>
-
-              <!-- Description + Location Column -->
-              <template #item-descriptionLocation="item">
-                <div>
-                  <div>{{ item.description }}</div>
-                  <small class="text-muted" v-if="item.location">{{ item.location }}</small>
-                </div>
-              </template>
-
-              <!-- Table -->
-              <template #item-table="{ table }">
-                {{ table || '-' }}
-              </template>
-
-              <!-- Order Column (Clickable Badge) -->
-              <template #item-order="item">
-                <a 
-                  v-if="item.order"
-                  :href="getCachedConfirmationUrl(item.order)" 
-                  target="_blank" 
-                  class="badge bg-info text-dark text-decoration-none order-link"
-                  title="Open confirmation page"
-                >
-                  {{ item.order }}
-                </a>
-                <span v-else class="text-muted">-</span>
-              </template>
-
-              <!-- Buyer -->
-              <template #item-buyer="{ buyer }">
-                {{ buyer || '-' }}
-              </template>
-
-              <!-- Buyer Email -->
-              <template #item-buyerEmail="{ buyerEmail }">
-                {{ buyerEmail || '-' }}
-              </template>
-
-              <!-- Sales End Date -->
-              <template #item-salesEndDateTime="{ salesEndDateTime }">
-                {{ salesEndDateTime ? formatDate(salesEndDateTime) : '-' }}
-              </template>
-
-              <!-- Actions Column -->
-              <template #item-actions="item">
-                <div class="flex gap-1">
-                  <button class="rounded-lg border border-primary-300 px-2.5 py-1.5 text-primary-600 hover:bg-primary-50 transition" @click="editTicket(item)" title="Edit">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button 
-                    v-if="item.buyer && item.buyerEmail" 
-                    class="rounded-lg border border-sky-300 px-2.5 py-1.5 text-sky-600 hover:bg-sky-50 transition"
-                    @click="resendEmail(item)" 
-                    title="Resend email with QR code"
-                    :disabled="isResending"
+                </th>
+                <th @click="sortBy('checkedIn')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                  Status <i v-if="sortKey === 'checkedIn'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                </th>
+                <th @click="sortBy('accessoryCollected')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                  Kit <i v-if="sortKey === 'accessoryCollected'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                </th>
+                <th @click="sortBy('identificationNumber')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                  # <i v-if="sortKey === 'identificationNumber'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                </th>
+                <th @click="sortBy('description')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                  Description <i v-if="sortKey === 'description'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                </th>
+                <th @click="sortBy('table')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                  Table <i v-if="sortKey === 'table'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                </th>
+                <th @click="sortBy('order')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                  Order <i v-if="sortKey === 'order'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                </th>
+                <th @click="sortBy('buyer')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                  Buyer <i v-if="sortKey === 'buyer'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                </th>
+                <th class="px-5 py-3 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-if="isLoadingTickets">
+                <td colspan="9" class="px-5 py-12 text-center text-slate-500">
+                  <div class="inline-flex items-center gap-2">
+                    <span class="w-4 h-4 rounded-full border-2 border-slate-500 border-t-transparent animate-spin"></span>
+                    Loading tickets...
+                  </div>
+                </td>
+              </tr>
+              <tr v-else-if="sortedTickets.length === 0">
+                <td colspan="9" class="px-5 py-12 text-center text-slate-500">
+                  {{ tickets.length === 0 ? 'No tickets yet. Create your first ticket for this event!' : 'No tickets found matching your search.' }}
+                </td>
+              </tr>
+              <tr 
+                v-else 
+                v-for="ticket in sortedTickets" 
+                :key="ticket.id"
+                class="hover:bg-slate-50/50 transition duration-150"
+              >
+                <td class="px-5 py-4 text-center">
+                  <input 
+                    type="checkbox" 
+                    :checked="selectedTicketIds.includes(ticket.id)"
+                    @change="toggleTicketSelection(ticket.id)"
+                    class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                   >
-                    <i class="fas fa-envelope"></i>
-                  </button>
-                  <button class="rounded-lg border border-rose-300 px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 transition" @click="deleteTicket(item.id)" title="Delete">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </template>
-            </EasyDataTable>
-          </div>
-        </section>
+                </td>
+                <td class="px-5 py-4 text-center">
+                  <span v-if="ticket.checkedIn" class="text-emerald-500" title="Checked In">
+                    <i class="fas fa-check-circle text-lg"></i>
+                  </span>
+                  <span v-else class="text-slate-200" title="Not Checked In">
+                    <i class="far fa-circle text-lg"></i>
+                  </span>
+                </td>
+                <td class="px-5 py-4 text-center">
+                  <span v-if="ticket.accessoryCollected" class="text-sky-500" title="Kit Picked Up">
+                    <i class="fas fa-box text-lg"></i>
+                  </span>
+                  <span v-else class="text-slate-200" title="Kit Not Picked Up">
+                    <i class="fas fa-box text-lg opacity-30"></i>
+                  </span>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    #{{ ticket.identificationNumber }}
+                  </span>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="font-semibold text-slate-900">{{ ticket.description }}</p>
+                  <p v-if="ticket.location" class="text-xs text-slate-500 mt-0.5">{{ ticket.location }}</p>
+                </td>
+                <td class="px-5 py-4 text-slate-600">
+                  {{ ticket.table || '-' }}
+                </td>
+                <td class="px-5 py-4">
+                  <a 
+                    v-if="ticket.order"
+                    :href="getCachedConfirmationUrl(ticket.order)" 
+                    target="_blank" 
+                    class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 border border-sky-100 hover:bg-sky-100 transition shadow-sm"
+                    title="Open confirmation page"
+                  >
+                    <i class="fas fa-external-link-alt text-[10px]"></i>
+                    {{ ticket.order }}
+                  </a>
+                  <span v-else class="text-slate-400">-</span>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="font-semibold text-slate-900">{{ ticket.buyer || '-' }}</p>
+                  <p class="text-xs text-slate-500">{{ ticket.buyerEmail || '' }}</p>
+                </td>
+                <td class="px-5 py-4">
+                  <div class="flex justify-end gap-1.5">
+                    <button 
+                      class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-primary-600 hover:border-primary-200 hover:bg-primary-50 transition shadow-sm" 
+                      @click="editTicket(ticket)" 
+                      title="Edit"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button 
+                      v-if="ticket.buyer && ticket.buyerEmail" 
+                      class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-sky-600 hover:border-sky-200 hover:bg-sky-50 transition shadow-sm"
+                      @click="resendEmail(ticket)" 
+                      title="Resend email"
+                      :disabled="isResending"
+                    >
+                      <i class="fas fa-envelope"></i>
+                    </button>
+                    <button 
+                      class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition shadow-sm" 
+                      @click="deleteTicket(ticket.id)" 
+                      title="Delete"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
         <!-- Error Messages -->
         <div v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm text-rose-700 flex items-center justify-between gap-3">
@@ -813,13 +813,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
-// REMOVED: import { Modal } from 'bootstrap'
-import EasyDataTable from 'vue3-easy-data-table'
-import 'vue3-easy-data-table/dist/style.css'
+// REMOVED: import EasyDataTable
 
 // Props and route
 const route = useRoute()
@@ -841,6 +839,68 @@ const currentTicketId = ref(null)
 const isResending = ref(false)
 const searchValue = ref('')
 const selectedTicketIds = ref([])
+
+// Sorting state
+const sortKey = ref('identificationNumber')
+const sortOrder = ref('asc')
+
+// Filtering and Sorting Logic
+const filteredTickets = computed(() => {
+  if (!searchValue.value) return tickets.value
+  
+  const search = searchValue.value.toLowerCase()
+  return tickets.value.filter(ticket => {
+    return (
+      ticket.description?.toLowerCase().includes(search) ||
+      ticket.location?.toLowerCase().includes(search) ||
+      ticket.buyer?.toLowerCase().includes(search) ||
+      ticket.buyerEmail?.toLowerCase().includes(search) ||
+      ticket.order?.toLowerCase().includes(search) ||
+      ticket.identificationNumber?.toString().includes(search)
+    )
+  })
+})
+
+const sortedTickets = computed(() => {
+  const temp = [...filteredTickets.value]
+  temp.sort((a, b) => {
+    let valA = a[sortKey.value]
+    let valB = b[sortKey.value]
+    
+    if (valA === null || valA === undefined) valA = ''
+    if (valB === null || valB === undefined) valB = ''
+    
+    if (typeof valA === 'string') valA = valA.toLowerCase()
+    if (typeof valB === 'string') valB = valB.toLowerCase()
+    
+    if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1
+    if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1
+    return 0
+  })
+  return temp
+})
+
+const sortBy = (key) => {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  }
+}
+
+// Select All Logic
+const isAllSelected = computed(() => {
+  return sortedTickets.value.length > 0 && selectedTicketIds.value.length === sortedTickets.value.length
+})
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedTicketIds.value = []
+  } else {
+    selectedTicketIds.value = sortedTickets.value.map(t => t.id)
+  }
+}
 
 // Modal States
 const isTicketModalOpen = ref(false)
@@ -898,20 +958,7 @@ const bulkEditForm = reactive({
   clearBuyerEmail: false
 })
 
-// DataTable headers configuration
-const headers = [
-  { text: '', value: 'select', sortable: false, width: 50 },
-  { text: 'Status', value: 'statusIcon', sortable: false, width: 80 },
-  { text: 'Kit', value: 'accessoryIcon', sortable: false, width: 80 },
-  { text: '#', value: 'identificationNumber', sortable: true, width: 80 },
-  { text: 'Description', value: 'descriptionLocation', sortable: true },
-  { text: 'Table', value: 'table', sortable: true, width: 100 },
-  { text: 'Order', value: 'order', sortable: true, width: 120 },
-  { text: 'Buyer', value: 'buyer', sortable: true },
-  { text: 'Email', value: 'buyerEmail', sortable: true },
-  { text: 'Sales End', value: 'salesEndDateTime', sortable: true, width: 150 },
-  { text: 'Actions', value: 'actions', sortable: false, width: 150 }
-]
+// Headers are now handled directly in the template
 
 // REMOVED: Bootstrap modals
 
@@ -1413,41 +1460,5 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* DataTable Customization */
-:deep(.customize-table) {
-  --easy-table-border: 1px solid #dee2e6;
-  --easy-table-row-border: 1px solid #dee2e6;
-  --easy-table-header-font-size: 14px;
-  --easy-table-header-height: 50px;
-  --easy-table-header-font-color: #fff;
-  --easy-table-header-background-color: #212529;
-  --easy-table-body-row-font-size: 14px;
-  --easy-table-body-row-height: 60px;
-  --easy-table-body-row-hover-font-color: #212529;
-  --easy-table-body-row-hover-background-color: #f8f9fa;
-  --easy-table-footer-background-color: #fff;
-  --easy-table-footer-font-color: #212529;
-  --easy-table-footer-font-size: 14px;
-  --easy-table-footer-padding: 10px 10px;
-  --easy-table-footer-height: 50px;
-}
-
-:deep(.customize-table .header-text) {
-  font-weight: 600;
-}
-
-:deep(.customize-table tbody tr:nth-child(even)) {
-  background-color: #f8f9fa;
-}
-
-/* Clickable Order Badge */
-.order-link {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.order-link:hover {
-  background-color: #0dcaf0 !important;
-  transform: scale(1.05);
-}
+/* Custom animations or specific tweaks can go here */
 </style>
