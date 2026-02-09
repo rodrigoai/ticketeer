@@ -17,7 +17,9 @@ import { useRoute } from "vue-router"
 import NavBar from "./components/NavBar.vue"
 
 const route = useRoute()
-const showNav = computed(() => route.name !== "PublicEventLanding")
+const showNav = computed(() => {
+  return route.name !== "PublicEventLanding" && route.name !== "LandingPage";
+})
 </script>
 
 

@@ -9,18 +9,38 @@ import TicketAccessoryPickup from '@/views/TicketAccessoryPickup.vue'
 import QRCodeCheckin from '@/views/QRCodeCheckin.vue'
 import QRCodeAccessoryPickup from '@/views/QRCodeAccessoryPickup.vue'
 import PublicEventLanding from '@/views/PublicEventLanding.vue'
+import LandingPage from '@/views/LandingPage.vue'
 
 import { createAuthGuard } from "@auth0/auth0-vue";
+import { watchEffect } from 'vue';
+
 // Export function that takes app instance to create routes with auth guards
 export const createRoutes = (app) => {
 
   const authGuard = createAuthGuard(app);
+  const { isAuthenticated, isLoading } = app.config.globalProperties.$auth0;
 
   return [
     {
       path: '/',
+      name: 'LandingPage',
+      component: LandingPage,
+      beforeEnter: (to, from, next) => {
+        // Redirection logic: if user is logged in, send to dashboard
+        // We use a watchEffect or check the ref value if possible
+        // Since this is a router guard, we check the current state
+        if (isAuthenticated.value) {
+          next('/dashboard');
+        } else {
+          next();
+        }
+      }
+    },
+    {
+      path: '/dashboard',
       name: 'Dashboard',
-      component: Dashboard
+      component: Dashboard,
+      beforeEnter: authGuard
     },
     {
       path: '/events',

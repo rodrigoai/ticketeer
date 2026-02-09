@@ -3,7 +3,7 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between py-3 gap-4">
         <router-link
-          to="/"
+          to="/dashboard"
           class="flex items-center gap-2 text-lg font-semibold text-slate-900 tracking-tight"
         >
           <i class="fas fa-ticket-alt text-primary-600 text-xl"></i>
@@ -12,9 +12,9 @@
 
         <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
           <router-link
-            to="/"
+            to="/dashboard"
             class="px-2 py-1 rounded-lg transition hover:text-slate-900 hover:bg-slate-100"
-            :class="{ 'text-slate-900 bg-slate-100': $route.path === '/' }"
+            :class="{ 'text-slate-900 bg-slate-100': $route.path === '/dashboard' }"
           >
             Dashboard
           </router-link>
@@ -113,9 +113,9 @@
       >
         <div class="flex flex-col gap-2 px-2 pt-2">
           <router-link
-            to="/"
+            to="/dashboard"
             class="px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition"
-            :class="{ 'bg-slate-100 text-slate-900': $route.path === '/' }"
+            :class="{ 'bg-slate-100 text-slate-900': $route.path === '/dashboard' }"
             @click="closeMobileMenu"
           >
             Dashboard
