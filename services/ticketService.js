@@ -946,7 +946,10 @@ class TicketService {
 
             try {
               const orderService = require('./orderService');
-              const confirmationUrl = orderService.generateConfirmationUrl(orderId.toString());
+              const confirmationUrl = orderService.generateConfirmationUrl(
+                orderId.toString(),
+                ticketsToUpdate[0].eventId
+              );
 
               await emailService.sendConfirmationEmail(customer.email, {
                 eventName: ticketsToUpdate[0].event.name,
@@ -974,7 +977,7 @@ class TicketService {
           updatedTickets: updateResult.updatedTickets,
           selectionMethod,
           quantity: selectionMethod === 'quantity-based' ? Math.floor(items.reduce((total, item) => total + (item.quantity || 0), 0)) : undefined,
-          confirmationUrl: !isSingleTicket && emailSent ? require('./orderService').generateConfirmationUrl(orderId.toString()) : null,
+          confirmationUrl: !isSingleTicket && emailSent ? require('./orderService').generateConfirmationUrl(orderId.toString(), ticketsToUpdate[0].eventId) : null,
           emailSent,
           qrEmailSent,
           isSingleTicket,

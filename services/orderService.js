@@ -9,17 +9,21 @@ class OrderService {
   /**
    * Generate a public confirmation URL for an order
    * @param {string} orderId - The order ID
+   * @param {number|null} eventId - Optional event ID for scoped hashes
    * @param {string} baseUrl - Base URL for the application
    * @returns {string} - Public confirmation URL
    */
-  generateConfirmationUrl(orderId, baseUrl = null) {
+  generateConfirmationUrl(orderId, eventId = null, baseUrl = null) {
     // Auto-detect production base URL if not provided
     if (!baseUrl) {
       baseUrl = process.env.BASE_URL || 
                 (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
                 'https://ticketeer.vercel.app'; // Your production domain
     }
-    return orderHash.generateConfirmationUrl(orderId, baseUrl);
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const scopedId = eventId ? `${orderId}:${eventId}` : orderId;
+    const hash = orderHash.generateHash(scopedId);
+    return `${cleanBaseUrl}/confirmation/${hash}`;
   }
 
   /**
@@ -57,26 +61,39 @@ class OrderService {
         }
       });
 
-      // Group tickets by order and find the one that matches our hash
-      const ticketsByOrder = {};
+      // Group tickets by order + event to avoid cross-event collisions
+      const ticketsByOrderEvent = {};
       for (const ticket of tickets) {
         const orderId = ticket.order;
-        if (!ticketsByOrder[orderId]) {
-          ticketsByOrder[orderId] = [];
+        const eventId = ticket.eventId;
+        const key = `${orderId}:${eventId}`;
+        if (!ticketsByOrderEvent[key]) {
+          ticketsByOrderEvent[key] = [];
         }
-        ticketsByOrder[orderId].push(ticket);
+        ticketsByOrderEvent[key].push(ticket);
       }
 
-      // Find the order that matches our hash
+      // Find the order that matches our hash (scoped hash first, then legacy)
       let matchingOrderId = null;
       let matchingTickets = null;
+      const legacyMatches = [];
 
-      for (const [orderId, orderTickets] of Object.entries(ticketsByOrder)) {
-        if (orderHash.verifyHash(hash, orderId)) {
+      for (const [key, orderTickets] of Object.entries(ticketsByOrderEvent)) {
+        const [orderId, eventId] = key.split(':');
+        const scopedId = `${orderId}:${eventId}`;
+        if (orderHash.verifyHash(hash, scopedId)) {
           matchingOrderId = orderId;
           matchingTickets = orderTickets;
           break;
         }
+        if (orderHash.verifyHash(hash, orderId)) {
+          legacyMatches.push({ orderId, orderTickets });
+        }
+      }
+
+      if (!matchingTickets && legacyMatches.length === 1) {
+        matchingOrderId = legacyMatches[0].orderId;
+        matchingTickets = legacyMatches[0].orderTickets;
       }
 
       if (!matchingOrderId || !matchingTickets) {
@@ -335,9 +352,10 @@ class OrderService {
    * Get confirmation hash for an order by order ID (with user permission check)
    * @param {string} orderId - The order ID
    * @param {string} userId - The user ID making the request
+   * @param {number|null} eventId - Optional event ID to disambiguate order collisions
    * @returns {string} - The confirmation hash for the order
    */
-  async getConfirmationHashByOrderId(orderId, userId) {
+  async getConfirmationHashByOrderId(orderId, userId, eventId = null) {
     try {
       // First, verify that the order exists and the user has access to it
       const tickets = await prisma.ticket.findMany({
@@ -356,15 +374,29 @@ class OrderService {
         throw new Error('Order not found');
       }
 
-      // Check if the user has permission to access this order
-      // (they must be the owner of the event that contains these tickets)
-      const eventCreator = tickets[0].event.created_by;
-      if (eventCreator !== userId) {
+      // Only allow tickets that belong to events created by this user
+      let userTickets = tickets.filter(t => t.event.created_by === userId);
+      if (userTickets.length === 0) {
         throw new Error('Access denied: You do not have permission to access this order');
       }
 
-      // Generate and return the hash
-      return orderHash.generateHash(orderId);
+      // If eventId is provided, filter to that event
+      if (eventId !== null && eventId !== undefined) {
+        userTickets = userTickets.filter(t => t.event.id === eventId);
+        if (userTickets.length === 0) {
+          throw new Error('Order not found');
+        }
+      }
+
+      const uniqueEventIds = [...new Set(userTickets.map(t => t.event.id))];
+      if (uniqueEventIds.length > 1) {
+        throw new Error('Ambiguous order: multiple events found for this orderId');
+      }
+
+      const scopedEventId = uniqueEventIds[0];
+
+      // Generate and return the scoped hash (orderId + eventId)
+      return orderHash.generateHash(`${orderId}:${scopedEventId}`);
 
     } catch (error) {
       console.error('Error getting confirmation hash by order ID:', error);

@@ -1257,7 +1257,7 @@ const preloadConfirmationUrls = async () => {
   await Promise.allSettled(
     uncachedOrders.map(async (orderId) => {
       try {
-        const response = await get(`/api/orders/${orderId}/confirmation-hash`)
+        const response = await get(`/api/orders/${orderId}/confirmation-hash?eventId=${eventId.value}`)
         const baseUrl = window.location.origin
         confirmationUrlCache.value[orderId] = `${baseUrl}/confirmation/${response.hash}`
       } catch (error) {

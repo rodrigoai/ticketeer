@@ -1672,6 +1672,8 @@ app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res)
   try {
     const { orderId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
+    const eventIdRaw = req.query.eventId;
+    const eventId = eventIdRaw ? parseInt(eventIdRaw, 10) : null;
 
     if (!orderId || typeof orderId !== 'string') {
       return res.status(400).json({
@@ -1680,9 +1682,16 @@ app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res)
         message: 'Order ID is required and must be a string'
       });
     }
+    if (eventIdRaw && (Number.isNaN(eventId) || eventId <= 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid event ID',
+        message: 'eventId must be a positive integer'
+      });
+    }
 
     const orderService = require('./services/orderService');
-    const hash = await orderService.getConfirmationHashByOrderId(orderId, userId);
+    const hash = await orderService.getConfirmationHashByOrderId(orderId, userId, eventId);
 
     res.json({
       success: true,
@@ -1705,6 +1714,13 @@ app.get('/api/orders/:orderId/confirmation-hash', requiresAuth, async (req, res)
         success: false,
         error: 'Access denied',
         message: 'You do not have permission to access this order'
+      });
+    }
+    if (error.message.includes('Ambiguous order')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ambiguous order',
+        message: 'Multiple events found for this orderId; provide eventId to disambiguate'
       });
     }
 
