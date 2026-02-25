@@ -44,18 +44,41 @@
         </div>
       </div>
 
-      <div v-else-if="events.length === 0" class="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center space-y-3">
+      <div v-else class="flex flex-wrap items-center gap-3">
+        <button
+          class="rounded-full px-4 py-2 text-sm font-semibold transition"
+          :class="showPastEvents ? 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50' : 'bg-slate-900 text-white shadow-md hover:bg-slate-800'"
+          @click="showPastEvents = false"
+        >
+          Upcoming Events ({{ upcomingEvents.length }})
+        </button>
+        <button
+          class="rounded-full px-4 py-2 text-sm font-semibold transition"
+          :class="showPastEvents ? 'bg-slate-900 text-white shadow-md hover:bg-slate-800' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+          @click="showPastEvents = true"
+        >
+          Past Events ({{ pastEvents.length }})
+        </button>
+      </div>
+
+      <div v-if="!isLoading && filteredEvents.length === 0" class="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center space-y-3">
         <div class="text-4xl">🎪</div>
-        <h3 class="text-xl font-semibold text-slate-900">No events yet</h3>
-        <p class="text-sm text-slate-500">Create your first event and start selling tickets in minutes.</p>
-        <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-700 transition" @click="showCreateModal">
+        <h3 class="text-xl font-semibold text-slate-900">{{ emptyStateLabel }}</h3>
+        <p class="text-sm text-slate-500">
+          {{ showPastEvents ? 'Past events appear here once their date has passed.' : 'Create your first event and start selling tickets in minutes.' }}
+        </p>
+        <button
+          v-if="!showPastEvents"
+          class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-700 transition"
+          @click="showCreateModal"
+        >
           Create Event
         </button>
       </div>
 
       <div v-else class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         <article
-          v-for="event in events"
+          v-for="event in filteredEvents"
           :key="event.id"
           class="flex flex-col rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden"
         >
@@ -161,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
 
@@ -173,6 +196,7 @@ const { userId, user, userName, userEmail, isAuthenticated } = useUser()
 
 // Events data
 const events = ref([])
+const showPastEvents = ref(false)
 const isEditing = ref(false)
 const currentEventId = ref(null)
 const isEventModalOpen = ref(false)
@@ -350,6 +374,32 @@ const loadCheckoutPages = async () => {
     isLoadingCheckoutPages.value = false
   }
 }
+
+const resolveEventDate = (event) => {
+  return event?.closing_datetime || event?.opening_datetime || event?.date || null
+}
+
+const isPastEvent = (event) => {
+  const dateValue = resolveEventDate(event)
+  if (!dateValue) return false
+  const eventTime = new Date(dateValue).getTime()
+  if (Number.isNaN(eventTime)) return false
+  return eventTime < Date.now()
+}
+
+const sortEventsByDate = (list, direction = 'asc') => {
+  const multiplier = direction === 'desc' ? -1 : 1
+  return list.slice().sort((a, b) => {
+    const aTime = new Date(resolveEventDate(a) || 0).getTime()
+    const bTime = new Date(resolveEventDate(b) || 0).getTime()
+    return (aTime - bTime) * multiplier
+  })
+}
+
+const pastEvents = computed(() => sortEventsByDate(events.value.filter(isPastEvent), 'desc'))
+const upcomingEvents = computed(() => sortEventsByDate(events.value.filter(event => !isPastEvent(event)), 'asc'))
+const filteredEvents = computed(() => (showPastEvents.value ? pastEvents.value : upcomingEvents.value))
+const emptyStateLabel = computed(() => (showPastEvents.value ? 'No past events yet' : 'No upcoming events yet'))
 
 // Format date for display
 const formatDate = (dateString) => {

@@ -104,6 +104,14 @@
             <button class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-sky-600 transition" @click="showBatchCreateModal">
               <i class="fas fa-layer-group text-xs"></i> Batch Create
             </button>
+            <button
+              class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition disabled:opacity-60"
+              @click="exportTicketsCsv"
+              :disabled="isLoadingTickets || sortedTickets.length === 0"
+              title="Export tickets to CSV"
+            >
+              <i class="fas fa-file-csv text-xs"></i> Export CSV
+            </button>
           </div>
         </div>
 
@@ -1028,6 +1036,79 @@ const showCreateModal = () => {
 const showBatchCreateModal = () => {
   resetBatchForm()
   isBatchModalOpen.value = true
+}
+
+const csvColumns = [
+  { key: 'id', label: 'id' },
+  { key: 'eventId', label: 'eventId' },
+  { key: 'description', label: 'description' },
+  { key: 'identificationNumber', label: 'identificationNumber' },
+  { key: 'location', label: 'location' },
+  { key: 'table', label: 'table' },
+  { key: 'price', label: 'price' },
+  { key: 'order', label: 'order' },
+  { key: 'buyer', label: 'buyer' },
+  { key: 'buyerDocument', label: 'buyerDocument' },
+  { key: 'buyerEmail', label: 'buyerEmail' },
+  { key: 'buyerPhone', label: 'buyerPhone' },
+  { key: 'salesEndDateTime', label: 'salesEndDateTime' },
+  { key: 'checkedIn', label: 'checkedIn' },
+  { key: 'checkedInAt', label: 'checkedInAt' },
+  { key: 'accessoryCollected', label: 'accessoryCollected' },
+  { key: 'accessoryCollectedAt', label: 'accessoryCollectedAt' },
+  { key: 'accessoryCollectedNotes', label: 'accessoryCollectedNotes' },
+  { key: 'created_at', label: 'created_at' },
+  { key: 'updated_at', label: 'updated_at' }
+]
+
+const normalizeCsvValue = (value) => {
+  if (value === null || value === undefined) return ''
+  if (value instanceof Date) return value.toISOString()
+  return String(value)
+}
+
+const escapeCsvValue = (value) => {
+  const stringValue = normalizeCsvValue(value)
+  if (/[",\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`
+  }
+  return stringValue
+}
+
+const sanitizeFilename = (value) => {
+  if (!value) return 'event'
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+const exportTicketsCsv = () => {
+  const rows = sortedTickets.value
+  if (!rows.length) return
+
+  const header = csvColumns.map(col => col.label).join(',')
+  const lines = rows.map(row => {
+    return csvColumns.map(col => escapeCsvValue(row[col.key])).join(',')
+  })
+
+  const csvContent = [header, ...lines].join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+
+  const eventLabel = event.value?.title || event.value?.name || `event-${eventId.value}`
+  const safeName = sanitizeFilename(eventLabel)
+  const dateStamp = new Date().toISOString().slice(0, 10)
+  const filename = `${safeName}-tickets-${dateStamp}.csv`
+
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 // Edit ticket
