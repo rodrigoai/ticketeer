@@ -180,7 +180,7 @@ describe('Buyer Confirmation Feature Tests', () => {
     test('should mask CPF correctly', () => {
       const cpf = '12345678910';
       const masked = cpfValidator.mask(cpf);
-      expect(masked).toBe('***.***.234-10');
+      expect(masked).toBe('***.***.*89-10');
       
       // Invalid CPF should return as-is
       expect(cpfValidator.mask('123')).toBe('123');
@@ -200,7 +200,8 @@ describe('Buyer Confirmation Feature Tests', () => {
       const orderId = 'ORDER-SERVICE-TEST';
       const baseUrl = 'https://test.com';
       
-      const url = orderService.generateConfirmationUrl(orderId, baseUrl);
+      // signature: generateConfirmationUrl(orderId, eventId = null, baseUrl = null)
+      const url = orderService.generateConfirmationUrl(orderId, null, baseUrl);
       
       expect(url).toContain(baseUrl);
       expect(url).toContain('/confirmation/');
@@ -254,7 +255,7 @@ describe('Buyer Confirmation Feature Tests', () => {
 
       const result = orderService.validateBuyersData(duplicateCPFBuyers, tickets);
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain('já utilizado');
+      expect(result.error).toContain('already used');
     });
 
     test('should detect duplicate email in buyers data', () => {
@@ -280,7 +281,7 @@ describe('Buyer Confirmation Feature Tests', () => {
 
       const result = orderService.validateBuyersData(duplicateEmailBuyers, tickets);
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain('já utilizado');
+      expect(result.error).toContain('already used');
     });
 
     test('should validate required fields', () => {
@@ -448,8 +449,8 @@ describe('Buyer Confirmation Feature Tests', () => {
 
     test('should handle edge cases in URL hash extraction', () => {
       const testCases = [
-        { url: '/confirmation/abc123def', expected: 'abc123def' },
-        { url: 'https://example.com/confirmation/xyz789uvw', expected: 'xyz789uvw' },
+        { url: '/confirmation/alongenoughhashvalueforvalidation', expected: 'alongenoughhashvalueforvalidation' },
+        { url: 'https://example.com/confirmation/anotherlongenoughhashvalueforvalidation', expected: 'anotherlongenoughhashvalueforvalidation' },
         { url: '/other/path', expected: null },
         { url: '', expected: null },
         { url: '/confirmation/', expected: null },

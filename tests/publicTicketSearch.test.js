@@ -22,6 +22,35 @@ describe('Public Ticket Search API', () => {
   let app;
   let mockPrisma;
 
+  const mockTickets = [
+    {
+      id: 1,
+      eventId: 1,
+      description: 'General Admission',
+      identificationNumber: 1,
+      location: 'Section A',
+      table: null,
+      price: '25.00',
+      order: null,
+      salesEndDateTime: null,
+      created_at: new Date('2024-01-01T10:00:00Z'),
+      updated_at: new Date('2024-01-01T10:00:00Z')
+    },
+    {
+      id: 2,
+      eventId: 1,
+      description: 'VIP',
+      identificationNumber: 2,
+      location: 'VIP Section',
+      table: 5,
+      price: '50.00',
+      order: 'order_123',
+      salesEndDateTime: new Date('2024-12-31T23:59:59Z'),
+      created_at: new Date('2024-01-01T10:01:00Z'),
+      updated_at: new Date('2024-01-01T10:01:00Z')
+    }
+  ];
+
   beforeAll(() => {
     // Create Express app with our routes
     app = express();
@@ -241,35 +270,6 @@ describe('Public Ticket Search API', () => {
   });
 
   describe('Successful Ticket Search', () => {
-    const mockTickets = [
-      {
-        id: 1,
-        eventId: 1,
-        description: 'General Admission',
-        identificationNumber: 1,
-        location: 'Section A',
-        table: null,
-        price: '25.00',
-        order: null,
-        salesEndDateTime: null,
-        created_at: new Date('2024-01-01T10:00:00Z'),
-        updated_at: new Date('2024-01-01T10:00:00Z')
-      },
-      {
-        id: 2,
-        eventId: 1,
-        description: 'VIP',
-        identificationNumber: 2,
-        location: 'VIP Section',
-        table: 5,
-        price: '50.00',
-        order: 'order_123',
-        salesEndDateTime: new Date('2024-12-31T23:59:59Z'),
-        created_at: new Date('2024-01-01T10:01:00Z'),
-        updated_at: new Date('2024-01-01T10:01:00Z')
-      }
-    ];
-
     test('should return all tickets when valid userId and eventId provided', async () => {
       // Mock successful search
       jest.spyOn(ticketService, 'searchTicketsPublic').mockResolvedValue({

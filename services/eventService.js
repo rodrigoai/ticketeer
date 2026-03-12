@@ -250,6 +250,129 @@ class EventService {
     }
   }
 
+  // Get dashboard statistics for a user
+  async getDashboardStats(userId) {
+    try {
+      const totalActiveEvents = await prisma.event.count({
+        where: {
+          status: 'active',
+          created_by: userId
+        }
+      });
+
+      const userEvents = await prisma.event.findMany({
+        where: { created_by: userId },
+        select: { id: true }
+      });
+
+      const userEventIds = userEvents.map(event => event.id);
+
+      const totalTicketsSold = await prisma.ticket.count({
+        where: {
+          eventId: { in: userEventIds },
+          order: {
+            not: null
+          },
+          NOT: {
+            order: ''
+          }
+        }
+      });
+
+      const revenueStats = await prisma.ticket.aggregate({
+        where: {
+          eventId: { in: userEventIds },
+          order: {
+            not: null
+          },
+          NOT: {
+            order: ''
+          }
+        },
+        _sum: {
+          price: true
+        }
+      });
+
+      const upcomingEventsCount = await prisma.event.count({
+        where: {
+          status: 'active',
+          created_by: userId,
+          opening_datetime: {
+            gte: new Date()
+          }
+        }
+      });
+
+      return {
+        totalActiveEvents,
+        totalTicketsSold,
+        totalRevenue: parseFloat(revenueStats._sum.price || 0),
+        upcomingEvents: upcomingEventsCount
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      throw new Error('Failed to fetch dashboard statistics: ' + error.message);
+    }
+  }
+
+  // Get recent purchases for a user's events
+  async getRecentPurchases(userId, limit = 10) {
+    try {
+      const userEvents = await prisma.event.findMany({
+        where: { created_by: userId },
+        select: { id: true }
+      });
+
+      const userEventIds = userEvents.map(event => event.id);
+
+      const recentPurchases = await prisma.ticket.findMany({
+        where: {
+          eventId: { in: userEventIds },
+          order: {
+            not: null
+          },
+          NOT: {
+            order: ''
+          }
+        },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+              venue: true,
+              opening_datetime: true
+            }
+          }
+        },
+        orderBy: {
+          updated_at: 'desc'
+        },
+        take: limit
+      });
+
+      return recentPurchases.map(ticket => ({
+        id: ticket.id,
+        eventName: ticket.event.name,
+        venue: ticket.event.venue,
+        eventDate: ticket.event.opening_datetime,
+        description: ticket.description,
+        identificationNumber: ticket.identificationNumber,
+        location: ticket.location,
+        table: ticket.table,
+        price: parseFloat(ticket.price || 0),
+        buyerDisplayName: ticket.buyer || 'Anonymous',
+        buyerEmail: ticket.buyerEmail,
+        buyerDocument: ticket.buyerDocument,
+        purchaseDate: ticket.updated_at
+      }));
+    } catch (error) {
+      console.error('Error fetching recent purchases:', error);
+      throw new Error('Failed to fetch recent purchases: ' + error.message);
+    }
+  }
+
   // Close the Prisma connection
   async disconnect() {
     await prisma.$disconnect();
