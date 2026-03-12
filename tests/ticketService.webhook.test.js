@@ -26,6 +26,10 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
   let mockPrisma;
   let ticketService;
 
+  beforeAll(() => {
+    process.env.ORDER_HASH_SECRET = 'test-secret';
+  });
+
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
@@ -33,6 +37,13 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
     // Create fresh mock instances
     mockPrisma = new PrismaClient();
     ticketService = TicketService;
+
+    // Default mock for event validation
+    mockPrisma.event.findFirst.mockResolvedValue({
+      id: 1,
+      name: 'Test Event',
+      created_by: 'auth0|testuser123'
+    });
   });
 
   describe('processCheckoutWebhook - Single Ticket Purchase', () => {
@@ -43,7 +54,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       const customer = {
         name: 'John Doe',
         identification: '123.456.789-00',
-        email: 'john.doe@example.com'
+        email: 'john.doe@example.com',
+        phone: '123456789'
       };
 
       const mockTickets = [
@@ -65,7 +77,10 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
         payload: {
           id: orderId,
           customer: customer,
-          items: [{ quantity: 1 }]
+          items: [{ quantity: 1 }],
+          meta: {
+            eventId: Buffer.from('1').toString('base64')
+          }
         }
       };
 
@@ -80,7 +95,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                 order: data.order,
                 buyer: data.buyer,
                 buyerDocument: data.buyerDocument,
-                buyerEmail: data.buyerEmail
+                buyerEmail: data.buyerEmail,
+                buyerPhone: data.buyerPhone
               });
             })
           }
@@ -107,7 +123,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
             order: orderId,
             buyer: customer.name,
             buyerDocument: customer.identification,
-            buyerEmail: customer.email
+            buyerEmail: customer.email,
+            buyerPhone: customer.phone
           })
         }
       };
@@ -121,7 +138,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           order: orderId,
           buyer: customer.name,
           buyerDocument: customer.identification,
-          buyerEmail: customer.email
+          buyerEmail: customer.email,
+          buyerPhone: customer.phone
         }
       });
     });
@@ -135,7 +153,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       const customer = {
         name: 'Jane Smith',
         identification: '987.654.321-00',
-        email: 'jane.smith@example.com'
+        email: 'jane.smith@example.com',
+        phone: '123456789'
       };
 
       const mockTickets = [
@@ -169,7 +188,10 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
         payload: {
           id: orderId,
           customer: customer,
-          items: [{ quantity: 3 }]
+          items: [{ quantity: 3 }],
+          meta: {
+            eventId: Buffer.from('1').toString('base64')
+          }
         }
       };
 
@@ -186,7 +208,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                 order: data.order,
                 buyer: data.buyer || null,
                 buyerDocument: data.buyerDocument || null,
-                buyerEmail: data.buyerEmail || null
+                buyerEmail: data.buyerEmail || null,
+                buyerPhone: data.buyerPhone || null
               };
               updatedTickets.push(updatedTicket);
               return Promise.resolve(updatedTicket);
@@ -218,7 +241,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                 order: orderId,
                 buyer: customer.name,
                 buyerDocument: customer.identification,
-                buyerEmail: customer.email
+                buyerEmail: customer.email,
+                buyerPhone: customer.phone
               });
               return Promise.resolve({ ...mockTickets[0], ...data });
             })
@@ -257,7 +281,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       const customer = {
         name: 'Robert Wilson',
         identification: '456.789.123-00',
-        email: 'robert.wilson@example.com'
+        email: 'robert.wilson@example.com',
+        phone: '123456789'
       };
 
       // Note: Tickets are intentionally out of order by ID but ordered by identificationNumber
@@ -293,7 +318,7 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           id: orderId,
           customer: customer,
           meta: {
-            tableNumber: tableNumber.toString()
+            tableNumber: Buffer.from(tableNumber.toString()).toString('base64')
           }
         }
       };
@@ -311,7 +336,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                   order: orderId,
                   buyer: customer.name,
                   buyerDocument: customer.identification,
-                  buyerEmail: customer.email
+                  buyerEmail: customer.email,
+                  buyerPhone: customer.phone
                 });
                 return Promise.resolve({ ...mockTickets[0], ...data });
               })
@@ -372,7 +398,10 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
         payload: {
           id: orderId,
           customer: null,  // No customer info
-          items: [{ quantity: 1 }]
+          items: [{ quantity: 1 }],
+          meta: {
+            eventId: Buffer.from('1').toString('base64')
+          }
         }
       };
 
@@ -435,9 +464,13 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           customer: {
             name: '',       // Empty name
             identification: null,  // Null identification
-            email: undefined       // Undefined email
+            email: undefined,       // Undefined email
+            phone: undefined
           },
-          items: [{ quantity: 2 }]
+          items: [{ quantity: 2 }],
+          meta: {
+            eventId: Buffer.from('1').toString('base64')
+          }
         }
       };
 
@@ -453,12 +486,14 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                   order: orderId,
                   buyer: null,
                   buyerDocument: null,
-                  buyerEmail: null
+                  buyerEmail: null,
+                  buyerPhone: null
                 });
                 return Promise.resolve({ ...mockTickets[0], ...data });
               })
               .mockImplementationOnce(({ where, data }) => {
                 // Second ticket should get only order
+                expect(where.id).toBe(2);
                 expect(data).toEqual({
                   order: orderId
                 });
@@ -487,7 +522,10 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
         payload: {
           id: orderId,
           customer: { name: 'Test User' },
-          items: [{ quantity: 1 }]
+          items: [{ quantity: 1 }],
+          meta: {
+            eventId: Buffer.from('1').toString('base64')
+          }
         }
       };
 
@@ -503,7 +541,7 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       // Execute and expect error
       await expect(ticketService.processCheckoutWebhook(webhookPayload, userId))
         .rejects
-        .toThrow('No available tickets without table numbers found for user');
+        .toThrow('No available tickets without table numbers found for event');
     });
   });
 
@@ -513,7 +551,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       const customer = {
         name: 'Helper Test User',
         identification: '111.222.333-44',
-        email: 'helper@test.com'
+        email: 'helper@test.com',
+        phone: '123456789'
       };
 
       const mockTickets = [
@@ -525,7 +564,7 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       const mockTx = {
         ticket: {
           update: jest.fn()
-            .mockResolvedValueOnce({ id: 1, order: orderId, buyer: customer.name, buyerDocument: customer.identification, buyerEmail: customer.email })
+            .mockResolvedValueOnce({ id: 1, order: orderId, buyer: customer.name, buyerDocument: customer.identification, buyerEmail: customer.email, buyerPhone: customer.phone })
             .mockResolvedValueOnce({ id: 2, order: orderId })
             .mockResolvedValueOnce({ id: 3, order: orderId })
         }
@@ -542,7 +581,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       expect(result.buyerInfo).toEqual({
         buyer: customer.name,
         buyerDocument: customer.identification,
-        buyerEmail: customer.email
+        buyerEmail: customer.email,
+        buyerPhone: customer.phone
       });
 
       // Verify first ticket got buyer info + order
@@ -552,7 +592,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           order: orderId,
           buyer: customer.name,
           buyerDocument: customer.identification,
-          buyerEmail: customer.email
+          buyerEmail: customer.email,
+          buyerPhone: customer.phone
         }
       });
 
