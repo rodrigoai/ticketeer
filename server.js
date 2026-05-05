@@ -5,6 +5,8 @@ const fetch = require('node-fetch');
 const prisma = require('./config/prisma');
 const { AUTH0_DOMAIN, AUTH0_AUDIENCE } = require('./config/auth');
 const requiresAuth = require('./middleware/requiresAuth');
+const createHealthRoutes = require('./routes/healthRoutes');
+const createDashboardRoutes = require('./routes/dashboardRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -82,52 +84,14 @@ app.use(express.static(path.join(__dirname, 'dist')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    message: 'Ticketeer SPA server is running!',
-    timestamp: new Date().toISOString(),
-    auth: {
-      domain: AUTH0_DOMAIN,
-      audience: AUTH0_AUDIENCE
-    }
-  });
-});
-
-// Simple test endpoint (no JWT required)
-app.get('/api/test/simple', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Simple test endpoint working!',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Test endpoint for JWT authentication (protected)
-app.get('/api/test/protected', requiresAuth, (req, res) => {
-  try {
-    res.json({
-      success: true,
-      message: 'JWT authentication is working!',
-      user: {
-        sub: req.auth?.payload?.sub || req.auth?.sub || 'N/A',
-        email: req.auth?.payload?.email || req.auth?.email || 'N/A',
-        name: req.auth?.payload?.name || req.auth?.name || 'N/A',
-        picture: req.auth?.payload?.picture || req.auth?.picture || 'N/A'
-      },
-      scope: req.auth?.scope || 'N/A',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error in protected endpoint:', error);
-    res.status(500).json({
-      error: 'Failed to process request',
-      message: error.message
-    });
-  }
-});
+app.use('/api', createHealthRoutes({
+  authConfig: {
+    domain: AUTH0_DOMAIN,
+    audience: AUTH0_AUDIENCE
+  },
+  requiresAuth
+}));
+app.use('/api/dashboard', createDashboardRoutes({ prisma, requiresAuth }));
 
 // ==========================================
 // USER PROFILE - NOVA.MONEY SETTINGS
@@ -1425,166 +1389,6 @@ app.post('/api/tickets/bulk-delete', requiresAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to bulk delete tickets',
-      message: error.message
-    });
-  }
-});
-
-// ==========================================
-// USER DASHBOARD API ENDPOINTS
-// ==========================================
-
-// Get user dashboard statistics (authentication required)
-app.get('/api/dashboard/stats', requiresAuth, async (req, res) => {
-  try {
-    const userId = req.auth.payload?.sub || req.auth.sub;
-
-    // Get user's events count (active only)
-    const totalActiveEvents = await prisma.event.count({
-      where: {
-        status: 'active',
-        created_by: userId
-      }
-    });
-
-    // Get total tickets sold for user's events (tickets with orders)
-    const userEvents = await prisma.event.findMany({
-      where: { created_by: userId },
-      select: { id: true }
-    });
-
-    const userEventIds = userEvents.map(event => event.id);
-
-    const totalTicketsSold = await prisma.ticket.count({
-      where: {
-        eventId: { in: userEventIds },
-        order: {
-          not: null
-        },
-        NOT: {
-          order: ''
-        }
-      }
-    });
-
-    // Get total revenue from sold tickets for user's events
-    const revenueStats = await prisma.ticket.aggregate({
-      where: {
-        eventId: { in: userEventIds },
-        order: {
-          not: null
-        },
-        NOT: {
-          order: ''
-        }
-      },
-      _sum: {
-        price: true
-      }
-    });
-
-    // Get user's upcoming events count
-    const upcomingEvents = await prisma.event.count({
-      where: {
-        status: 'active',
-        created_by: userId,
-        opening_datetime: {
-          gte: new Date()
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      stats: {
-        totalActiveEvents,
-        totalTicketsSold,
-        totalRevenue: parseFloat(revenueStats._sum.price || 0),
-        upcomingEvents
-      },
-      timestamp: new Date().toISOString(),
-      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
-    });
-  } catch (error) {
-    console.error('Error fetching user dashboard stats:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch dashboard statistics',
-      message: error.message
-    });
-  }
-});
-
-// Get last 10 tickets purchased for user's events (authentication required)
-app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
-  try {
-    const userId = req.auth.payload?.sub || req.auth.sub;
-
-    // Get user's events
-    const userEvents = await prisma.event.findMany({
-      where: { created_by: userId },
-      select: { id: true }
-    });
-
-    const userEventIds = userEvents.map(event => event.id);
-
-    // Get last 10 tickets that have been purchased for user's events
-    const recentPurchases = await prisma.ticket.findMany({
-      where: {
-        eventId: { in: userEventIds },
-        order: {
-          not: null
-        },
-        NOT: {
-          order: ''
-        }
-      },
-      include: {
-        event: {
-          select: {
-            id: true,
-            name: true,
-            venue: true,
-            opening_datetime: true
-          }
-        }
-      },
-      orderBy: {
-        updated_at: 'desc'
-      },
-      take: 10
-    });
-
-    // Map to safe format (show buyer information since user owns the events)
-    const userPurchases = recentPurchases.map(ticket => ({
-      id: ticket.id,
-      eventName: ticket.event.name,
-      venue: ticket.event.venue,
-      eventDate: ticket.event.opening_datetime,
-      description: ticket.description,
-      identificationNumber: ticket.identificationNumber,
-      location: ticket.location,
-      table: ticket.table,
-      price: parseFloat(ticket.price || 0),
-      // Show buyer information since user owns the event
-      buyerDisplayName: ticket.buyer || 'Anonymous',
-      buyerEmail: ticket.buyerEmail,
-      buyerDocument: ticket.buyerDocument,
-      purchaseDate: ticket.updated_at
-    }));
-
-    res.json({
-      success: true,
-      purchases: userPurchases,
-      count: userPurchases.length,
-      timestamp: new Date().toISOString(),
-      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
-    });
-  } catch (error) {
-    console.error('Error fetching recent purchases:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch recent purchases',
       message: error.message
     });
   }
