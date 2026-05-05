@@ -1,9 +1,10 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const { auth } = require('express-oauth2-jwt-bearer');
 const fetch = require('node-fetch');
 const prisma = require('./config/prisma');
+const { AUTH0_DOMAIN, AUTH0_AUDIENCE } = require('./config/auth');
+const requiresAuth = require('./middleware/requiresAuth');
 require('dotenv').config();
 
 const app = express();
@@ -27,43 +28,6 @@ const buildNovaCheckoutUrl = (tenant, checkoutPageId, eventId) => {
   const encodedEventId = Buffer.from(String(eventId)).toString('base64').replace(/=+$/, '');
   return `${baseUrl}?meta.eventId=${encodedEventId}`;
 };
-
-const getRequiredEnv = (key) => {
-  const value = process.env[key];
-
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-
-  return value;
-};
-
-// Auth0 configuration for JWT validation
-const AUTH0_DOMAIN = getRequiredEnv('AUTH0_DOMAIN');
-const AUTH0_AUDIENCE = getRequiredEnv('AUTH0_AUDIENCE');
-
-// JWT verification middleware
-const jwtCheck = auth({
-  audience: AUTH0_AUDIENCE,
-  issuerBaseURL: `https://${AUTH0_DOMAIN}/`,
-  tokenSigningAlg: 'RS256'
-});
-
-// Wrapper middleware with proper error handling
-const requiresAuth = (req, res, next) => {
-  jwtCheck(req, res, (err) => {
-    if (err) {
-      console.error('JWT Auth Error:', err.message);
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Valid JWT token required',
-        details: err.message
-      });
-    }
-    next();
-  });
-};
-
 
 // CORS middleware with custom logic for public vs private endpoints
 app.use((req, res, next) => {
