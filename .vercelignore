@@ -38,8 +38,6 @@ coverage/
 
 # Documentation
 *.md
-!README.md
-!VERCEL_DEPLOYMENT.md
 
 # Local development builds
 dist-dev/

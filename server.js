@@ -3,6 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const { auth } = require('express-oauth2-jwt-bearer');
 const fetch = require('node-fetch');
+const prisma = require('./config/prisma');
 require('dotenv').config();
 
 const app = express();
@@ -27,9 +28,19 @@ const buildNovaCheckoutUrl = (tenant, checkoutPageId, eventId) => {
   return `${baseUrl}?meta.eventId=${encodedEventId}`;
 };
 
+const getRequiredEnv = (key) => {
+  const value = process.env[key];
+
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+
+  return value;
+};
+
 // Auth0 configuration for JWT validation
-const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || 'novamoney.us.auth0.com';
-const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE || 'https://ticket.nova.money';
+const AUTH0_DOMAIN = getRequiredEnv('AUTH0_DOMAIN');
+const AUTH0_AUDIENCE = getRequiredEnv('AUTH0_AUDIENCE');
 
 // JWT verification middleware
 const jwtCheck = auth({
@@ -1463,9 +1474,6 @@ app.post('/api/tickets/bulk-delete', requiresAuth, async (req, res) => {
 app.get('/api/dashboard/stats', requiresAuth, async (req, res) => {
   try {
     const userId = req.auth.payload?.sub || req.auth.sub;
-    const eventService = require('./services/eventService');
-    const { PrismaClient } = require('./generated/prisma');
-    const prisma = new PrismaClient();
 
     // Get user's events count (active only)
     const totalActiveEvents = await prisma.event.count({
@@ -1522,8 +1530,6 @@ app.get('/api/dashboard/stats', requiresAuth, async (req, res) => {
       }
     });
 
-    await prisma.$disconnect();
-
     res.json({
       success: true,
       stats: {
@@ -1549,8 +1555,6 @@ app.get('/api/dashboard/stats', requiresAuth, async (req, res) => {
 app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
   try {
     const userId = req.auth.payload?.sub || req.auth.sub;
-    const { PrismaClient } = require('./generated/prisma');
-    const prisma = new PrismaClient();
 
     // Get user's events
     const userEvents = await prisma.event.findMany({
@@ -1604,8 +1608,6 @@ app.get('/api/dashboard/recent-purchases', requiresAuth, async (req, res) => {
       buyerDocument: ticket.buyerDocument,
       purchaseDate: ticket.updated_at
     }));
-
-    await prisma.$disconnect();
 
     res.json({
       success: true,
@@ -2127,9 +2129,6 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
     }
 
     // Validate that the userId exists in the database by checking if they have any events
-    const { PrismaClient } = require('./generated/prisma');
-    const prisma = new PrismaClient();
-
     try {
       const userExists = await prisma.event.findFirst({
         where: { created_by: userId },
@@ -2137,18 +2136,14 @@ app.post('/api/webhooks/checkout/:userId', async (req, res) => {
       });
 
       if (!userExists) {
-        await prisma.$disconnect();
         return res.status(404).json({
           success: false,
           error: 'User not found',
           message: `User with ID '${userId}' does not exist or has no events`
         });
       }
-
-      await prisma.$disconnect();
     } catch (dbError) {
       console.error('Database error during user validation:', dbError);
-      await prisma.$disconnect();
       return res.status(500).json({
         success: false,
         error: 'Database validation error',
@@ -2231,14 +2226,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start the server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🎫 Ticketeer SPA server is running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🌐 Vue.js SPA: http://localhost:${PORT}`);
-  console.log(`🔐 Auth0 SPA authentication enabled`);
-  console.log(`   Domain: ${AUTH0_DOMAIN}`);
-  console.log(`   Audience: ${AUTH0_AUDIENCE}`);
-});
+// Start the server only when this file is run directly.
+// Tests import the Express app without binding a network port.
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🎫 Ticketeer SPA server is running on http://localhost:${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🌐 Vue.js SPA: http://localhost:${PORT}`);
+    console.log(`🔐 Auth0 SPA authentication enabled`);
+    console.log(`   Domain: ${AUTH0_DOMAIN}`);
+    console.log(`   Audience: ${AUTH0_AUDIENCE}`);
+  });
+}
 
 module.exports = app;

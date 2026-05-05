@@ -2,6 +2,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+test.skip('manual checkout webhook integration script', () => {});
+
 // Test configuration
 const SERVER_URL = 'http://localhost:3000';
 const WEBHOOK_ENDPOINT = '/api/webhooks/checkout';

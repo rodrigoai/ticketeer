@@ -1,8 +1,6 @@
-const { PrismaClient } = require('../generated/prisma');
+const prisma = require('../config/prisma');
 const orderHash = require('../utils/orderHash');
 const cpfValidator = require('../utils/cpfValidator');
-
-const prisma = new PrismaClient();
 
 class OrderService {
 

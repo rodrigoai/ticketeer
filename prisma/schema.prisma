@@ -58,6 +58,7 @@ model Ticket {
   salesEndDateTime     DateTime?
   checkedIn            Boolean   @default(false)
   checkedInAt          DateTime?
+  qrCodeHash           String?   @unique
   accessoryCollected   Boolean   @default(false)
   accessoryCollectedAt DateTime?
   accessoryCollectedNotes String?

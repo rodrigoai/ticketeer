@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmação de Compra - Ticketeer</title>
+    <link rel="stylesheet" href="confirmation.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="greeting">Carregando...</h1>
+            <p class="subtitle">Esses são os tickets de sua compra:</p>
+        </div>
+
+        <div id="loading" class="loading">
+            <p>Carregando informações da compra...</p>
+        </div>
+
+        <div id="error" class="error hidden">
+            <h2>Erro ao carregar a compra</h2>
+            <p id="error-message"></p>
+            <button onclick="location.reload()" class="retry-btn">Tentar novamente</button>
+        </div>
+
+        <div id="completed" class="completed hidden">
+            <h2>✅ Compra já confirmada</h2>
+            <p>As informações dos compradores já foram preenchidas para este pedido.</p>
+            <div id="completed-info" class="completed-info"></div>
+        </div>
+
+        <form id="confirmation-form" class="confirmation-form hidden">
+            <div id="tickets-container" class="tickets-container">
+                <!-- Tickets will be dynamically loaded here -->
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" id="save-btn" class="save-btn" disabled>
+                    Salvar
+                </button>
+            </div>
+
+            <div class="warning">
+                <p>
+                    <strong>Reúna todos os dados antes de salvar.</strong> Ao salvar, você não poderá mais alterar 
+                    a propriedade do ingresso e precisará entrar em contato com nosso suporte.
+                </p>
+            </div>
+        </form>
+
+        <div id="success" class="success hidden">
+            <h2>✅ Informações salvas com sucesso!</h2>
+            <p>As informações dos compradores foram registradas. Você receberá um email de confirmação em breve.</p>
+        </div>
+    </div>
+
+    <script src="confirmation.js"></script>
+</body>
+</html>

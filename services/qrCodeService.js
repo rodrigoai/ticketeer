@@ -30,8 +30,7 @@ class QrCodeService {
    */
   async generateQrCodeForTicket(ticket, userId) {
     try {
-      // Generate the deterministic hash
-      const hash = qrCodeHashUtil.generateQrCodeHashFromTicket(ticket, userId);
+      const hash = qrCodeHashUtil.getQrCodeHashForTicket(ticket, userId);
       
       // Generate QR code image buffer
       const qrCodeBuffer = await QRCode.toBuffer(hash, this.qrCodeOptions);
@@ -82,8 +81,7 @@ class QrCodeService {
    */
   async generateQrCodeDataUrl(ticket, userId) {
     try {
-      // Generate the deterministic hash
-      const hash = qrCodeHashUtil.generateQrCodeHashFromTicket(ticket, userId);
+      const hash = qrCodeHashUtil.getQrCodeHashForTicket(ticket, userId);
       
       // Generate QR code as data URL
       const qrCodeDataUrl = await QRCode.toDataURL(hash, this.qrCodeOptions);
@@ -130,8 +128,7 @@ class QrCodeService {
    */
   async generateQrCodeWithTicketInfo(ticket, userId, eventInfo) {
     try {
-      // Generate the deterministic hash
-      const hash = qrCodeHashUtil.generateQrCodeHashFromTicket(ticket, userId);
+      const hash = qrCodeHashUtil.getQrCodeHashForTicket(ticket, userId);
       
       // Create structured data for QR code (JSON format)
       const qrContent = JSON.stringify({

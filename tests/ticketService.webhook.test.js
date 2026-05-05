@@ -1,5 +1,9 @@
 const { PrismaClient } = require('../generated/prisma');
 const TicketService = require('../services/ticketService');
+const CheckinService = require('../services/checkinService');
+const qrCodeHashUtil = require('../utils/qrCodeHash');
+
+const encodeMeta = (value) => Buffer.from(String(value)).toString('base64').replace(/=+$/, '');
 
 // Mock Prisma for testing
 jest.mock('../generated/prisma', () => {
@@ -7,10 +11,12 @@ jest.mock('../generated/prisma', () => {
     $transaction: jest.fn(),
     event: {
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
       update: jest.fn()
     },
     ticket: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       update: jest.fn(),
       create: jest.fn()
     },
@@ -32,6 +38,11 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
     
     // Create fresh mock instances
     mockPrisma = new PrismaClient();
+    mockPrisma.event.findFirst.mockResolvedValue({
+      id: 1,
+      name: 'Test Event',
+      created_by: 'auth0|testuser123'
+    });
     ticketService = TicketService;
   });
 
@@ -60,11 +71,15 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           }
         }
       ];
+      const expectedQrCodeHash = qrCodeHashUtil.generateQrCodeHash(userId, 1, 1);
 
       const webhookPayload = {
         payload: {
           id: orderId,
           customer: customer,
+          meta: {
+            eventId: encodeMeta(1)
+          },
           items: [{ quantity: 1 }]
         }
       };
@@ -80,7 +95,9 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                 order: data.order,
                 buyer: data.buyer,
                 buyerDocument: data.buyerDocument,
-                buyerEmail: data.buyerEmail
+                buyerEmail: data.buyerEmail,
+                buyerPhone: data.buyerPhone,
+                qrCodeHash: data.qrCodeHash
               });
             })
           }
@@ -107,7 +124,9 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
             order: orderId,
             buyer: customer.name,
             buyerDocument: customer.identification,
-            buyerEmail: customer.email
+            buyerEmail: customer.email,
+            buyerPhone: null,
+            qrCodeHash: expectedQrCodeHash
           })
         }
       };
@@ -121,9 +140,114 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           order: orderId,
           buyer: customer.name,
           buyerDocument: customer.identification,
-          buyerEmail: customer.email
+          buyerEmail: customer.email,
+          buyerPhone: null,
+          qrCodeHash: expectedQrCodeHash
         }
       });
+    });
+
+    test('stores QR hash from webhook and marks the ticket checked in when scanned', async () => {
+      const userId = 'auth0|testuser123';
+      const orderId = 'ORDER-SINGLE-CHECKIN';
+      const customer = {
+        name: 'Scanner Buyer',
+        identification: '123.456.789-09',
+        email: 'scanner@example.com'
+      };
+      const event = {
+        id: 1,
+        name: 'Scan Test Event',
+        venue: 'Main Hall',
+        opening_datetime: new Date('2026-06-01T20:00:00.000Z'),
+        closing_datetime: new Date('2026-06-02T02:00:00.000Z'),
+        created_by: userId
+      };
+      const unsoldTicket = {
+        id: 42,
+        identificationNumber: 7,
+        eventId: event.id,
+        description: 'General Admission',
+        location: 'A1',
+        table: null,
+        price: '100',
+        order: null,
+        buyer: null,
+        buyerDocument: null,
+        buyerEmail: null,
+        checkedIn: false,
+        checkedInAt: null,
+        qrCodeHash: null,
+        event
+      };
+      const expectedQrCodeHash = qrCodeHashUtil.generateQrCodeHash(userId, event.id, unsoldTicket.id);
+      let soldTicket;
+
+      const webhookPayload = {
+        payload: {
+          id: orderId,
+          customer,
+          meta: {
+            eventId: encodeMeta(event.id)
+          },
+          items: [{ quantity: 1 }]
+        }
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (callback) => {
+        return await callback({
+          ticket: {
+            findMany: jest.fn().mockResolvedValue([unsoldTicket]),
+            update: jest.fn().mockImplementation(({ where, data }) => {
+              expect(where).toEqual({ id: unsoldTicket.id });
+              soldTicket = {
+                ...unsoldTicket,
+                ...data
+              };
+              return Promise.resolve(soldTicket);
+            })
+          }
+        });
+      });
+
+      const webhookResult = await ticketService.processCheckoutWebhook(webhookPayload, userId);
+
+      expect(webhookResult.success).toBe(true);
+      expect(webhookResult.isSingleTicket).toBe(true);
+      expect(webhookResult.ticketIds).toEqual([unsoldTicket.id]);
+      expect(soldTicket.qrCodeHash).toBe(expectedQrCodeHash);
+      expect(soldTicket.buyer).toBe(customer.name);
+      expect(soldTicket.order).toBe(orderId);
+
+      mockPrisma.ticket.findUnique.mockResolvedValue({
+        ...soldTicket,
+        checkedIn: false,
+        checkedInAt: null,
+        event
+      });
+
+      mockPrisma.ticket.update.mockImplementation(({ where, data, include }) => {
+        expect(where).toEqual({ id: unsoldTicket.id });
+        expect(data.checkedIn).toBe(true);
+        expect(data.checkedInAt).toBeInstanceOf(Date);
+        expect(include.event.select.name).toBe(true);
+        return Promise.resolve({
+          ...soldTicket,
+          checkedIn: true,
+          checkedInAt: data.checkedInAt,
+          event
+        });
+      });
+
+      const checkinResult = await CheckinService.processCheckin(expectedQrCodeHash);
+
+      expect(mockPrisma.ticket.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+        where: { qrCodeHash: expectedQrCodeHash }
+      }));
+      expect(checkinResult.success).toBe(true);
+      expect(checkinResult.ticket.id).toBe(unsoldTicket.id);
+      expect(checkinResult.ticket.checkedIn).toBe(true);
+      expect(checkinResult.ticket.checkedInAt).toBeInstanceOf(Date);
     });
   });
 
@@ -164,11 +288,17 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           event: { id: 1, created_by: userId, name: 'Test Event' }
         }
       ];
+      const expectedQrCodeHashes = mockTickets.map(ticket => (
+        qrCodeHashUtil.generateQrCodeHash(userId, ticket.eventId, ticket.id)
+      ));
 
       const webhookPayload = {
         payload: {
           id: orderId,
           customer: customer,
+          meta: {
+            eventId: encodeMeta(1)
+          },
           items: [{ quantity: 3 }]
         }
       };
@@ -186,7 +316,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                 order: data.order,
                 buyer: data.buyer || null,
                 buyerDocument: data.buyerDocument || null,
-                buyerEmail: data.buyerEmail || null
+                buyerEmail: data.buyerEmail || null,
+                qrCodeHash: data.qrCodeHash || null
               };
               updatedTickets.push(updatedTicket);
               return Promise.resolve(updatedTicket);
@@ -218,7 +349,9 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                 order: orderId,
                 buyer: customer.name,
                 buyerDocument: customer.identification,
-                buyerEmail: customer.email
+                buyerEmail: customer.email,
+                buyerPhone: null,
+                qrCodeHash: expectedQrCodeHashes[0]
               });
               return Promise.resolve({ ...mockTickets[0], ...data });
             })
@@ -226,7 +359,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
               // Second ticket should get only order
               expect(where.id).toBe(2);
               expect(data).toEqual({
-                order: orderId
+                order: orderId,
+                qrCodeHash: expectedQrCodeHashes[1]
               });
               return Promise.resolve({ ...mockTickets[1], ...data });
             })
@@ -234,7 +368,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
               // Third ticket should get only order
               expect(where.id).toBe(3);
               expect(data).toEqual({
-                order: orderId
+                order: orderId,
+                qrCodeHash: expectedQrCodeHashes[2]
               });
               return Promise.resolve({ ...mockTickets[2], ...data });
             })
@@ -287,13 +422,16 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           event: { id: 1, created_by: userId, name: 'Test Event' }
         }
       ];
+      const expectedQrCodeHashes = mockTickets.map(ticket => (
+        qrCodeHashUtil.generateQrCodeHash(userId, ticket.eventId, ticket.id)
+      ));
 
       const webhookPayload = {
         payload: {
           id: orderId,
           customer: customer,
           meta: {
-            tableNumber: tableNumber.toString()
+            tableNumber: encodeMeta(tableNumber)
           }
         }
       };
@@ -311,7 +449,9 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                   order: orderId,
                   buyer: customer.name,
                   buyerDocument: customer.identification,
-                  buyerEmail: customer.email
+                  buyerEmail: customer.email,
+                  buyerPhone: null,
+                  qrCodeHash: expectedQrCodeHashes[0]
                 });
                 return Promise.resolve({ ...mockTickets[0], ...data });
               })
@@ -319,7 +459,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                 // Second ticket should get only order
                 expect(where.id).toBe(8);
                 expect(data).toEqual({
-                  order: orderId
+                  order: orderId,
+                  qrCodeHash: expectedQrCodeHashes[1]
                 });
                 return Promise.resolve({ ...mockTickets[1], ...data });
               })
@@ -327,7 +468,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                 // Third ticket should get only order
                 expect(where.id).toBe(12);
                 expect(data).toEqual({
-                  order: orderId
+                  order: orderId,
+                  qrCodeHash: expectedQrCodeHashes[2]
                 });
                 return Promise.resolve({ ...mockTickets[2], ...data });
               })
@@ -367,11 +509,15 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           event: { id: 1, created_by: userId, name: 'Test Event' }
         }
       ];
+      const expectedQrCodeHash = qrCodeHashUtil.generateQrCodeHash(userId, 1, 1);
 
       const webhookPayload = {
         payload: {
           id: orderId,
           customer: null,  // No customer info
+          meta: {
+            eventId: encodeMeta(1)
+          },
           items: [{ quantity: 1 }]
         }
       };
@@ -384,7 +530,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
             update: jest.fn().mockImplementation(({ where, data }) => {
               // Should only have order field, no buyer fields
               expect(data).toEqual({
-                order: orderId
+                order: orderId,
+                qrCodeHash: expectedQrCodeHash
               });
               return Promise.resolve({
                 ...mockTickets[0],
@@ -428,6 +575,9 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           event: { id: 1, created_by: userId, name: 'Test Event' }
         }
       ];
+      const expectedQrCodeHashes = mockTickets.map(ticket => (
+        qrCodeHashUtil.generateQrCodeHash(userId, ticket.eventId, ticket.id)
+      ));
 
       const webhookPayload = {
         payload: {
@@ -436,6 +586,9 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
             name: '',       // Empty name
             identification: null,  // Null identification
             email: undefined       // Undefined email
+          },
+          meta: {
+            eventId: encodeMeta(1)
           },
           items: [{ quantity: 2 }]
         }
@@ -453,14 +606,17 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
                   order: orderId,
                   buyer: null,
                   buyerDocument: null,
-                  buyerEmail: null
+                  buyerEmail: null,
+                  buyerPhone: null,
+                  qrCodeHash: expectedQrCodeHashes[0]
                 });
                 return Promise.resolve({ ...mockTickets[0], ...data });
               })
               .mockImplementationOnce(({ where, data }) => {
                 // Second ticket should get only order
                 expect(data).toEqual({
-                  order: orderId
+                  order: orderId,
+                  qrCodeHash: expectedQrCodeHashes[1]
                 });
                 return Promise.resolve({ ...mockTickets[1], ...data });
               })
@@ -487,6 +643,9 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
         payload: {
           id: orderId,
           customer: { name: 'Test User' },
+          meta: {
+            eventId: encodeMeta(1)
+          },
           items: [{ quantity: 1 }]
         }
       };
@@ -503,7 +662,7 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       // Execute and expect error
       await expect(ticketService.processCheckoutWebhook(webhookPayload, userId))
         .rejects
-        .toThrow('No available tickets without table numbers found for user');
+        .toThrow('No available tickets without table numbers found for event 1 and user');
     });
   });
 
@@ -542,7 +701,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       expect(result.buyerInfo).toEqual({
         buyer: customer.name,
         buyerDocument: customer.identification,
-        buyerEmail: customer.email
+        buyerEmail: customer.email,
+        buyerPhone: null
       });
 
       // Verify first ticket got buyer info + order
@@ -552,7 +712,8 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           order: orderId,
           buyer: customer.name,
           buyerDocument: customer.identification,
-          buyerEmail: customer.email
+          buyerEmail: customer.email,
+          buyerPhone: null
         }
       });
 

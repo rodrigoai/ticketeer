@@ -4,7 +4,7 @@ const crypto = require('crypto');
  * QR Code Hash Utility
  * 
  * Generates deterministic, unique hashes for QR codes based on user, event, and ticket information.
- * The hash is not stored in the database but can be regenerated when needed.
+ * Store the generated hash on Ticket.qrCodeHash so scanner lookups can use an indexed query.
  */
 class QrCodeHashUtil {
   constructor() {
@@ -59,6 +59,17 @@ class QrCodeHashUtil {
   }
 
   /**
+   * Return a stored QR hash when available, otherwise generate the deterministic hash.
+   *
+   * @param {Object} ticket - Ticket object from database
+   * @param {string} userId - The user ID who owns the event
+   * @returns {string} - Stored or generated hash string
+   */
+  getQrCodeHashForTicket(ticket, userId) {
+    return ticket.qrCodeHash || this.generateQrCodeHashFromTicket(ticket, userId);
+  }
+
+  /**
    * Verify if a given hash matches the expected hash for the ticket
    * 
    * @param {string} hash - The hash to verify
@@ -84,7 +95,7 @@ class QrCodeHashUtil {
       ticketId: ticket.id,
       identificationNumber: ticket.identificationNumber,
       eventId: ticket.eventId,
-      hash: this.generateQrCodeHashFromTicket(ticket, userId),
+      hash: this.getQrCodeHashForTicket(ticket, userId),
       buyer: ticket.buyer,
       buyerEmail: ticket.buyerEmail
     }));

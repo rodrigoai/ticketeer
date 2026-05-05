@@ -1,13 +1,10 @@
-const { PrismaClient } = require('../generated/prisma');
+const prisma = require('../config/prisma');
 const qrCodeHashUtil = require('../utils/qrCodeHash');
-
-const prisma = new PrismaClient();
 
 class AccessoryPickupService {
 
     /**
      * Find ticket by QR code hash
-     * Since hashes are deterministic but not reversible, we need to search through possible matches
      * 
      * @param {string} hash - The QR code hash from the URL
      * @returns {Object} - Ticket information with event details
@@ -18,9 +15,8 @@ class AccessoryPickupService {
                 throw new Error('Invalid hash format');
             }
 
-            // Get all tickets that could potentially match this hash
-            // We'll need to check each ticket against the hash
-            const allTickets = await prisma.ticket.findMany({
+            const ticket = await prisma.ticket.findUnique({
+                where: { qrCodeHash: hash },
                 include: {
                     event: {
                         select: {
@@ -35,45 +31,36 @@ class AccessoryPickupService {
                 }
             });
 
-            // Check each ticket to see if its hash matches
-            for (const ticket of allTickets) {
-                const expectedHash = qrCodeHashUtil.generateQrCodeHash(
-                    ticket.event.created_by,
-                    ticket.eventId,
-                    ticket.id
-                );
-
-                if (expectedHash === hash) {
-                    return {
-                        id: ticket.id,
-                        eventId: ticket.eventId,
-                        description: ticket.description,
-                        identificationNumber: ticket.identificationNumber,
-                        location: ticket.location,
-                        table: ticket.table,
-                        price: parseFloat(ticket.price) || 0,
-                        buyer: ticket.buyer,
-                        buyerDocument: ticket.buyerDocument,
-                        buyerEmail: ticket.buyerEmail,
-                        checkedIn: ticket.checkedIn,
-                        checkedInAt: ticket.checkedInAt,
-                        accessoryCollected: ticket.accessoryCollected,
-                        accessoryCollectedAt: ticket.accessoryCollectedAt,
-                        accessoryCollectedNotes: ticket.accessoryCollectedNotes,
-                        event: {
-                            id: ticket.event.id,
-                            name: ticket.event.name,
-                            venue: ticket.event.venue,
-                            opening_datetime: ticket.event.opening_datetime,
-                            closing_datetime: ticket.event.closing_datetime,
-                            created_by: ticket.event.created_by
-                        },
-                        hash: hash
-                    };
-                }
+            if (!ticket) {
+                throw new Error('Ticket not found for the provided hash');
             }
 
-            throw new Error('Ticket not found for the provided hash');
+            return {
+                id: ticket.id,
+                eventId: ticket.eventId,
+                description: ticket.description,
+                identificationNumber: ticket.identificationNumber,
+                location: ticket.location,
+                table: ticket.table,
+                price: parseFloat(ticket.price) || 0,
+                buyer: ticket.buyer,
+                buyerDocument: ticket.buyerDocument,
+                buyerEmail: ticket.buyerEmail,
+                checkedIn: ticket.checkedIn,
+                checkedInAt: ticket.checkedInAt,
+                accessoryCollected: ticket.accessoryCollected,
+                accessoryCollectedAt: ticket.accessoryCollectedAt,
+                accessoryCollectedNotes: ticket.accessoryCollectedNotes,
+                event: {
+                    id: ticket.event.id,
+                    name: ticket.event.name,
+                    venue: ticket.event.venue,
+                    opening_datetime: ticket.event.opening_datetime,
+                    closing_datetime: ticket.event.closing_datetime,
+                    created_by: ticket.event.created_by
+                },
+                hash: ticket.qrCodeHash
+            };
         } catch (error) {
             console.error('Error finding ticket by hash:', error);
             throw new Error(`Failed to find ticket: ${error.message}`);
@@ -235,11 +222,20 @@ class AccessoryPickupService {
                 throw new Error('Ticket not found or access denied');
             }
 
-            return qrCodeHashUtil.generateQrCodeHash(
+            const qrCodeHash = ticket.qrCodeHash || qrCodeHashUtil.generateQrCodeHash(
                 ticket.event.created_by,
                 ticket.eventId,
                 ticket.id
             );
+
+            if (!ticket.qrCodeHash) {
+                await prisma.ticket.update({
+                    where: { id: ticket.id },
+                    data: { qrCodeHash }
+                });
+            }
+
+            return qrCodeHash;
         } catch (error) {
             console.error('Error generating pickup hash:', error);
             throw new Error(`Failed to generate pickup hash: ${error.message}`);

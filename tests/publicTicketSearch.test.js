@@ -1,10 +1,73 @@
 // Unit tests for the Public Ticket Search API
 // These tests verify the new public endpoint functionality
 
-const request = require('supertest');
-const express = require('express');
 const { PrismaClient } = require('../generated/prisma');
 const ticketService = require('../services/ticketService');
+
+const createTestApp = () => {
+  const routes = new Map();
+
+  return {
+    use() {},
+    get(path, handler) {
+      routes.set(path, handler);
+    },
+    async handleGet(path, query) {
+      const handler = routes.get(path);
+      let statusCode = 200;
+      let body;
+      const req = { query };
+      const res = {
+        status(code) {
+          statusCode = code;
+          return res;
+        },
+        json(payload) {
+          body = payload;
+          return res;
+        }
+      };
+
+      await handler(req, res);
+      return { status: statusCode, body };
+    }
+  };
+};
+
+const request = (app) => ({
+  get: (path) => ({
+    query: (queryParams) => app.handleGet(path, queryParams)
+  })
+});
+
+const mockTickets = [
+  {
+    id: 1,
+    eventId: 1,
+    description: 'General Admission',
+    identificationNumber: 1,
+    location: 'Section A',
+    table: null,
+    price: '25.00',
+    order: null,
+    salesEndDateTime: null,
+    created_at: new Date('2024-01-01T10:00:00Z'),
+    updated_at: new Date('2024-01-01T10:00:00Z')
+  },
+  {
+    id: 2,
+    eventId: 1,
+    description: 'VIP',
+    identificationNumber: 2,
+    location: 'VIP Section',
+    table: 5,
+    price: '50.00',
+    order: 'order_123',
+    salesEndDateTime: new Date('2024-12-31T23:59:59Z'),
+    created_at: new Date('2024-01-01T10:01:00Z'),
+    updated_at: new Date('2024-01-01T10:01:00Z')
+  }
+];
 
 // Mock Prisma client
 jest.mock('../generated/prisma', () => ({
@@ -24,8 +87,7 @@ describe('Public Ticket Search API', () => {
 
   beforeAll(() => {
     // Create Express app with our routes
-    app = express();
-    app.use(express.json());
+    app = createTestApp();
 
     // Mock the public ticket search route
     app.get('/api/public/tickets/search', async (req, res) => {
@@ -241,35 +303,6 @@ describe('Public Ticket Search API', () => {
   });
 
   describe('Successful Ticket Search', () => {
-    const mockTickets = [
-      {
-        id: 1,
-        eventId: 1,
-        description: 'General Admission',
-        identificationNumber: 1,
-        location: 'Section A',
-        table: null,
-        price: '25.00',
-        order: null,
-        salesEndDateTime: null,
-        created_at: new Date('2024-01-01T10:00:00Z'),
-        updated_at: new Date('2024-01-01T10:00:00Z')
-      },
-      {
-        id: 2,
-        eventId: 1,
-        description: 'VIP',
-        identificationNumber: 2,
-        location: 'VIP Section',
-        table: 5,
-        price: '50.00',
-        order: 'order_123',
-        salesEndDateTime: new Date('2024-12-31T23:59:59Z'),
-        created_at: new Date('2024-01-01T10:01:00Z'),
-        updated_at: new Date('2024-01-01T10:01:00Z')
-      }
-    ];
-
     test('should return all tickets when valid userId and eventId provided', async () => {
       // Mock successful search
       jest.spyOn(ticketService, 'searchTicketsPublic').mockResolvedValue({

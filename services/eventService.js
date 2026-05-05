@@ -1,8 +1,6 @@
-const { PrismaClient } = require('../generated/prisma');
+const prisma = require('../config/prisma');
 const fs = require('fs');
 const path = require('path');
-
-const prisma = new PrismaClient();
 
 class EventService {
   

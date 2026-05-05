@@ -1,9 +1,12 @@
-const { PrismaClient } = require('../generated/prisma');
+const prisma = require('../config/prisma');
 const { Decimal } = require('decimal.js');
-
-const prisma = new PrismaClient();
+const qrCodeHashUtil = require('../utils/qrCodeHash');
 
 class TicketService {
+
+  _generateQrCodeHashForTicket(ticket, userId) {
+    return qrCodeHashUtil.generateQrCodeHash(userId, ticket.eventId, ticket.id);
+  }
 
   /**
    * Create a single ticket with atomic identification number assignment
@@ -58,8 +61,9 @@ class TicketService {
 
         const identificationNumber = updatedEvent.nextTicketNumber - 1;
 
-        // Create the ticket with the assigned identification number
-        return await tx.ticket.create({
+        // Create the ticket with the assigned identification number, then store
+        // its QR hash once the database id is available.
+        const createdTicket = await tx.ticket.create({
           data: {
             eventId: parseInt(eventId),
             description,
@@ -72,6 +76,13 @@ class TicketService {
             buyerDocument: buyerDocument || null,
             buyerEmail: buyerEmail || null,
             salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null
+          }
+        });
+
+        return await tx.ticket.update({
+          where: { id: createdTicket.id },
+          data: {
+            qrCodeHash: this._generateQrCodeHashForTicket(createdTicket, event.created_by)
           }
         });
       });
@@ -157,11 +168,17 @@ class TicketService {
           });
         }
 
-        // Batch insert all tickets
+        // Batch insert all tickets, then store their QR hashes once ids exist.
         const createdTickets = [];
         for (const ticketData of ticketsToCreate) {
-          const ticket = await tx.ticket.create({ data: ticketData });
-          createdTickets.push(ticket);
+          const createdTicket = await tx.ticket.create({ data: ticketData });
+          const ticketWithHash = await tx.ticket.update({
+            where: { id: createdTicket.id },
+            data: {
+              qrCodeHash: this._generateQrCodeHashForTicket(createdTicket, event.created_by)
+            }
+          });
+          createdTickets.push(ticketWithHash);
         }
 
         return createdTickets;
@@ -1032,6 +1049,10 @@ class TicketService {
         const updateData = {
           order: orderId
         };
+
+        if (!ticket.qrCodeHash && ticket.event?.created_by) {
+          updateData.qrCodeHash = this._generateQrCodeHashForTicket(ticket, ticket.event.created_by);
+        }
 
         // Only the first ticket gets buyer information
         if (isFirstTicket && buyerInfo) {

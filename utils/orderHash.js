@@ -6,9 +6,17 @@ const crypto = require('crypto');
  */
 class OrderHashUtil {
   constructor() {
-    // Use environment variable for secret, fallback for development
-    this.secret = process.env.ORDER_HASH_SECRET || 'ticketeer-default-secret-change-in-production';
     this.algorithm = 'sha256';
+  }
+
+  getSecret() {
+    const secret = process.env.ORDER_HASH_SECRET;
+
+    if (!secret) {
+      throw new Error('ORDER_HASH_SECRET environment variable is required');
+    }
+
+    return secret;
   }
 
   /**
@@ -22,7 +30,7 @@ class OrderHashUtil {
     }
 
     // Create HMAC hash with secret
-    const hmac = crypto.createHmac(this.algorithm, this.secret);
+    const hmac = crypto.createHmac(this.algorithm, this.getSecret());
     hmac.update(orderId);
     const hash = hmac.digest('base64');
     

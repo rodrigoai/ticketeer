@@ -80,7 +80,6 @@ dist
 
 # Gatsby files
 .cache/
-public
 
 # Storybook build outputs
 .out
@@ -118,6 +117,7 @@ Thumbs.db
 *~
 
 /generated/prisma
+generated/
 
 # Example applications
 login_example_app/
