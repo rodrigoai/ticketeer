@@ -46,6 +46,66 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
     ticketService = TicketService;
   });
 
+  describe('createTicketsBatch', () => {
+    test('creates 60 tickets with stored QR hashes without per-ticket hash updates', async () => {
+      const userId = 'auth0|testuser123';
+      const eventId = 1;
+      const quantity = 60;
+
+      mockPrisma.$transaction.mockImplementation(async (callback) => {
+        const tx = {
+          event: {
+            update: jest.fn().mockResolvedValue({ nextTicketNumber: 61 })
+          },
+          ticket: {
+            create: jest.fn().mockImplementation(({ data }) => Promise.resolve({
+              id: data.identificationNumber,
+              ...data
+            })),
+            update: jest.fn()
+          }
+        };
+
+        const result = await callback(tx);
+
+        expect(tx.event.update).toHaveBeenCalledWith({
+          where: { id: eventId },
+          data: {
+            nextTicketNumber: { increment: quantity }
+          },
+          select: { nextTicketNumber: true }
+        });
+        expect(tx.ticket.create).toHaveBeenCalledTimes(quantity);
+        expect(tx.ticket.update).not.toHaveBeenCalled();
+
+        const qrHashes = tx.ticket.create.mock.calls.map(([call]) => call.data.qrCodeHash);
+        expect(new Set(qrHashes).size).toBe(quantity);
+        qrHashes.forEach(hash => {
+          expect(hash).toMatch(/^[a-f0-9]{32}$/);
+        });
+
+        return result;
+      });
+
+      const tickets = await ticketService.createTicketsBatch(
+        eventId,
+        {
+          description: 'Batch Ticket',
+          price: 50
+        },
+        quantity,
+        userId
+      );
+
+      expect(tickets).toHaveLength(quantity);
+      expect(tickets[0].identificationNumber).toBe(1);
+      expect(tickets[59].identificationNumber).toBe(60);
+      tickets.forEach(ticket => {
+        expect(ticket.qrCodeHash).toMatch(/^[a-f0-9]{32}$/);
+      });
+    });
+  });
+
   describe('processCheckoutWebhook - Single Ticket Purchase', () => {
     test('should assign both order and buyer info to single ticket', async () => {
       // Mock data

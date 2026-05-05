@@ -8,6 +8,10 @@ class TicketService {
     return qrCodeHashUtil.generateQrCodeHash(userId, ticket.eventId, ticket.id);
   }
 
+  _generateStoredQrCodeHash() {
+    return qrCodeHashUtil.generateStoredQrCodeHash();
+  }
+
   /**
    * Create a single ticket with atomic identification number assignment
    */
@@ -61,9 +65,7 @@ class TicketService {
 
         const identificationNumber = updatedEvent.nextTicketNumber - 1;
 
-        // Create the ticket with the assigned identification number, then store
-        // its QR hash once the database id is available.
-        const createdTicket = await tx.ticket.create({
+        return await tx.ticket.create({
           data: {
             eventId: parseInt(eventId),
             description,
@@ -75,14 +77,8 @@ class TicketService {
             buyer: buyer || null,
             buyerDocument: buyerDocument || null,
             buyerEmail: buyerEmail || null,
-            salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null
-          }
-        });
-
-        return await tx.ticket.update({
-          where: { id: createdTicket.id },
-          data: {
-            qrCodeHash: this._generateQrCodeHashForTicket(createdTicket, event.created_by)
+            salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null,
+            qrCodeHash: this._generateStoredQrCodeHash()
           }
         });
       });
@@ -164,21 +160,17 @@ class TicketService {
             buyer: buyer || null,
             buyerDocument: buyerDocument || null,
             buyerEmail: buyerEmail || null,
-            salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null
+            salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null,
+            qrCodeHash: this._generateStoredQrCodeHash()
           });
         }
 
-        // Batch insert all tickets, then store their QR hashes once ids exist.
+        // Insert all tickets with QR hashes already present. This avoids an
+        // extra update per ticket and keeps large batch transactions short.
         const createdTickets = [];
         for (const ticketData of ticketsToCreate) {
           const createdTicket = await tx.ticket.create({ data: ticketData });
-          const ticketWithHash = await tx.ticket.update({
-            where: { id: createdTicket.id },
-            data: {
-              qrCodeHash: this._generateQrCodeHashForTicket(createdTicket, event.created_by)
-            }
-          });
-          createdTickets.push(ticketWithHash);
+          createdTickets.push(createdTicket);
         }
 
         return createdTickets;

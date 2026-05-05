@@ -48,6 +48,19 @@ class QrCodeHashUtil {
   }
 
   /**
+   * Generate a secure stored QR code hash.
+   *
+   * Stored QR hashes do not need to be deterministic because lookup uses
+   * Ticket.qrCodeHash directly. This lets ticket creation set the hash before
+   * insert and keeps large batch transactions short.
+   *
+   * @returns {string} - 32 character random hash string
+   */
+  generateStoredQrCodeHash() {
+    return crypto.randomBytes(16).toString('hex');
+  }
+
+  /**
    * Generate QR code hash using ticket data object
    * 
    * @param {Object} ticket - Ticket object from database
