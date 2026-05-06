@@ -79,7 +79,7 @@
                 <img
                   :src="event.eventMapUrl"
                   :alt="`${event.title} map`"
-                  class="h-auto w-full object-contain"
+                  class="h-auto w-full object-contain md:h-[220px] md:object-cover md:object-top"
                 >
               </div>
               <div class="flex items-center justify-between gap-3 px-2 pb-1 pt-3 text-sm text-slate-500">
