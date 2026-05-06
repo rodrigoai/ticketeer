@@ -109,21 +109,30 @@
                 :key="group.key"
                 class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
               >
-                <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between gap-4 text-left"
+                  @click="toggleGroupExpansion(group.key)"
+                >
                   <div>
                     <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
                     <p class="text-sm text-slate-500">
-                      {{ group.tabled ? 'Venda por mesa' : 'Venda por ingresso' }}
-                      <span class="mx-2">•</span>
-                      {{ group.availableCount }} disponível(is)
+                      <span class="block sm:inline">{{ group.tabled ? 'Venda por mesa' : 'Venda por ingresso' }}</span>
+                      <span class="hidden sm:inline mx-2">•</span>
+                      <span class="block sm:inline">{{ group.availableCount }} disponível(is)</span>
                     </p>
                   </div>
-                  <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    {{ group.tabled ? `${group.totalCount} mesa(s)` : `${group.seatCount} assento(s)` }}
+                  <div class="flex items-center gap-3">
+                    <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      {{ group.tabled ? `${group.totalCount} mesa(s)` : `${group.seatCount} assento(s)` }}
+                    </div>
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50">
+                      <i :class="expandedGroupKeys.includes(group.key) ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+                    </span>
                   </div>
-                </div>
+                </button>
 
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                <div v-if="expandedGroupKeys.includes(group.key)" class="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
                   <button
                     v-for="unit in group.units"
                     :key="unit.key"
@@ -133,12 +142,13 @@
                     :disabled="!unit.isAvailable || isSubmittingCart"
                     @click="toggleSelectionUnit(unit)"
                   >
-                    <div class="flex items-start justify-between gap-2">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.2em]">{{ unit.label }}</p>
                         <p class="mt-1 text-sm font-semibold">{{ unit.subtitle }}</p>
+                        <p v-if="unit.detailLine" class="text-sm font-semibold">{{ unit.detailLine }}</p>
                       </div>
-                      <span class="text-[0.65rem] font-semibold uppercase">
+                      <span class="text-[0.65rem] font-semibold uppercase sm:text-right">
                         {{ unitStatusLabel(unit) }}
                       </span>
                     </div>
@@ -279,6 +289,7 @@ const isSubmittingCart = ref(false)
 const cartError = ref('')
 const cartSuccessMessage = ref('')
 const selectedUnitKeys = ref([])
+const expandedGroupKeys = ref([])
 const customer = ref({
   name: '',
   email: '',
@@ -391,12 +402,15 @@ const shoppingCartGroups = computed(() => {
       })
 
       const units = Array.from(unitsMap.values()).map((unit) => {
-        const locations = unit.tickets.map((ticket) => ticket.location).filter(Boolean)
+        const locations = Array.from(new Set(unit.tickets.map((ticket) => ticket.location).filter(Boolean)))
         return {
           ...unit,
           subtitle: unit.tickets.length > 1
-            ? `${unit.tickets.length} lugares • #${unit.tickets[0].identificationNumber} a #${unit.tickets[unit.tickets.length - 1].identificationNumber}`
+            ? `${unit.tickets.length} lugares`
             : unit.subtitle,
+          detailLine: unit.tickets.length > 1
+            ? `#${unit.tickets[0].identificationNumber} a #${unit.tickets[unit.tickets.length - 1].identificationNumber}`
+            : '',
           locationLabel: locations.length ? locations.join(', ') : ''
         }
       })
@@ -458,6 +472,15 @@ const removeSelectionUnit = (unitKey) => {
   selectedUnitKeys.value = selectedUnitKeys.value.filter((key) => key !== unitKey)
 }
 
+const toggleGroupExpansion = (groupKey) => {
+  if (expandedGroupKeys.value.includes(groupKey)) {
+    expandedGroupKeys.value = expandedGroupKeys.value.filter((key) => key !== groupKey)
+    return
+  }
+
+  expandedGroupKeys.value = [...expandedGroupKeys.value, groupKey]
+}
+
 const handlePhoneInput = (event) => {
   customer.value.phone = formatPhoneMask(event.target.value)
 }
@@ -474,6 +497,7 @@ const loadEvent = async () => {
     checkoutBaseUrl.value = data.checkoutBaseUrl || ''
     tickets.value = data.tickets || []
     ticketGroupsFromApi.value = data.ticketGroups || []
+    expandedGroupKeys.value = []
   } catch (error) {
     errorMessage.value = error?.data?.message || error?.message || 'Failed to load event'
     event.value = null
