@@ -2,6 +2,7 @@ const { PrismaClient } = require('../generated/prisma');
 const TicketService = require('../services/ticketService');
 const CheckinService = require('../services/checkinService');
 const qrCodeHashUtil = require('../utils/qrCodeHash');
+const emailService = require('../services/emailService');
 
 const encodeMeta = (value) => Buffer.from(String(value)).toString('base64').replace(/=+$/, '');
 
@@ -33,6 +34,17 @@ jest.mock('../generated/prisma', () => {
     PrismaClient: jest.fn(() => mockPrisma)
   };
 });
+
+jest.mock('../services/emailService', () => ({
+  sendConfirmationEmail: jest.fn().mockResolvedValue({ success: true }),
+  sendTicketQrCodeEmail: jest.fn().mockResolvedValue({ success: true }),
+  sendQrCodeEmailsForTickets: jest.fn().mockResolvedValue({
+    successful: [],
+    failed: [],
+    totalSent: 0,
+    totalFailed: 0
+  })
+}));
 
 describe('TicketService Webhook - Selective Buyer Assignment', () => {
   let mockPrisma;
@@ -563,9 +575,88 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       expect(result.processedTickets).toBe(3);
       expect(result.buyerAssigned).toBe('Robert Wilson');
       expect(result.ticketIds).toEqual([10, 8, 12]);
+      expect(result.emailSent).toBe(true);
+      expect(result.qrEmailSent).toBe(false);
+      expect(result.confirmationUrl).toMatch(/\/confirmation\//);
+      expect(emailService.sendConfirmationEmail).toHaveBeenCalledWith(
+        'robert.wilson@example.com',
+        expect.objectContaining({
+          orderId,
+          totalTickets: 3,
+          confirmationUrl: expect.stringMatching(/\/confirmation\//)
+        })
+      );
 
       // Verify transaction was called
       expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    test('should sell all tickets from the same table with the same order', async () => {
+      const userId = 'auth0|testuser123';
+      const orderId = 'ORDER-TABLE-SAME-ORDER';
+      const tableNumber = 7;
+
+      const mockTickets = [
+        {
+          id: 21,
+          identificationNumber: 21,
+          eventId: 1,
+          table: tableNumber,
+          order: null,
+          event: { id: 1, created_by: userId, name: 'Test Event' }
+        },
+        {
+          id: 22,
+          identificationNumber: 22,
+          eventId: 1,
+          table: tableNumber,
+          order: null,
+          event: { id: 1, created_by: userId, name: 'Test Event' }
+        },
+        {
+          id: 23,
+          identificationNumber: 23,
+          eventId: 1,
+          table: tableNumber,
+          order: null,
+          event: { id: 1, created_by: userId, name: 'Test Event' }
+        }
+      ];
+
+      mockPrisma.$transaction.mockImplementation(async (callback) => {
+        return await callback({
+          ticket: {
+            findMany: jest.fn().mockResolvedValue(mockTickets),
+            update: jest.fn().mockImplementation(({ where, data }) => {
+              const originalTicket = mockTickets.find((ticket) => ticket.id === where.id);
+              return Promise.resolve({
+                ...originalTicket,
+                ...data
+              });
+            })
+          }
+        });
+      });
+
+      const result = await ticketService.processCheckoutWebhook({
+        payload: {
+          id: orderId,
+          customer: {
+            name: 'Mesa Completa',
+            identification: '123.456.789-00',
+            email: 'mesa@example.com'
+          },
+          meta: {
+            tableNumber: encodeMeta(tableNumber)
+          }
+        }
+      }, userId);
+
+      expect(result.success).toBe(true);
+      expect(result.tableNumber).toBe(tableNumber);
+      expect(result.ticketIds).toEqual([21, 22, 23]);
+      expect(result.updatedTickets).toHaveLength(3);
+      expect(result.updatedTickets.every((ticket) => ticket.order === orderId)).toBe(true);
     });
   });
 

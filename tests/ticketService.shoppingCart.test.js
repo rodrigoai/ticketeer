@@ -29,10 +29,13 @@ jest.mock('../services/emailService', () => ({
     failed: [],
     totalSent: 0,
     totalFailed: 0
-  })
+  }),
+  sendConfirmationEmail: jest.fn().mockResolvedValue({ success: true }),
+  sendTicketQrCodeEmail: jest.fn().mockResolvedValue({ success: true })
 }));
 
 const ticketService = require('../services/ticketService');
+const emailService = require('../services/emailService');
 
 describe('TicketService shopping cart flow', () => {
   let mockPrisma;
@@ -99,7 +102,7 @@ describe('TicketService shopping cart flow', () => {
     expect(result.reservedUntil).toBeInstanceOf(Date);
   });
 
-  test('processShoppingCartWebhook marks tickets as sold and clears reservations on order.paid', async () => {
+  test('processShoppingCartWebhook uses checkout-style selective buyer assignment for multi-ticket purchases', async () => {
     const routeUserId = 'auth0|69f9e72b42cf21933aca64f7';
     const eventId = 26;
     const ticketIds = [1124, 2123];
@@ -145,6 +148,7 @@ describe('TicketService shopping cart flow', () => {
         customer: {
           name: 'João Silva',
           email: 'joao@email.com',
+          identification: null,
           phone: '11999999999'
         },
         meta: {
@@ -159,7 +163,86 @@ describe('TicketService shopping cart flow', () => {
     expect(result.orderId).toBe('order_123');
     expect(result.updatedTickets.every((ticket) => ticket.order === 'order_123')).toBe(true);
     expect(result.updatedTickets.every((ticket) => ticket.reservedUntil === null)).toBe(true);
-    expect(result.updatedTickets.every((ticket) => ticket.buyer === 'João Silva')).toBe(true);
+    expect(result.updatedTickets[0].buyer).toBe('João Silva');
+    expect(result.updatedTickets[0].buyerEmail).toBe('joao@email.com');
+    expect(result.updatedTickets[1].buyer).toBeNull();
+    expect(result.updatedTickets[1].buyerEmail).toBeNull();
+    expect(result.emailSent).toBe(true);
+    expect(result.qrEmailSent).toBe(false);
+    expect(result.isSingleTicket).toBe(false);
+    expect(result.confirmationUrl).toMatch(/\/confirmation\//);
+    expect(emailService.sendConfirmationEmail).toHaveBeenCalledWith(
+      'joao@email.com',
+      expect.objectContaining({
+        orderId: 'order_123',
+        totalTickets: 2,
+        confirmationUrl: expect.stringMatching(/\/confirmation\//)
+      })
+    );
+  });
+
+  test('processShoppingCartWebhook still sends confirmation email for already-processed multi-ticket orders', async () => {
+    const routeUserId = 'auth0|69f9e72b42cf21933aca64f7';
+    const eventId = 26;
+    const ticketIds = [1124, 2123];
+    const orderId = 'order_123';
+
+    mockPrisma.$transaction.mockImplementation(async (callback) => {
+      const tx = {
+        ticket: {
+          findMany: jest.fn().mockResolvedValue(ticketIds.map((id, index) => ({
+            id,
+            eventId,
+            identificationNumber: index + 1,
+            description: 'Ingresso Setor verde',
+            price: '45.00',
+            order: orderId,
+            buyer: index === 0 ? 'João Silva' : null,
+            buyerEmail: index === 0 ? 'joao@email.com' : null,
+            buyerPhone: index === 0 ? '11999999999' : null,
+            qrCodeHash: null,
+            event: {
+              id: eventId,
+              name: 'Festival',
+              venue: 'Arena',
+              opening_datetime: new Date('2026-05-09T20:00:00Z'),
+              created_by: routeUserId
+            }
+          }))),
+          update: jest.fn()
+        }
+      };
+
+      return callback(tx);
+    });
+
+    const result = await ticketService.processShoppingCartWebhook({
+      event: 'order.paid',
+      payload: {
+        id: orderId,
+        customer: {
+          name: 'João Silva',
+          email: 'joao@email.com',
+          phone: '11999999999'
+        },
+        meta: {
+          userId: routeUserId,
+          eventId,
+          ticketIds
+        }
+      }
+    }, routeUserId);
+
+    expect(result.processedTickets).toBe(2);
+    expect(result.emailSent).toBe(true);
+    expect(result.confirmationUrl).toMatch(/\/confirmation\//);
+    expect(emailService.sendConfirmationEmail).toHaveBeenCalledWith(
+      'joao@email.com',
+      expect.objectContaining({
+        orderId,
+        totalTickets: 2
+      })
+    );
   });
 
   test('processShoppingCartWebhook releases reservations on payment.failed', async () => {

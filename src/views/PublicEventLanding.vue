@@ -113,36 +113,37 @@
                   <div>
                     <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
                     <p class="text-sm text-slate-500">
-                      {{ formatCurrency(group.price) }} por ingresso
+                      {{ group.tabled ? 'Venda por mesa' : 'Venda por ingresso' }}
                       <span class="mx-2">•</span>
                       {{ group.availableCount }} disponível(is)
                     </p>
                   </div>
                   <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    {{ group.totalCount }} assento(s)
+                    {{ group.tabled ? `${group.totalCount} mesa(s)` : `${group.seatCount} assento(s)` }}
                   </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                   <button
-                    v-for="ticket in group.tickets"
-                    :key="ticket.id"
+                    v-for="unit in group.units"
+                    :key="unit.key"
                     type="button"
                     class="rounded-2xl border px-4 py-3 text-left transition"
-                    :class="ticketCardClass(ticket)"
-                    :disabled="!ticket.isAvailable || isSubmittingCart"
-                    @click="toggleTicketSelection(ticket)"
+                    :class="ticketUnitClass(unit)"
+                    :disabled="!unit.isAvailable || isSubmittingCart"
+                    @click="toggleSelectionUnit(unit)"
                   >
                     <div class="flex items-start justify-between gap-2">
                       <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em]">{{ ticket.table ? `Mesa ${ticket.table}` : 'Ingresso' }}</p>
-                        <p class="mt-1 text-sm font-semibold">#{{ ticket.identificationNumber }}</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em]">{{ unit.label }}</p>
+                        <p class="mt-1 text-sm font-semibold">{{ unit.subtitle }}</p>
                       </div>
                       <span class="text-[0.65rem] font-semibold uppercase">
-                        {{ ticketStatusLabel(ticket) }}
+                        {{ unitStatusLabel(unit) }}
                       </span>
                     </div>
-                    <p v-if="ticket.location" class="mt-2 text-xs opacity-80">{{ ticket.location }}</p>
+                    <p class="mt-2 text-xs opacity-80">{{ formatCurrency(unit.totalPrice) }}</p>
+                    <p v-if="unit.locationLabel" class="mt-1 text-xs opacity-80">{{ unit.locationLabel }}</p>
                   </button>
                 </div>
               </div>
@@ -172,32 +173,33 @@
 
           <div v-else class="space-y-3">
             <div
-              v-for="ticket in selectedTickets"
-              :key="ticket.id"
+              v-for="unit in selectedUnits"
+              :key="unit.key"
               class="flex items-start justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
             >
               <div>
-                <p class="text-sm font-semibold text-slate-900">{{ ticket.description }}</p>
-                <p class="text-xs text-slate-500">
-                  #{{ ticket.identificationNumber }}
-                  <span v-if="ticket.table">• Mesa {{ ticket.table }}</span>
-                </p>
-                <p class="mt-1 text-sm text-slate-700">{{ formatCurrency(ticket.price) }}</p>
+                <p class="text-sm font-semibold text-slate-900">{{ unit.description }}</p>
+                <p class="text-xs text-slate-500">{{ unit.subtitle }}</p>
+                <p class="mt-1 text-sm text-slate-700">{{ formatCurrency(unit.totalPrice) }}</p>
               </div>
               <button
                 type="button"
                 class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-white"
-                @click="removeTicket(ticket.id)"
+                @click="removeSelectionUnit(unit.key)"
               >
                 Remover
               </button>
             </div>
           </div>
 
-          <div class="space-y-3 border-t border-slate-100 pt-4">
+            <div class="space-y-3 border-t border-slate-100 pt-4">
             <div class="flex items-center justify-between text-sm text-slate-500">
               <span>Total de ingressos</span>
               <span>{{ selectedTickets.length }}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm text-slate-500">
+              <span>Itens no carrinho</span>
+              <span>{{ selectedUnits.length }}</span>
             </div>
             <div class="flex items-center justify-between text-base font-semibold text-slate-900">
               <span>Total</span>
@@ -276,7 +278,7 @@ const errorMessage = ref('')
 const isSubmittingCart = ref(false)
 const cartError = ref('')
 const cartSuccessMessage = ref('')
-const selectedTicketIds = ref([])
+const selectedUnitKeys = ref([])
 const customer = ref({
   name: '',
   email: '',
@@ -341,65 +343,119 @@ const shoppingCartGroups = computed(() => {
         price: ticket.price ?? 0,
         totalCount: 0,
         availableCount: 0,
+        seatCount: 0,
+        tabled: false,
         tickets: []
       })
     }
 
     const group = groups.get(key)
-    group.totalCount += 1
-    if (ticket.isAvailable) {
-      group.availableCount += 1
+    group.seatCount += 1
+    if (ticket.table !== null && ticket.table !== undefined) {
+      group.tabled = true
     }
     group.tickets.push(ticket)
   })
 
   return Array.from(groups.values())
-    .map((group) => ({
-      ...group,
-      tickets: group.tickets.slice().sort((a, b) => a.identificationNumber - b.identificationNumber)
-    }))
+    .map((group) => {
+      const sortedTickets = group.tickets.slice().sort((a, b) => a.identificationNumber - b.identificationNumber)
+      const unitsMap = new Map()
+
+      sortedTickets.forEach((ticket) => {
+        const unitKey = ticket.table !== null && ticket.table !== undefined
+          ? `table:${group.key}:${ticket.table}`
+          : `ticket:${ticket.id}`
+
+        if (!unitsMap.has(unitKey)) {
+          unitsMap.set(unitKey, {
+            key: unitKey,
+            description: group.description,
+            label: ticket.table !== null && ticket.table !== undefined ? `Mesa ${ticket.table}` : 'Ingresso',
+            subtitle: ticket.table !== null && ticket.table !== undefined
+              ? `${sortedTickets.filter((item) => item.table === ticket.table).length} lugares`
+              : `Assento #${ticket.identificationNumber}`,
+            tickets: [],
+            totalPrice: 0,
+            isAvailable: true,
+            isReserved: false,
+            locationLabel: ''
+          })
+        }
+
+        const unit = unitsMap.get(unitKey)
+        unit.tickets.push(ticket)
+        unit.totalPrice += Number(ticket.price) || 0
+        unit.isAvailable = unit.isAvailable && Boolean(ticket.isAvailable)
+        unit.isReserved = unit.isReserved || Boolean(ticket.isReserved)
+      })
+
+      const units = Array.from(unitsMap.values()).map((unit) => {
+        const locations = unit.tickets.map((ticket) => ticket.location).filter(Boolean)
+        return {
+          ...unit,
+          subtitle: unit.tickets.length > 1
+            ? `${unit.tickets.length} lugares • #${unit.tickets[0].identificationNumber} a #${unit.tickets[unit.tickets.length - 1].identificationNumber}`
+            : unit.subtitle,
+          locationLabel: locations.length ? locations.join(', ') : ''
+        }
+      })
+
+      return {
+        ...group,
+        units,
+        totalCount: units.length,
+        availableCount: units.filter((unit) => unit.isAvailable).length
+      }
+    })
     .sort((a, b) => a.tickets[0]?.identificationNumber - b.tickets[0]?.identificationNumber)
 })
 
+const allSelectionUnits = computed(() => shoppingCartGroups.value.flatMap((group) => group.units))
+
+const selectedUnits = computed(() => {
+  const selectedSet = new Set(selectedUnitKeys.value)
+  return allSelectionUnits.value.filter((unit) => selectedSet.has(unit.key))
+})
+
 const selectedTickets = computed(() => {
-  const selectedSet = new Set(selectedTicketIds.value)
-  return tickets.value.filter((ticket) => selectedSet.has(ticket.id))
+  return selectedUnits.value.flatMap((unit) => unit.tickets)
 })
 
 const cartTotal = computed(() => sumCartTickets(selectedTickets.value))
 const canSubmitCart = computed(() => selectedTickets.value.length > 0 && isCustomerInfoValid(customer.value))
 
-const ticketCardClass = (ticket) => {
-  if (!ticket.isAvailable) {
+const ticketUnitClass = (unit) => {
+  if (!unit.isAvailable) {
     return 'border-slate-200 bg-slate-100 text-slate-400'
   }
 
-  if (selectedTicketIds.value.includes(ticket.id)) {
+  if (selectedUnitKeys.value.includes(unit.key)) {
     return 'border-primary-500 bg-primary-50 text-primary-700 shadow-sm'
   }
 
   return 'border-slate-200 bg-white text-slate-700 hover:border-primary-300 hover:bg-primary-50/40'
 }
 
-const ticketStatusLabel = (ticket) => {
-  if (ticket.isAvailable) return selectedTicketIds.value.includes(ticket.id) ? 'Selecionado' : 'Disponível'
-  if (ticket.isReserved) return 'Reservado'
+const unitStatusLabel = (unit) => {
+  if (unit.isAvailable) return selectedUnitKeys.value.includes(unit.key) ? 'Selecionado' : 'Disponível'
+  if (unit.isReserved) return 'Reservado'
   return 'Indisponível'
 }
 
-const toggleTicketSelection = (ticket) => {
-  if (!ticket.isAvailable || isSubmittingCart.value) return
+const toggleSelectionUnit = (unit) => {
+  if (!unit.isAvailable || isSubmittingCart.value) return
 
-  if (selectedTicketIds.value.includes(ticket.id)) {
-    selectedTicketIds.value = selectedTicketIds.value.filter((id) => id !== ticket.id)
+  if (selectedUnitKeys.value.includes(unit.key)) {
+    selectedUnitKeys.value = selectedUnitKeys.value.filter((key) => key !== unit.key)
     return
   }
 
-  selectedTicketIds.value = [...selectedTicketIds.value, ticket.id]
+  selectedUnitKeys.value = [...selectedUnitKeys.value, unit.key]
 }
 
-const removeTicket = (ticketId) => {
-  selectedTicketIds.value = selectedTicketIds.value.filter((id) => id !== ticketId)
+const removeSelectionUnit = (unitKey) => {
+  selectedUnitKeys.value = selectedUnitKeys.value.filter((key) => key !== unitKey)
 }
 
 const handlePhoneInput = (event) => {
@@ -437,7 +493,7 @@ const submitCart = async () => {
 
   try {
     const response = await post(`/api/public/events/${event.value.id}/cart-checkout`, {
-      ticketIds: selectedTicketIds.value,
+      ticketIds: selectedTickets.value.map((ticket) => ticket.id),
       customer: customer.value
     })
 
@@ -450,8 +506,11 @@ const submitCart = async () => {
     window.location.href = paymentLink
   } catch (error) {
     cartError.value = error?.data?.message || error?.message || 'Não foi possível iniciar o pagamento.'
+    const previouslySelectedKeys = [...selectedUnitKeys.value]
     await loadEvent()
-    selectedTicketIds.value = selectedTicketIds.value.filter((ticketId) => tickets.value.some((ticket) => ticket.id === ticketId && ticket.isAvailable))
+    selectedUnitKeys.value = allSelectionUnits.value
+      .filter((unit) => previouslySelectedKeys.includes(unit.key) && unit.isAvailable)
+      .map((unit) => unit.key)
   } finally {
     isSubmittingCart.value = false
   }
