@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-slate-50 pb-24 lg:pb-0">
     <div class="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 lg:flex-row lg:items-start">
       <div class="min-w-0 flex-1 space-y-8">
         <div v-if="isLoading" class="rounded-3xl border border-slate-100 bg-white px-6 py-10 text-center shadow-md">
@@ -176,7 +176,7 @@
         </template>
       </div>
 
-      <aside v-if="event && event.saleMode === SALE_MODES.SHOPPING_CART" class="w-full shrink-0 lg:sticky lg:top-6 lg:w-[360px]">
+      <aside v-if="event && event.saleMode === SALE_MODES.SHOPPING_CART" class="hidden w-full shrink-0 lg:sticky lg:top-6 lg:block lg:w-[360px]">
         <div class="space-y-5 rounded-3xl border border-slate-100 bg-white p-5 shadow-lg">
           <div>
             <h2 class="text-xl font-semibold text-slate-900">Seu carrinho</h2>
@@ -276,11 +276,151 @@
         </div>
       </aside>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="event && event.saleMode === SALE_MODES.SHOPPING_CART"
+        class="lg:hidden"
+      >
+        <div class="pointer-events-none fixed inset-x-0 bottom-0 z-40 p-4">
+          <div class="pointer-events-auto flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Carrinho</p>
+              <p class="text-sm font-semibold text-slate-900">{{ selectedUnits.length }} item(ns) • {{ formatCurrency(cartTotal) }}</p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-primary-500 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+              :disabled="isSubmittingCart"
+              @click="openMobileCart"
+            >
+              <i class="fas fa-shopping-cart"></i>
+              Ver carrinho
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-if="isMobileCartOpen"
+          class="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm"
+          @click.self="closeMobileCart"
+        >
+          <div class="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-hidden rounded-t-[2rem] bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 class="text-xl font-semibold text-slate-900">Seu carrinho</h2>
+                <p class="mt-1 text-sm text-slate-500">Revise os ingressos selecionados e informe seus dados para continuar.</p>
+              </div>
+              <button
+                type="button"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50"
+                @click="closeMobileCart"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div class="max-h-[calc(85vh-88px)] space-y-5 overflow-y-auto px-5 py-5">
+              <div v-if="cartError" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {{ cartError }}
+              </div>
+
+              <div v-if="cartSuccessMessage" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {{ cartSuccessMessage }}
+              </div>
+
+              <div v-if="selectedTickets.length === 0" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                Nenhum ingresso selecionado ainda.
+              </div>
+
+              <div v-else class="space-y-3">
+                <div
+                  v-for="unit in selectedUnits"
+                  :key="unit.key"
+                  class="flex items-start justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
+                >
+                  <div>
+                    <p class="text-sm font-semibold text-slate-900">{{ unit.description }}</p>
+                    <p class="text-xs text-slate-500">{{ unit.subtitle }}</p>
+                    <p class="mt-1 text-sm text-slate-700">{{ formatCurrency(unit.totalPrice) }}</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-white"
+                    @click="removeSelectionUnit(unit.key)"
+                  >
+                    Remover
+                  </button>
+                </div>
+              </div>
+
+              <div class="space-y-3 border-t border-slate-100 pt-4">
+                <div class="flex items-center justify-between text-sm text-slate-500">
+                  <span>Total de ingressos</span>
+                  <span>{{ selectedTickets.length }}</span>
+                </div>
+                <div class="flex items-center justify-between text-sm text-slate-500">
+                  <span>Itens no carrinho</span>
+                  <span>{{ selectedUnits.length }}</span>
+                </div>
+                <div class="flex items-center justify-between text-base font-semibold text-slate-900">
+                  <span>Total</span>
+                  <span>{{ formatCurrency(cartTotal) }}</span>
+                </div>
+              </div>
+
+              <div class="space-y-4 border-t border-slate-100 pt-4">
+                <div>
+                  <label class="mb-2 block text-sm font-semibold text-slate-700">Nome</label>
+                  <input
+                    v-model="customer.name"
+                    type="text"
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                    placeholder="Seu nome completo"
+                  >
+                </div>
+                <div>
+                  <label class="mb-2 block text-sm font-semibold text-slate-700">E-mail</label>
+                  <input
+                    v-model="customer.email"
+                    type="email"
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                    placeholder="voce@email.com"
+                  >
+                </div>
+                <div>
+                  <label class="mb-2 block text-sm font-semibold text-slate-700">Telefone</label>
+                  <input
+                    :value="customer.phone"
+                    type="tel"
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                    placeholder="(11) 99999-9999"
+                    @input="handlePhoneInput"
+                  >
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold shadow-md transition disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                :class="canSubmitCart ? 'bg-primary-600 text-white hover:bg-primary-500' : 'bg-slate-200 text-slate-500'"
+                :disabled="!canSubmitCart || isSubmittingCart"
+                @click="submitCart"
+              >
+                <span v-if="isSubmittingCart" class="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                <i v-else class="fas fa-lock"></i>
+                {{ isSubmittingCart ? 'Preparando pagamento...' : 'Pagar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { formatPhoneMask, isCustomerInfoValid, sumCartTickets } from '@/utils/cart'
@@ -304,6 +444,7 @@ const cartError = ref('')
 const cartSuccessMessage = ref('')
 const selectedUnitKeys = ref([])
 const expandedGroupKeys = ref([])
+const isMobileCartOpen = ref(false)
 const customer = ref({
   name: '',
   email: '',
@@ -514,6 +655,14 @@ const handlePhoneInput = (event) => {
   customer.value.phone = formatPhoneMask(event.target.value)
 }
 
+const openMobileCart = () => {
+  isMobileCartOpen.value = true
+}
+
+const closeMobileCart = () => {
+  isMobileCartOpen.value = false
+}
+
 const loadEvent = async () => {
   isLoading.value = true
   errorMessage.value = ''
@@ -571,5 +720,13 @@ const submitCart = async () => {
 
 onMounted(() => {
   loadEvent()
+})
+
+watch(isMobileCartOpen, (isOpen) => {
+  document.body.style.overflow = isOpen ? 'hidden' : ''
+})
+
+onBeforeUnmount(() => {
+  document.body.style.overflow = ''
 })
 </script>
