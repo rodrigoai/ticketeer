@@ -12,6 +12,7 @@ model Event {
   id                Int      @id @default(autoincrement())
   name              String
   event_image_url   String?
+  mobile_event_image_url String?
   promotional_image String?
   opening_datetime  DateTime
   closing_datetime  DateTime

@@ -117,111 +117,118 @@
       </div>
     </section>
 
-    <div v-if="isEventModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="closeEventModal">
-      <div class="w-full max-w-2xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <h5 class="text-lg font-semibold text-slate-900">{{ isEditing ? 'Edit Event' : 'Create Event' }}</h5>
-          <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="closeEventModal">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="p-6">
-          <form class="space-y-4" @submit.prevent="saveEvent">
-            <div>
-              <label for="eventTitle" class="block text-sm font-semibold text-slate-700 mb-2">Title</label>
-              <input type="text" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventTitle" v-model="eventForm.title" required>
-            </div>
-            <div>
-              <label for="eventDescription" class="block text-sm font-semibold text-slate-700 mb-2">Description</label>
-              <textarea class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDescription" rows="3" v-model="eventForm.description"></textarea>
-            </div>
-            <div>
-              <label for="eventDate" class="block text-sm font-semibold text-slate-700 mb-2">Date</label>
-              <input type="datetime-local" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDate" v-model="eventForm.date" required>
-            </div>
-            <div>
-              <label for="eventVenue" class="block text-sm font-semibold text-slate-700 mb-2">Venue</label>
-              <input type="text" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventVenue" v-model="eventForm.venue" required>
-            </div>
-            <div>
-              <label for="eventImageUrl" class="block text-sm font-semibold text-slate-700 mb-2">Event Image URL</label>
-              <input type="url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventImageUrl" v-model="eventForm.eventImageUrl">
-              <p class="mt-2 text-xs text-slate-500">Public image URL displayed on the event landing page.</p>
-            </div>
-            <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-2">Sales Flow</label>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <input v-model="eventForm.saleMode" type="radio" class="mt-1" :value="SALE_MODES.CHECKOUT">
-                  <span>
-                    <span class="block text-sm font-semibold text-slate-900">Checkout</span>
-                    <span class="block text-xs text-slate-500">Current flow with direct Nova.Money checkout page.</span>
-                  </span>
-                </label>
-                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <input v-model="eventForm.saleMode" type="radio" class="mt-1" :value="SALE_MODES.SHOPPING_CART">
-                  <span>
-                    <span class="block text-sm font-semibold text-slate-900">Shopping Cart</span>
-                    <span class="block text-xs text-slate-500">Seat selection, customer form, reservation, and cart redirect.</span>
-                  </span>
-                </label>
-              </div>
-            </div>
-            <div v-if="eventForm.saleMode === SALE_MODES.CHECKOUT">
-              <label class="block text-sm font-semibold text-slate-700 mb-2">Nova.Money Checkout Page</label>
-              <select
-                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
-                v-model="eventForm.checkoutPageId"
-                @change="handleCheckoutSelection"
-                :disabled="isLoadingCheckoutPages || Boolean(checkoutPagesError)"
-              >
-                <option value="">Select a checkout page</option>
-                <option
-                  v-for="page in checkoutPages"
-                  :key="getCheckoutPageId(page)"
-                  :value="getCheckoutPageId(page)"
-                >
-                  {{ getCheckoutPageTitle(page) }}
-                </option>
-              </select>
-              <p class="mt-2 text-xs text-slate-500">This will be used to build the public ticket checkout link.</p>
-              <div v-if="isLoadingCheckoutPages" class="text-xs text-slate-500 mt-1">Loading checkout pages...</div>
-              <div v-else-if="checkoutPagesError" class="text-xs text-rose-600 mt-1">{{ checkoutPagesError }}</div>
-              <div v-else-if="checkoutPages.length === 0" class="text-xs text-slate-500 mt-1">No checkout pages found.</div>
-            </div>
-            <div v-else class="grid gap-4 sm:grid-cols-2">
+    <Teleport to="body">
+      <div v-if="isEventModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="closeEventModal">
+        <div class="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xl">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+            <h5 class="text-lg font-semibold text-slate-900">{{ isEditing ? 'Edit Event' : 'Create Event' }}</h5>
+            <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="closeEventModal">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="min-h-0 flex-1 overflow-y-auto p-6">
+            <form class="space-y-4" @submit.prevent="saveEvent">
               <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-2">Cart Payment Service ID</label>
-                <input
-                  v-model="eventForm.cartPaymentServiceId"
-                  type="text"
-                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
-                  placeholder="cf4d85c4-2896-4a77-bda8-a30bb187a592"
-                >
-                <p class="mt-2 text-xs text-slate-500">Used to create Nova.Money carts for this event.</p>
+                <label for="eventTitle" class="block text-sm font-semibold text-slate-700 mb-2">Title</label>
+                <input type="text" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventTitle" v-model="eventForm.title" required>
               </div>
               <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-2">Reservation Expiration (minutes)</label>
-                <input
-                  v-model.number="eventForm.reservationExpiresInMinutes"
-                  type="number"
-                  min="1"
-                  max="120"
-                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
-                >
-                <p class="mt-2 text-xs text-slate-500">Reservations start on Pay and expire automatically if payment is not completed.</p>
+                <label for="eventDescription" class="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+                <textarea class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDescription" rows="3" v-model="eventForm.description"></textarea>
               </div>
-            </div>
-          </form>
-        </div>
-        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
-          <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="closeEventModal">Cancel</button>
-          <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-500 transition disabled:opacity-60" @click="saveEvent" :disabled="isLoading">
-            {{ isLoading ? 'Saving...' : 'Save Event' }}
-          </button>
+              <div>
+                <label for="eventDate" class="block text-sm font-semibold text-slate-700 mb-2">Date</label>
+                <input type="datetime-local" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDate" v-model="eventForm.date" required>
+              </div>
+              <div>
+                <label for="eventVenue" class="block text-sm font-semibold text-slate-700 mb-2">Venue</label>
+                <input type="text" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventVenue" v-model="eventForm.venue" required>
+              </div>
+              <div>
+                <label for="eventImageUrl" class="block text-sm font-semibold text-slate-700 mb-2">Event Image URL</label>
+                <input type="url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventImageUrl" v-model="eventForm.eventImageUrl">
+                <p class="mt-2 text-xs text-slate-500">Desktop image URL displayed on the public event landing page.</p>
+              </div>
+              <div>
+                <label for="mobileEventImageUrl" class="block text-sm font-semibold text-slate-700 mb-2">Mobile Event Image URL</label>
+                <input type="url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="mobileEventImageUrl" v-model="eventForm.mobileEventImageUrl">
+                <p class="mt-2 text-xs text-slate-500">Mobile-only image URL displayed on phones and small screens.</p>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Sales Flow</label>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input v-model="eventForm.saleMode" type="radio" class="mt-1" :value="SALE_MODES.CHECKOUT">
+                    <span>
+                      <span class="block text-sm font-semibold text-slate-900">Checkout</span>
+                      <span class="block text-xs text-slate-500">Current flow with direct Nova.Money checkout page.</span>
+                    </span>
+                  </label>
+                  <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input v-model="eventForm.saleMode" type="radio" class="mt-1" :value="SALE_MODES.SHOPPING_CART">
+                    <span>
+                      <span class="block text-sm font-semibold text-slate-900">Shopping Cart</span>
+                      <span class="block text-xs text-slate-500">Seat selection, customer form, reservation, and cart redirect.</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div v-if="eventForm.saleMode === SALE_MODES.CHECKOUT">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Nova.Money Checkout Page</label>
+                <select
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                  v-model="eventForm.checkoutPageId"
+                  @change="handleCheckoutSelection"
+                  :disabled="isLoadingCheckoutPages || Boolean(checkoutPagesError)"
+                >
+                  <option value="">Select a checkout page</option>
+                  <option
+                    v-for="page in checkoutPages"
+                    :key="getCheckoutPageId(page)"
+                    :value="getCheckoutPageId(page)"
+                  >
+                    {{ getCheckoutPageTitle(page) }}
+                  </option>
+                </select>
+                <p class="mt-2 text-xs text-slate-500">This will be used to build the public ticket checkout link.</p>
+                <div v-if="isLoadingCheckoutPages" class="text-xs text-slate-500 mt-1">Loading checkout pages...</div>
+                <div v-else-if="checkoutPagesError" class="text-xs text-rose-600 mt-1">{{ checkoutPagesError }}</div>
+                <div v-else-if="checkoutPages.length === 0" class="text-xs text-slate-500 mt-1">No checkout pages found.</div>
+              </div>
+              <div v-else class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="block text-sm font-semibold text-slate-700 mb-2">Cart Payment Service ID</label>
+                  <input
+                    v-model="eventForm.cartPaymentServiceId"
+                    type="text"
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                    placeholder="cf4d85c4-2896-4a77-bda8-a30bb187a592"
+                  >
+                  <p class="mt-2 text-xs text-slate-500">Used to create Nova.Money carts for this event.</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold text-slate-700 mb-2">Reservation Expiration (minutes)</label>
+                  <input
+                    v-model.number="eventForm.reservationExpiresInMinutes"
+                    type="number"
+                    min="1"
+                    max="120"
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                  >
+                  <p class="mt-2 text-xs text-slate-500">Reservations start on Pay and expire automatically if payment is not completed.</p>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
+            <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="closeEventModal">Cancel</button>
+            <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-500 transition disabled:opacity-60" @click="saveEvent" :disabled="isLoading">
+              {{ isLoading ? 'Saving...' : 'Save Event' }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -258,6 +265,7 @@ const eventForm = reactive({
   date: '',
   venue: '',
   eventImageUrl: '',
+  mobileEventImageUrl: '',
   saleMode: SALE_MODES.CHECKOUT,
   checkoutPageId: '',
   checkoutPageTitle: '',
@@ -301,6 +309,7 @@ const editEvent = async (event) => {
     date: event.date ? formatDateForInput(event.date) : '',
     venue: event.venue || '',
     eventImageUrl: event.eventImageUrl || '',
+    mobileEventImageUrl: event.mobileEventImageUrl || '',
     saleMode: event.saleMode || SALE_MODES.CHECKOUT,
     checkoutPageId: event.checkoutPageId || '',
     checkoutPageTitle: event.checkoutPageTitle || '',
@@ -398,6 +407,7 @@ const resetForm = () => {
     date: '',
     venue: '',
     eventImageUrl: '',
+    mobileEventImageUrl: '',
     saleMode: SALE_MODES.CHECKOUT,
     checkoutPageId: '',
     checkoutPageTitle: '',

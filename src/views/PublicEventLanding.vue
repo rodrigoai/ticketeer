@@ -20,10 +20,16 @@
         <template v-else>
           <div class="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-lg">
             <img
-              v-if="event.eventImageUrl"
-              :src="event.eventImageUrl"
+              v-if="mobileHeroImageUrl"
+              :src="mobileHeroImageUrl"
               :alt="event.title"
-              class="h-72 w-full object-cover"
+              class="h-72 w-full object-cover sm:hidden"
+            />
+            <img
+              v-if="desktopHeroImageUrl"
+              :src="desktopHeroImageUrl"
+              :alt="event.title"
+              class="hidden h-72 w-full object-cover sm:block"
             />
             <div class="space-y-4 p-6">
               <div class="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
@@ -311,6 +317,14 @@ const formattedDate = computed(() => {
   } catch (error) {
     return event.value.date
   }
+})
+
+const desktopHeroImageUrl = computed(() => {
+  return event.value?.eventImageUrl || event.value?.mobileEventImageUrl || ''
+})
+
+const mobileHeroImageUrl = computed(() => {
+  return event.value?.mobileEventImageUrl || event.value?.eventImageUrl || ''
 })
 
 const formatCurrency = (value) => {

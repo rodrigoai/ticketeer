@@ -10,6 +10,7 @@ class EventService {
       const {
         name,
         event_image_url,
+        mobile_event_image_url,
         promotional_image,
         opening_datetime,
         closing_datetime,
@@ -28,6 +29,7 @@ class EventService {
         data: {
           name,
           event_image_url,
+          mobile_event_image_url,
           promotional_image,
           opening_datetime: new Date(opening_datetime),
           closing_datetime: new Date(closing_datetime),
@@ -116,6 +118,7 @@ class EventService {
       const {
         name,
         event_image_url,
+        mobile_event_image_url,
         promotional_image,
         opening_datetime,
         closing_datetime,
@@ -152,6 +155,7 @@ class EventService {
         data: {
           name,
           event_image_url,
+          mobile_event_image_url,
           promotional_image,
           opening_datetime: opening_datetime ? new Date(opening_datetime) : undefined,
           closing_datetime: closing_datetime ? new Date(closing_datetime) : undefined,
