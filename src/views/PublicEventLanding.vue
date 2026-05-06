@@ -77,7 +77,15 @@
                 ></span>
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div class="pl-3">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
+                      <span
+                        v-if="group.activePricingTier"
+                        class="rounded-full bg-amber-100 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-amber-700"
+                      >
+                        {{ group.activePricingTier.name }}
+                      </span>
+                    </div>
                     <p v-if="group.tables?.length" class="text-sm text-slate-500">Mesas {{ group.tables.join(', ') }}</p>
                     <p v-if="group.activePrice !== null" class="text-sm text-slate-500">Valor: {{ formatCurrency(group.activePrice) }}</p>
                   </div>
@@ -129,7 +137,15 @@
                   @click="toggleGroupExpansion(group.key)"
                 >
                   <div>
-                    <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
+                      <span
+                        v-if="group.activePricingTier"
+                        class="rounded-full bg-amber-100 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-amber-700"
+                      >
+                        {{ group.activePricingTier.name }}
+                      </span>
+                    </div>
                     <p class="text-sm text-slate-500">
                       <span class="block sm:inline">{{ group.tabled ? 'Venda por mesa' : 'Venda por ingresso' }}</span>
                       <span class="hidden sm:inline mx-2">•</span>
@@ -521,6 +537,7 @@ const shoppingCartGroups = computed(() => {
         key,
         description: ticket.description || 'Ticket',
         price: storedGroup?.activePrice ?? ticket.price ?? 0,
+        activePricingTier: storedGroup?.activePricingTier || null,
         color: storedGroup?.color || null,
         totalCount: 0,
         availableCount: 0,
