@@ -775,6 +775,7 @@ class TicketService {
             description: ticket.description,
             checkoutUrl: storedGroup?.checkout_url || '',
             productId: storedGroup?.product_id || null,
+            color: storedGroup?.color || null,
             ticketCount: 0,
             availableCount: 0,
             firstOrder: ticket.identificationNumber || 0,
@@ -835,7 +836,8 @@ class TicketService {
           checkout_url: groupData.checkoutUrl || null,
           product_id: Number.isInteger(Number(groupData.productId))
             ? parseInt(groupData.productId)
-            : null
+            : null,
+          color: groupData.color ? String(groupData.color).trim() : null
         }
       });
     } catch (error) {

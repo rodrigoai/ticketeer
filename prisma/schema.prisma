@@ -42,6 +42,7 @@ model TicketGroup {
   table         Int?
   checkout_url  String?
   product_id    Int?
+  color         String?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)

@@ -371,6 +371,24 @@
             >
             <p class="mt-2 text-xs text-slate-500">Nova.Money product ID used in the shopping cart payload for this group.</p>
           </div>
+          <div>
+            <label for="groupColor" class="block text-sm font-semibold text-slate-700 mb-2">Group Color</label>
+            <div class="flex items-center gap-3">
+              <input
+                id="groupColor"
+                v-model="groupForm.color"
+                type="color"
+                class="h-11 w-16 rounded-xl border border-slate-200 bg-slate-50 p-1"
+              >
+              <input
+                v-model="groupForm.color"
+                type="text"
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                placeholder="#EAB308"
+              >
+            </div>
+            <p class="mt-2 text-xs text-slate-500">Shown as the color bar on the public landing page for this ticket group.</p>
+          </div>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
           <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="isGroupModalOpen = false">Cancel</button>
@@ -1070,7 +1088,8 @@ const groupForm = reactive({
   description: '',
   tables: '',
   checkoutUrl: '',
-  productId: null
+  productId: null,
+  color: '#94a3b8'
 })
 
 // Headers are now handled directly in the template
@@ -1161,7 +1180,8 @@ const editGroup = (group) => {
     description: group.description || '',
     tables: group.tables?.length ? group.tables.join(', ') : '',
     checkoutUrl: group.checkoutUrl || '',
-    productId: group.productId || null
+    productId: group.productId || null,
+    color: group.color || '#94a3b8'
   })
   isGroupModalOpen.value = true
 }
@@ -1175,12 +1195,13 @@ const saveGroup = async () => {
   try {
     await put(`/api/events/${eventId.value}/groups/${currentGroupId.value}`, {
       checkoutUrl: groupForm.checkoutUrl.trim(),
-      productId: groupForm.productId
+      productId: groupForm.productId,
+      color: groupForm.color.trim()
     })
 
     isGroupModalOpen.value = false
     currentGroupId.value = null
-    Object.assign(groupForm, { description: '', tables: '', checkoutUrl: '', productId: null })
+    Object.assign(groupForm, { description: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8' })
     await loadGroups()
     error.value = null
   } catch (err) {

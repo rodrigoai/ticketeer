@@ -665,6 +665,7 @@ app.get('/api/public/events/:id', async (req, res) => {
           availableCount: 0,
           checkoutUrl: storedGroup?.checkout_url || '',
           productId: storedGroup?.product_id || null,
+          color: storedGroup?.color || null,
           firstOrder: ticket.identificationNumber || 0,
           tables: []
         });
@@ -983,6 +984,7 @@ app.get('/api/events/:eventId/groups', requiresAuth, async (req, res) => {
         description: group.description,
         checkoutUrl: group.checkoutUrl || '',
         productId: group.productId,
+        color: group.color || null,
         ticketCount: group.ticketCount,
         availableCount: group.availableCount,
         price: parseFloat(group.price) || 0,
@@ -1005,10 +1007,10 @@ app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) =
   try {
     const { eventId, groupId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    const { checkoutUrl, productId } = req.body;
+    const { checkoutUrl, productId, color } = req.body;
     const ticketService = require('./services/ticketService');
 
-    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { checkoutUrl, productId }, userId);
+    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { checkoutUrl, productId, color }, userId);
 
     res.json({
       success: true,
@@ -1018,7 +1020,8 @@ app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) =
         groupKey: updatedGroup.groupKey,
         description: updatedGroup.description,
         checkoutUrl: updatedGroup.checkout_url || '',
-        productId: updatedGroup.product_id || null
+        productId: updatedGroup.product_id || null,
+        color: updatedGroup.color || null
       },
       message: 'Ticket group updated successfully',
       user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub

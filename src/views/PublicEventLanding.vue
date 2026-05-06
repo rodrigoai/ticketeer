@@ -63,10 +63,14 @@
               <div
                 v-for="group in ticketGroups"
                 :key="group.key"
-                class="rounded-2xl border border-slate-100 bg-white px-6 py-5 shadow-sm"
+                class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white px-6 py-5 shadow-sm"
               >
+                <span
+                  class="absolute inset-y-0 left-0 w-2"
+                  :style="{ backgroundColor: resolveGroupColor(group.color) }"
+                ></span>
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
+                  <div class="pl-3">
                     <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
                     <p v-if="group.tables?.length" class="text-sm text-slate-500">Mesas {{ group.tables.join(', ') }}</p>
                     <p v-if="group.price !== null" class="text-sm text-slate-500">Valor: {{ formatCurrency(group.price) }}</p>
@@ -107,11 +111,15 @@
               <div
                 v-for="group in shoppingCartGroups"
                 :key="group.key"
-                class="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
+                class="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
               >
+                <span
+                  class="absolute inset-y-0 left-0 w-2"
+                  :style="{ backgroundColor: resolveGroupColor(group.color) }"
+                ></span>
                 <button
                   type="button"
-                  class="flex w-full items-center justify-between gap-4 text-left"
+                  class="flex w-full items-center justify-between gap-4 pl-3 text-left"
                   @click="toggleGroupExpansion(group.key)"
                 >
                   <div>
@@ -132,7 +140,7 @@
                   </div>
                 </button>
 
-                <div v-if="expandedGroupKeys.includes(group.key)" class="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+                <div v-if="expandedGroupKeys.includes(group.key)" class="mt-4 grid grid-cols-2 gap-3 pl-3 xl:grid-cols-4">
                   <button
                     v-for="unit in group.units"
                     :key="unit.key"
@@ -310,6 +318,11 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value))
 }
 
+const resolveGroupColor = (value) => {
+  const normalized = String(value || '').trim()
+  return /^#[0-9A-Fa-f]{6}$/.test(normalized) ? normalized : '#cbd5e1'
+}
+
 const encodeMetaValue = (value) => {
   if (value === null || value === undefined) return ''
   return btoa(String(value)).replace(/=+$/, '')
@@ -348,10 +361,12 @@ const shoppingCartGroups = computed(() => {
   tickets.value.forEach((ticket) => {
     const key = ticket.description || 'Ticket'
     if (!groups.has(key)) {
+      const storedGroup = ticketGroupsFromApi.value.find((group) => group.key === key)
       groups.set(key, {
         key,
         description: ticket.description || 'Ticket',
         price: ticket.price ?? 0,
+        color: storedGroup?.color || null,
         totalCount: 0,
         availableCount: 0,
         seatCount: 0,
