@@ -526,6 +526,10 @@ app.get('/api/public/events/:id', async (req, res) => {
     const checkoutUrl = buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, event.id);
     const checkoutBaseUrl = buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, null);
     const landingTickets = await ticketService.getLandingTicketsByEvent(event.id);
+    const storedGroups = await prisma.ticketGroup.findMany({
+      where: { eventId: event.id }
+    });
+    const storedGroupMap = new Map(storedGroups.map((group) => [group.groupKey, group]));
     const tickets = landingTickets.map((ticket) => ({
       id: ticket.id,
       eventId: ticket.eventId,
@@ -538,6 +542,43 @@ app.get('/api/public/events/:id', async (req, res) => {
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
+    const ticketGroupsMap = new Map();
+
+    tickets.forEach((ticket) => {
+      const normalizedTable = ticket.table === undefined || ticket.table === null ? null : ticket.table;
+      const groupKey = ticket.description || '';
+
+      if (!ticketGroupsMap.has(groupKey)) {
+        const storedGroup = storedGroupMap.get(groupKey);
+        ticketGroupsMap.set(groupKey, {
+          id: storedGroup?.id || null,
+          key: groupKey,
+          description: ticket.description || 'Ticket',
+          price: ticket.price ?? null,
+          totalCount: 0,
+          availableCount: 0,
+          checkoutUrl: storedGroup?.checkout_url || '',
+          firstOrder: ticket.identificationNumber || 0,
+          tables: []
+        });
+      }
+
+      const group = ticketGroupsMap.get(groupKey);
+      group.totalCount += 1;
+      if (!ticket.order) {
+        group.availableCount += 1;
+      }
+      if (normalizedTable !== null && !group.tables.includes(normalizedTable)) {
+        group.tables.push(normalizedTable);
+      }
+    });
+
+    const ticketGroups = Array.from(ticketGroupsMap.values())
+      .map((group) => ({
+        ...group,
+        tables: group.tables.sort((a, b) => a - b)
+      }))
+      .sort((a, b) => a.firstOrder - b.firstOrder);
 
     res.json({
       success: true,
@@ -557,7 +598,8 @@ app.get('/api/public/events/:id', async (req, res) => {
       },
       checkoutUrl,
       checkoutBaseUrl,
-      tickets
+      tickets,
+      ticketGroups
     });
   } catch (error) {
     console.error('Error fetching public event:', error);
@@ -661,6 +703,72 @@ app.get('/api/events/:eventId/tickets/stats', requiresAuth, async (req, res) => 
     res.status(500).json({
       success: false,
       error: 'Failed to fetch ticket statistics',
+      message: error.message
+    });
+  }
+});
+
+// Get ticket groups for an event (JWT authenticated)
+app.get('/api/events/:eventId/groups', requiresAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const ticketService = require('./services/ticketService');
+
+    const groups = await ticketService.getTicketGroupsByEvent(eventId, userId);
+
+    res.json({
+      success: true,
+      groups: groups.map((group) => ({
+        id: group.id,
+        eventId: group.eventId,
+        groupKey: group.groupKey,
+        description: group.description,
+        checkoutUrl: group.checkoutUrl || '',
+        ticketCount: group.ticketCount,
+        availableCount: group.availableCount,
+        price: parseFloat(group.price) || 0,
+        tables: group.tables || []
+      })),
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error fetching ticket groups:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch ticket groups',
+      message: error.message
+    });
+  }
+});
+
+// Update a ticket group checkout URL (JWT authenticated)
+app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) => {
+  try {
+    const { eventId, groupId } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const { checkoutUrl } = req.body;
+    const ticketService = require('./services/ticketService');
+
+    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { checkoutUrl }, userId);
+
+    res.json({
+      success: true,
+      group: {
+        id: updatedGroup.id,
+        eventId: updatedGroup.eventId,
+        groupKey: updatedGroup.groupKey,
+        description: updatedGroup.description,
+        checkoutUrl: updatedGroup.checkout_url || ''
+      },
+      message: 'Ticket group updated successfully',
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error updating ticket group:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update ticket group',
       message: error.message
     });
   }

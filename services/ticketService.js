@@ -3,6 +3,33 @@ const { Decimal } = require('decimal.js');
 const qrCodeHashUtil = require('../utils/qrCodeHash');
 
 class TicketService {
+  _buildGroupKey(description, table) {
+    const normalizedDescription = description || '';
+    return normalizedDescription;
+  }
+
+  async _ensureTicketGroup(tx, eventId, description, table) {
+    const groupKey = this._buildGroupKey(description, table);
+
+    return tx.ticketGroup.upsert({
+      where: {
+        eventId_groupKey: {
+          eventId: parseInt(eventId),
+          groupKey
+        }
+      },
+      update: {
+        description,
+        table: null
+      },
+      create: {
+        eventId: parseInt(eventId),
+        groupKey,
+        description,
+        table: null
+      }
+    });
+  }
 
   _generateQrCodeHashForTicket(ticket, userId) {
     return qrCodeHashUtil.generateQrCodeHash(userId, ticket.eventId, ticket.id);
@@ -54,6 +81,8 @@ class TicketService {
 
       // Use transaction to atomically assign identification number
       const ticket = await prisma.$transaction(async (tx) => {
+        await this._ensureTicketGroup(tx, eventId, description, table);
+
         // Increment the counter and get the new value
         const updatedEvent = await tx.event.update({
           where: { id: parseInt(eventId) },
@@ -135,6 +164,8 @@ class TicketService {
 
       // Use transaction to atomically assign sequential identification numbers
       const tickets = await prisma.$transaction(async (tx) => {
+        await this._ensureTicketGroup(tx, eventId, description, table);
+
         // Increment the counter by quantity and get the new value
         const updatedEvent = await tx.event.update({
           where: { id: parseInt(eventId) },
@@ -294,9 +325,16 @@ class TicketService {
       if (accessoryCollectedAt !== undefined) updateData.accessoryCollectedAt = accessoryCollectedAt ? new Date(accessoryCollectedAt) : null;
       if (accessoryCollectedNotes !== undefined) updateData.accessoryCollectedNotes = accessoryCollectedNotes || null;
 
-      const updatedTicket = await prisma.ticket.update({
-        where: { id: parseInt(ticketId) },
-        data: updateData
+      const updatedTicket = await prisma.$transaction(async (tx) => {
+        const nextDescription = description !== undefined ? description : existingTicket.description;
+        const nextTable = table !== undefined ? (table ? parseInt(table) : null) : existingTicket.table;
+
+        await this._ensureTicketGroup(tx, existingTicket.eventId, nextDescription, nextTable);
+
+        return tx.ticket.update({
+          where: { id: parseInt(ticketId) },
+          data: updateData
+        });
       });
 
       return updatedTicket;
@@ -554,6 +592,118 @@ class TicketService {
     } catch (error) {
       console.error('Error fetching ticket stats:', error);
       throw new Error(`Failed to fetch ticket statistics: ${error.message}`);
+    }
+  }
+
+  async getTicketGroupsByEvent(eventId, userId) {
+    try {
+      const event = await prisma.event.findFirst({
+        where: {
+          id: parseInt(eventId),
+          created_by: userId
+        }
+      });
+
+      if (!event) {
+        throw new Error('Event not found or access denied');
+      }
+
+      const [tickets, storedGroups] = await Promise.all([
+        prisma.ticket.findMany({
+          where: { eventId: parseInt(eventId) },
+          orderBy: { identificationNumber: 'asc' },
+          select: {
+            description: true,
+            table: true,
+            price: true,
+            order: true,
+            identificationNumber: true
+          }
+        }),
+        prisma.ticketGroup.findMany({
+          where: { eventId: parseInt(eventId) }
+        })
+      ]);
+
+      const storedGroupMap = new Map(storedGroups.map((group) => [group.groupKey, group]));
+      const groups = new Map();
+
+      tickets.forEach((ticket) => {
+        const normalizedTable = ticket.table === undefined || ticket.table === null ? null : ticket.table;
+        const groupKey = this._buildGroupKey(ticket.description, normalizedTable);
+
+        if (!groups.has(groupKey)) {
+          const storedGroup = storedGroupMap.get(groupKey);
+
+          groups.set(groupKey, {
+            id: storedGroup?.id || null,
+            eventId: parseInt(eventId),
+            groupKey,
+            description: ticket.description,
+            checkoutUrl: storedGroup?.checkout_url || '',
+            ticketCount: 0,
+            availableCount: 0,
+            firstOrder: ticket.identificationNumber || 0,
+            price: ticket.price,
+            tables: []
+          });
+        }
+
+        const group = groups.get(groupKey);
+        group.ticketCount += 1;
+        if (!ticket.order) {
+          group.availableCount += 1;
+        }
+        if (normalizedTable !== null && !group.tables.includes(normalizedTable)) {
+          group.tables.push(normalizedTable);
+        }
+      });
+
+      return Array.from(groups.values())
+        .map((group) => ({
+          ...group,
+          tables: group.tables.sort((a, b) => a - b)
+        }))
+        .sort((a, b) => a.firstOrder - b.firstOrder);
+    } catch (error) {
+      console.error('Error fetching ticket groups:', error);
+      throw new Error(`Failed to fetch ticket groups: ${error.message}`);
+    }
+  }
+
+  async updateTicketGroup(eventId, groupId, groupData, userId) {
+    try {
+      const event = await prisma.event.findFirst({
+        where: {
+          id: parseInt(eventId),
+          created_by: userId
+        }
+      });
+
+      if (!event) {
+        throw new Error('Event not found or access denied');
+      }
+
+      const existingGroup = await prisma.ticketGroup.findFirst({
+        where: {
+          id: parseInt(groupId),
+          eventId: parseInt(eventId)
+        }
+      });
+
+      if (!existingGroup) {
+        throw new Error('Ticket group not found');
+      }
+
+      return prisma.ticketGroup.update({
+        where: { id: parseInt(groupId) },
+        data: {
+          checkout_url: groupData.checkoutUrl || null
+        }
+      });
+    } catch (error) {
+      console.error('Error updating ticket group:', error);
+      throw new Error(`Failed to update ticket group: ${error.message}`);
     }
   }
 

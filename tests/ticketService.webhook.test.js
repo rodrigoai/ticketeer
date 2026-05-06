@@ -14,6 +14,12 @@ jest.mock('../generated/prisma', () => {
       findUnique: jest.fn(),
       update: jest.fn()
     },
+    ticketGroup: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      upsert: jest.fn(),
+      update: jest.fn()
+    },
     ticket: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -57,6 +63,15 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           event: {
             update: jest.fn().mockResolvedValue({ nextTicketNumber: 61 })
           },
+          ticketGroup: {
+            upsert: jest.fn().mockResolvedValue({
+              id: 1,
+              eventId,
+              groupKey: 'Batch Ticket',
+              description: 'Batch Ticket',
+              table: null
+            })
+          },
           ticket: {
             create: jest.fn().mockImplementation(({ data }) => Promise.resolve({
               id: data.identificationNumber,
@@ -75,6 +90,7 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
           },
           select: { nextTicketNumber: true }
         });
+        expect(tx.ticketGroup.upsert).toHaveBeenCalledTimes(1);
         expect(tx.ticket.create).toHaveBeenCalledTimes(quantity);
         expect(tx.ticket.update).not.toHaveBeenCalled();
 

@@ -26,8 +26,24 @@ model Event {
   updated_at        DateTime @updatedAt
   status            String   @default("active")
   tickets           Ticket[]
+  ticketGroups      TicketGroup[]
 
   @@map("events")
+}
+
+model TicketGroup {
+  id           Int      @id @default(autoincrement())
+  eventId       Int
+  groupKey      String
+  description   String
+  table         Int?
+  checkout_url  String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, groupKey])
+  @@map("ticket_groups")
 }
 
 model UserProfile {

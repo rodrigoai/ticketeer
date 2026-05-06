@@ -73,6 +73,48 @@
         </div>
       </section>
 
+      <section class="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div>
+            <h3 class="text-xl font-semibold text-slate-900">Ticket Groups</h3>
+            <p class="text-sm text-slate-500">Manage group-specific checkout links shown on the public landing page.</p>
+          </div>
+        </div>
+
+        <div v-if="ticketGroups.length === 0" class="px-6 py-8 text-sm text-slate-500">
+          Create tickets or batches first to generate editable groups.
+        </div>
+
+        <div v-else class="divide-y divide-slate-100">
+          <div
+            v-for="group in ticketGroups"
+            :key="group.id || group.groupKey"
+            class="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between"
+          >
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-3">
+                <h4 class="text-base font-semibold text-slate-900">{{ group.description }}</h4>
+                <span v-if="group.tables?.length" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                  Tables {{ group.tables.join(', ') }}
+                </span>
+              </div>
+              <p class="text-sm text-slate-500">
+                {{ group.ticketCount }} ticket(s), {{ group.availableCount }} available
+              </p>
+              <p class="text-xs text-slate-500 break-all">
+                {{ group.checkoutUrl || 'Using event checkout URL fallback' }}
+              </p>
+            </div>
+            <button
+              class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              @click="editGroup(group)"
+            >
+              <i class="fas fa-link text-xs"></i> Edit Group
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- Ticket Management -->
       <section class="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -282,7 +324,47 @@
           </div>
           <button class="text-xs font-semibold text-rose-600 underline" @click="loadTickets">Retry</button>
         </div>
+    </div>
+
+    <div v-if="isGroupModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="isGroupModalOpen = false">
+      <div class="w-full max-w-2xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+          <h5 class="text-lg font-semibold text-slate-900">Edit Group</h5>
+          <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="isGroupModalOpen = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="p-6 space-y-5">
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Description</p>
+              <p class="mt-1 text-sm font-semibold text-slate-900">{{ groupForm.description || '-' }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Tables</p>
+              <p class="mt-1 text-sm font-semibold text-slate-900">{{ groupForm.tables || '-' }}</p>
+            </div>
+          </div>
+          <div>
+            <label for="groupCheckoutUrl" class="block text-sm font-semibold text-slate-700 mb-2">Group checkout URL</label>
+            <input
+              id="groupCheckoutUrl"
+              v-model="groupForm.checkoutUrl"
+              type="url"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+              placeholder="https://..."
+            >
+            <p class="mt-2 text-xs text-slate-500">Leave empty to use the event checkout URL on the public landing page.</p>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
+          <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="isGroupModalOpen = false">Cancel</button>
+          <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-500 transition disabled:opacity-60" @click="saveGroup" :disabled="isLoading">
+            {{ isLoading ? 'Saving...' : 'Save Group' }}
+          </button>
+        </div>
       </div>
+    </div>
 
     <!-- Create/Edit Ticket Modal -->
     <div v-if="isTicketModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="isTicketModalOpen = false">
@@ -847,6 +929,8 @@ const currentTicketId = ref(null)
 const isResending = ref(false)
 const searchValue = ref('')
 const selectedTicketIds = ref([])
+const ticketGroups = ref([])
+const currentGroupId = ref(null)
 
 // Sorting state
 const sortKey = ref('identificationNumber')
@@ -914,6 +998,7 @@ const toggleSelectAll = () => {
 const isTicketModalOpen = ref(false)
 const isBatchModalOpen = ref(false)
 const isBulkEditModalOpen = ref(false)
+const isGroupModalOpen = ref(false)
 
 // Forms
 const ticketForm = reactive({
@@ -964,6 +1049,12 @@ const bulkEditForm = reactive({
   clearBuyer: false,
   clearBuyerDocument: false,
   clearBuyerEmail: false
+})
+
+const groupForm = reactive({
+  description: '',
+  tables: '',
+  checkoutUrl: ''
 })
 
 // Headers are now handled directly in the template
@@ -1024,6 +1115,16 @@ const loadStats = async () => {
   }
 }
 
+const loadGroups = async () => {
+  try {
+    const data = await get(`/api/events/${eventId.value}/groups`)
+    ticketGroups.value = data.groups || []
+  } catch (err) {
+    console.error('Failed to load ticket groups:', err)
+    ticketGroups.value = []
+  }
+}
+
 // Show create modal
 const showCreateModal = () => {
   isEditingTicket.value = false
@@ -1036,6 +1137,38 @@ const showCreateModal = () => {
 const showBatchCreateModal = () => {
   resetBatchForm()
   isBatchModalOpen.value = true
+}
+
+const editGroup = (group) => {
+  currentGroupId.value = group.id
+  Object.assign(groupForm, {
+    description: group.description || '',
+    tables: group.tables?.length ? group.tables.join(', ') : '',
+    checkoutUrl: group.checkoutUrl || ''
+  })
+  isGroupModalOpen.value = true
+}
+
+const saveGroup = async () => {
+  if (!currentGroupId.value) {
+    error.value = 'Ticket group not found'
+    return
+  }
+
+  try {
+    await put(`/api/events/${eventId.value}/groups/${currentGroupId.value}`, {
+      checkoutUrl: groupForm.checkoutUrl.trim()
+    })
+
+    isGroupModalOpen.value = false
+    currentGroupId.value = null
+    Object.assign(groupForm, { description: '', tables: '', checkoutUrl: '' })
+    await loadGroups()
+    error.value = null
+  } catch (err) {
+    console.error('Failed to save ticket group:', err)
+    error.value = err.message || 'Failed to save ticket group'
+  }
 }
 
 const csvColumns = [
@@ -1158,6 +1291,7 @@ const saveTicket = async () => {
     isTicketModalOpen.value = false
     resetTicketForm()
     await loadTickets()
+    await loadGroups()
     await loadStats()
     
     error.value = null
@@ -1182,6 +1316,7 @@ const saveBatchTickets = async () => {
     isBatchModalOpen.value = false
     resetBatchForm()
     await loadTickets()
+    await loadGroups()
     await loadStats()
     
     error.value = null
@@ -1229,6 +1364,7 @@ const deleteTicket = async (ticketId) => {
   try {
     await deleteApi(`/api/tickets/${ticketId}`)
     await loadTickets()
+    await loadGroups()
     await loadStats()
     error.value = null
   } catch (err) {
@@ -1469,6 +1605,7 @@ const saveBulkEdit = async () => {
       resetBulkEditForm()
       clearSelection()
       await loadTickets()
+      await loadGroups()
       await loadStats()
       error.value = null
     }
@@ -1496,6 +1633,7 @@ const performBulkDelete = async () => {
     if (result.success) {
       clearSelection()
       await loadTickets()
+      await loadGroups()
       await loadStats()
       error.value = null
     }
@@ -1534,6 +1672,7 @@ onMounted(async () => {
     await Promise.all([
       loadEvent(),
       loadTickets(),
+      loadGroups(),
       loadStats()
     ])
   }

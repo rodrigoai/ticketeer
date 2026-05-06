@@ -61,7 +61,7 @@
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
-                  <p v-if="group.tableNumber !== null" class="text-sm text-slate-500">Mesa {{ group.tableNumber }}</p>
+                  <p v-if="group.tables?.length" class="text-sm text-slate-500">Mesas {{ group.tables.join(', ') }}</p>
                   <p v-if="group.price !== null" class="text-sm text-slate-500">Valor: {{ formatCurrency(group.price) }}</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-4">
@@ -98,6 +98,7 @@ const { get } = useApi()
 const event = ref(null)
 const checkoutBaseUrl = ref('')
 const tickets = ref([])
+const ticketGroupsFromApi = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
 
@@ -131,23 +132,37 @@ const buildCheckoutUrl = (baseUrl, eventId, tableNumber) => {
 }
 
 const ticketGroups = computed(() => {
+  if (ticketGroupsFromApi.value.length) {
+    return ticketGroupsFromApi.value
+      .map((group) => {
+        const groupCheckoutUrl = group.checkoutUrl || buildCheckoutUrl(checkoutBaseUrl.value, event.value?.id, null)
+        const canBuy = Boolean(groupCheckoutUrl) && group.availableCount > 0
+
+        return {
+          ...group,
+          checkoutUrl: groupCheckoutUrl,
+          canBuy
+        }
+      })
+  }
+
   if (!tickets.value.length) return []
   const groups = new Map()
 
   tickets.value.forEach((ticket) => {
     const description = ticket.description || 'Ticket'
     const tableNumber = ticket.table === null || ticket.table === undefined ? null : ticket.table
-    const key = tableNumber === null ? description : `${description}__${tableNumber}`
+    const key = description
 
     if (!groups.has(key)) {
       groups.set(key, {
         key,
         description,
-        tableNumber,
         price: ticket.price ?? null,
         totalCount: 0,
         availableCount: 0,
-        firstOrder: ticket.identificationNumber || 0
+        firstOrder: ticket.identificationNumber || 0,
+        tables: []
       })
     }
 
@@ -156,12 +171,19 @@ const ticketGroups = computed(() => {
     if (!ticket.order) {
       group.availableCount += 1
     }
+    if (tableNumber !== null && !group.tables.includes(tableNumber)) {
+      group.tables.push(tableNumber)
+    }
   })
 
   return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      tables: group.tables.sort((a, b) => a - b)
+    }))
     .sort((a, b) => a.firstOrder - b.firstOrder)
     .map((group) => {
-      const checkoutUrl = buildCheckoutUrl(checkoutBaseUrl.value, event.value?.id, group.tableNumber)
+      const checkoutUrl = buildCheckoutUrl(checkoutBaseUrl.value, event.value?.id, null)
       const canBuy = Boolean(checkoutUrl) && group.availableCount > 0
       return {
         ...group,
@@ -180,10 +202,12 @@ const loadEvent = async () => {
     event.value = data.event || null
     checkoutBaseUrl.value = data.checkoutBaseUrl || ''
     tickets.value = data.tickets || []
+    ticketGroupsFromApi.value = data.ticketGroups || []
   } catch (error) {
     errorMessage.value = error?.data?.message || error?.message || 'Failed to load event'
     event.value = null
     tickets.value = []
+    ticketGroupsFromApi.value = []
   } finally {
     isLoading.value = false
   }
