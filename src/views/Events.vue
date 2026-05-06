@@ -155,6 +155,11 @@
                 <p class="mt-2 text-xs text-slate-500">Mobile-only image URL displayed on phones and small screens.</p>
               </div>
               <div>
+                <label for="eventMapUrl" class="block text-sm font-semibold text-slate-700 mb-2">Event Map URL</label>
+                <input type="url" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventMapUrl" v-model="eventForm.eventMapUrl">
+                <p class="mt-2 text-xs text-slate-500">Map image shown on the event details page with zoom/fullscreen preview.</p>
+              </div>
+              <div>
                 <label class="block text-sm font-semibold text-slate-700 mb-2">Sales Flow</label>
                 <div class="grid gap-3 sm:grid-cols-2">
                   <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -266,6 +271,7 @@ const eventForm = reactive({
   venue: '',
   eventImageUrl: '',
   mobileEventImageUrl: '',
+  eventMapUrl: '',
   saleMode: SALE_MODES.CHECKOUT,
   checkoutPageId: '',
   checkoutPageTitle: '',
@@ -310,6 +316,7 @@ const editEvent = async (event) => {
     venue: event.venue || '',
     eventImageUrl: event.eventImageUrl || '',
     mobileEventImageUrl: event.mobileEventImageUrl || '',
+    eventMapUrl: event.eventMapUrl || '',
     saleMode: event.saleMode || SALE_MODES.CHECKOUT,
     checkoutPageId: event.checkoutPageId || '',
     checkoutPageTitle: event.checkoutPageTitle || '',
@@ -408,6 +415,7 @@ const resetForm = () => {
     venue: '',
     eventImageUrl: '',
     mobileEventImageUrl: '',
+    eventMapUrl: '',
     saleMode: SALE_MODES.CHECKOUT,
     checkoutPageId: '',
     checkoutPageTitle: '',

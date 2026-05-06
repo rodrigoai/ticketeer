@@ -55,6 +55,43 @@
             </div>
           </div>
 
+          <section v-if="event.eventMapUrl" class="space-y-3">
+            <div class="flex items-end justify-between gap-4">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Mapa Do Evento</p>
+                <h2 class="mt-1 text-xl font-semibold text-slate-900">Veja a disposição do espaço</h2>
+              </div>
+              <button
+                type="button"
+                class="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 sm:inline-flex"
+                @click="openMapPreview"
+              >
+                Ampliar mapa
+              </button>
+            </div>
+
+            <button
+              type="button"
+              class="group block w-full overflow-hidden rounded-[2rem] bg-white p-3 text-left shadow-lg ring-1 ring-slate-200/70 transition hover:shadow-xl"
+              @click="openMapPreview"
+            >
+              <div class="overflow-hidden rounded-[1.5rem] bg-slate-100">
+                <img
+                  :src="event.eventMapUrl"
+                  :alt="`${event.title} map`"
+                  class="h-auto w-full object-contain"
+                >
+              </div>
+              <div class="flex items-center justify-between gap-3 px-2 pb-1 pt-3 text-sm text-slate-500">
+                <span>Toque para ampliar e ver os detalhes do mapa.</span>
+                <span class="inline-flex items-center gap-2 font-semibold text-slate-700">
+                  Abrir
+                  <i class="fas fa-expand-alt text-xs"></i>
+                </span>
+              </div>
+            </button>
+          </section>
+
           <section v-if="event.saleMode === SALE_MODES.CHECKOUT" class="space-y-4">
             <div class="flex items-center justify-between">
               <h2 class="text-xl font-semibold text-slate-900">Ingressos</h2>
@@ -432,6 +469,27 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="isMapPreviewOpen && event?.eventMapUrl"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm"
+        @click.self="closeMapPreview"
+      >
+        <button
+          type="button"
+          class="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
+          @click="closeMapPreview"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+        <img
+          :src="event.eventMapUrl"
+          :alt="`${event.title} map preview`"
+          class="max-h-[90vh] w-full max-w-6xl object-contain"
+        >
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -461,6 +519,7 @@ const cartSuccessMessage = ref('')
 const selectedUnitKeys = ref([])
 const expandedGroupKeys = ref([])
 const isMobileCartOpen = ref(false)
+const isMapPreviewOpen = ref(false)
 const customer = ref({
   name: '',
   email: '',
@@ -680,6 +739,14 @@ const closeMobileCart = () => {
   isMobileCartOpen.value = false
 }
 
+const openMapPreview = () => {
+  isMapPreviewOpen.value = true
+}
+
+const closeMapPreview = () => {
+  isMapPreviewOpen.value = false
+}
+
 const loadEvent = async () => {
   isLoading.value = true
   errorMessage.value = ''
@@ -739,8 +806,8 @@ onMounted(() => {
   loadEvent()
 })
 
-watch(isMobileCartOpen, (isOpen) => {
-  document.body.style.overflow = isOpen ? 'hidden' : ''
+watch([isMobileCartOpen, isMapPreviewOpen], ([isCartOpen, isPreviewOpen]) => {
+  document.body.style.overflow = isCartOpen || isPreviewOpen ? 'hidden' : ''
 })
 
 onBeforeUnmount(() => {
