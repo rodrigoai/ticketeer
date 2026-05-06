@@ -101,6 +101,10 @@
               <p class="text-sm text-slate-500">
                 {{ group.ticketCount }} ticket(s), {{ group.availableCount }} available
               </p>
+              <p class="text-xs text-slate-500">
+                Current price: {{ formatCurrency(group.activePrice ?? group.price) }}
+                <span v-if="group.activePricingTier"> • Active tier: {{ group.activePricingTier.name }}</span>
+              </p>
               <p class="text-xs text-slate-500 break-all" v-if="event?.saleMode === 'checkout'">
                 {{ group.checkoutUrl || 'Using event checkout URL fallback' }}
               </p>
@@ -330,14 +334,14 @@
     </div>
 
     <div v-if="isGroupModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="isGroupModalOpen = false">
-      <div class="w-full max-w-2xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
+      <div class="w-full max-w-3xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
           <h5 class="text-lg font-semibold text-slate-900">Edit Group</h5>
           <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="isGroupModalOpen = false">
             <i class="fas fa-times"></i>
           </button>
         </div>
-        <div class="p-6 space-y-5">
+        <div class="max-h-[75vh] space-y-5 overflow-y-auto p-6">
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Description</p>
@@ -388,6 +392,82 @@
               >
             </div>
             <p class="mt-2 text-xs text-slate-500">Shown as the color bar on the public landing page for this ticket group.</p>
+          </div>
+          <div class="space-y-4 border-t border-slate-100 pt-5">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h6 class="text-sm font-semibold text-slate-900">Tiered Pricing</h6>
+                <p class="mt-1 text-xs text-slate-500">Tiers are checked by current datetime. If none is active, the group falls back to its default ticket price.</p>
+              </div>
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                @click="addPricingTier"
+              >
+                <i class="fas fa-plus text-[0.65rem]"></i> Add Tier
+              </button>
+            </div>
+
+            <div v-if="groupForm.pricingTiers.length === 0" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+              No pricing tiers configured.
+            </div>
+
+            <div v-else class="space-y-4">
+              <div
+                v-for="(tier, index) in groupForm.pricingTiers"
+                :key="`tier-${index}`"
+                class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Tier {{ index + 1 }}</p>
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-white"
+                    @click="removePricingTier(index)"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                  <div class="md:col-span-2">
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Tier Name</label>
+                    <input
+                      v-model="tier.name"
+                      type="text"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                      placeholder="Early Bird"
+                    >
+                  </div>
+                  <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Start Datetime</label>
+                    <input
+                      v-model="tier.startDateTime"
+                      type="datetime-local"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                    >
+                  </div>
+                  <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">End Datetime</label>
+                    <input
+                      v-model="tier.endDateTime"
+                      type="datetime-local"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                    >
+                  </div>
+                  <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Price</label>
+                    <input
+                      v-model.number="tier.price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                      placeholder="50.00"
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
@@ -1014,6 +1094,11 @@ const sortBy = (key) => {
   }
 }
 
+const formatCurrency = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return ''
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value))
+}
+
 // Select All Logic
 const isAllSelected = computed(() => {
   return sortedTickets.value.length > 0 && selectedTicketIds.value.length === sortedTickets.value.length
@@ -1089,7 +1174,8 @@ const groupForm = reactive({
   tables: '',
   checkoutUrl: '',
   productId: null,
-  color: '#94a3b8'
+  color: '#94a3b8',
+  pricingTiers: []
 })
 
 // Headers are now handled directly in the template
@@ -1174,6 +1260,30 @@ const showBatchCreateModal = () => {
   isBatchModalOpen.value = true
 }
 
+const toDateTimeLocalValue = (value) => {
+  if (!value) return ''
+  try {
+    return new Date(value).toISOString().slice(0, 16)
+  } catch (error) {
+    return ''
+  }
+}
+
+const mapPricingTierForm = (tier = {}) => ({
+  name: tier.name || '',
+  startDateTime: toDateTimeLocalValue(tier.startDateTime),
+  endDateTime: toDateTimeLocalValue(tier.endDateTime),
+  price: tier.price ?? 0
+})
+
+const addPricingTier = () => {
+  groupForm.pricingTiers.push(mapPricingTierForm())
+}
+
+const removePricingTier = (index) => {
+  groupForm.pricingTiers.splice(index, 1)
+}
+
 const editGroup = (group) => {
   currentGroupId.value = group.id
   Object.assign(groupForm, {
@@ -1181,7 +1291,8 @@ const editGroup = (group) => {
     tables: group.tables?.length ? group.tables.join(', ') : '',
     checkoutUrl: group.checkoutUrl || '',
     productId: group.productId || null,
-    color: group.color || '#94a3b8'
+    color: group.color || '#94a3b8',
+    pricingTiers: (group.pricingTiers || []).map((tier) => mapPricingTierForm(tier))
   })
   isGroupModalOpen.value = true
 }
@@ -1196,12 +1307,18 @@ const saveGroup = async () => {
     await put(`/api/events/${eventId.value}/groups/${currentGroupId.value}`, {
       checkoutUrl: groupForm.checkoutUrl.trim(),
       productId: groupForm.productId,
-      color: groupForm.color.trim()
+      color: groupForm.color.trim(),
+      pricingTiers: groupForm.pricingTiers.map((tier) => ({
+        name: tier.name.trim(),
+        startDateTime: tier.startDateTime ? new Date(tier.startDateTime).toISOString() : '',
+        endDateTime: tier.endDateTime ? new Date(tier.endDateTime).toISOString() : '',
+        price: tier.price
+      }))
     })
 
     isGroupModalOpen.value = false
     currentGroupId.value = null
-    Object.assign(groupForm, { description: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8' })
+    Object.assign(groupForm, { description: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8', pricingTiers: [] })
     await loadGroups()
     error.value = null
   } catch (err) {

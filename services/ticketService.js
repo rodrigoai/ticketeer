@@ -96,6 +96,87 @@ class TicketService {
     };
   }
 
+  _serializePricingTier(pricingTier) {
+    if (!pricingTier) return null;
+
+    return {
+      id: pricingTier.id || null,
+      name: pricingTier.name,
+      startDateTime: pricingTier.start_at instanceof Date ? pricingTier.start_at.toISOString() : new Date(pricingTier.start_at).toISOString(),
+      endDateTime: pricingTier.end_at instanceof Date ? pricingTier.end_at.toISOString() : new Date(pricingTier.end_at).toISOString(),
+      price: parseFloat(pricingTier.price)
+    };
+  }
+
+  _normalizePricingTiers(pricingTiers = []) {
+    if (!Array.isArray(pricingTiers)) {
+      throw new Error('Pricing tiers must be an array');
+    }
+
+    const normalizedTiers = pricingTiers.map((tier, index) => {
+      const name = String(tier?.name || '').trim();
+      const startAt = tier?.startDateTime ? new Date(tier.startDateTime) : null;
+      const endAt = tier?.endDateTime ? new Date(tier.endDateTime) : null;
+      const hasValidDates = startAt instanceof Date && !Number.isNaN(startAt.getTime()) && endAt instanceof Date && !Number.isNaN(endAt.getTime());
+
+      if (!name) {
+        throw new Error(`Pricing tier #${index + 1} must have a name`);
+      }
+
+      if (!hasValidDates) {
+        throw new Error(`Pricing tier '${name}' must have valid start and end datetimes`);
+      }
+
+      if (startAt.getTime() >= endAt.getTime()) {
+        throw new Error(`Pricing tier '${name}' must end after it starts`);
+      }
+
+      const priceDecimal = new Decimal(tier?.price);
+      if (priceDecimal.lt(0)) {
+        throw new Error(`Pricing tier '${name}' must have a positive price`);
+      }
+
+      return {
+        name,
+        startAt,
+        endAt,
+        priceDecimal
+      };
+    });
+
+    normalizedTiers.sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+
+    for (let index = 1; index < normalizedTiers.length; index += 1) {
+      const previousTier = normalizedTiers[index - 1];
+      const currentTier = normalizedTiers[index];
+
+      if (currentTier.startAt.getTime() < previousTier.endAt.getTime()) {
+        throw new Error(`Pricing tiers '${previousTier.name}' and '${currentTier.name}' cannot overlap`);
+      }
+    }
+
+    return normalizedTiers;
+  }
+
+  resolveTicketGroupPricing({ defaultPrice, pricingTiers = [], referenceDate = new Date() }) {
+    const parsedDefaultPrice = parseFloat(defaultPrice) || 0;
+    const activeTier = (pricingTiers || []).find((tier) => {
+      const startAt = tier.start_at instanceof Date ? tier.start_at : new Date(tier.start_at);
+      const endAt = tier.end_at instanceof Date ? tier.end_at : new Date(tier.end_at);
+
+      return startAt.getTime() <= referenceDate.getTime() && referenceDate.getTime() < endAt.getTime();
+    }) || null;
+
+    const resolvedPrice = activeTier ? parseFloat(activeTier.price) || 0 : parsedDefaultPrice;
+
+    return {
+      defaultPrice: parsedDefaultPrice,
+      activePrice: resolvedPrice,
+      activePricingTier: this._serializePricingTier(activeTier),
+      pricingTiers: (pricingTiers || []).map((tier) => this._serializePricingTier(tier))
+    };
+  }
+
   async _sendPostCheckoutEmails({
     customer,
     userId,
@@ -754,7 +835,12 @@ class TicketService {
           }
         }),
         prisma.ticketGroup.findMany({
-          where: { eventId: parseInt(eventId) }
+          where: { eventId: parseInt(eventId) },
+          include: {
+            pricingTiers: {
+              orderBy: { start_at: 'asc' }
+            }
+          }
         })
       ]);
 
@@ -780,6 +866,9 @@ class TicketService {
             availableCount: 0,
             firstOrder: ticket.identificationNumber || 0,
             price: ticket.price,
+            activePrice: parseFloat(ticket.price) || 0,
+            activePricingTier: null,
+            pricingTiers: [],
             tables: []
           });
         }
@@ -795,10 +884,21 @@ class TicketService {
       });
 
       return Array.from(groups.values())
-        .map((group) => ({
-          ...group,
-          tables: group.tables.sort((a, b) => a - b)
-        }))
+        .map((group) => {
+          const storedGroup = storedGroupMap.get(group.groupKey);
+          const resolvedPricing = this.resolveTicketGroupPricing({
+            defaultPrice: group.price,
+            pricingTiers: storedGroup?.pricingTiers || []
+          });
+
+          return {
+            ...group,
+            activePrice: resolvedPricing.activePrice,
+            activePricingTier: resolvedPricing.activePricingTier,
+            pricingTiers: resolvedPricing.pricingTiers,
+            tables: group.tables.sort((a, b) => a - b)
+          };
+        })
         .sort((a, b) => a.firstOrder - b.firstOrder);
     } catch (error) {
       console.error('Error fetching ticket groups:', error);
@@ -830,14 +930,36 @@ class TicketService {
         throw new Error('Ticket group not found');
       }
 
+      const normalizedPricingTiers = this._normalizePricingTiers(groupData.pricingTiers || []);
+      const pricingTiersData = normalizedPricingTiers.map((tier) => ({
+        name: tier.name,
+        start_at: tier.startAt,
+        end_at: tier.endAt,
+        price: tier.priceDecimal.toString()
+      }));
+
+      const updateData = {
+        checkout_url: groupData.checkoutUrl || null,
+        product_id: Number.isInteger(Number(groupData.productId))
+          ? parseInt(groupData.productId)
+          : null,
+        color: groupData.color ? String(groupData.color).trim() : null,
+        pricingTiers: {
+          deleteMany: {}
+        }
+      };
+
+      if (pricingTiersData.length) {
+        updateData.pricingTiers.create = pricingTiersData;
+      }
+
       return prisma.ticketGroup.update({
         where: { id: parseInt(groupId) },
-        data: {
-          checkout_url: groupData.checkoutUrl || null,
-          product_id: Number.isInteger(Number(groupData.productId))
-            ? parseInt(groupData.productId)
-            : null,
-          color: groupData.color ? String(groupData.color).trim() : null
+        data: updateData,
+        include: {
+          pricingTiers: {
+            orderBy: { start_at: 'asc' }
+          }
         }
       });
     } catch (error) {

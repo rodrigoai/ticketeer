@@ -47,9 +47,25 @@ model TicketGroup {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  pricingTiers  TicketGroupPricingTier[]
 
   @@unique([eventId, groupKey])
   @@map("ticket_groups")
+}
+
+model TicketGroupPricingTier {
+  id            Int        @id @default(autoincrement())
+  ticketGroupId Int
+  name          String
+  start_at      DateTime
+  end_at        DateTime
+  price         Decimal
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  ticketGroup   TicketGroup @relation(fields: [ticketGroupId], references: [id], onDelete: Cascade)
+
+  @@index([ticketGroupId, start_at, end_at])
+  @@map("ticket_group_pricing_tiers")
 }
 
 model UserProfile {

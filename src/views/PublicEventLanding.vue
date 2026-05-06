@@ -79,7 +79,7 @@
                   <div class="pl-3">
                     <h3 class="text-lg font-semibold text-slate-900">{{ group.description }}</h3>
                     <p v-if="group.tables?.length" class="text-sm text-slate-500">Mesas {{ group.tables.join(', ') }}</p>
-                    <p v-if="group.price !== null" class="text-sm text-slate-500">Valor: {{ formatCurrency(group.price) }}</p>
+                    <p v-if="group.activePrice !== null" class="text-sm text-slate-500">Valor: {{ formatCurrency(group.activePrice) }}</p>
                   </div>
                   <div class="flex flex-wrap items-center gap-4">
                     <div class="text-sm text-slate-500" v-if="group.availableCount !== null">
@@ -520,7 +520,7 @@ const shoppingCartGroups = computed(() => {
       groups.set(key, {
         key,
         description: ticket.description || 'Ticket',
-        price: ticket.price ?? 0,
+        price: storedGroup?.activePrice ?? ticket.price ?? 0,
         color: storedGroup?.color || null,
         totalCount: 0,
         availableCount: 0,
@@ -566,7 +566,7 @@ const shoppingCartGroups = computed(() => {
 
         const unit = unitsMap.get(unitKey)
         unit.tickets.push(ticket)
-        unit.totalPrice += Number(ticket.price) || 0
+        unit.totalPrice += Number(group.price) || 0
         unit.isAvailable = unit.isAvailable && Boolean(ticket.isAvailable)
         unit.isReserved = unit.isReserved || Boolean(ticket.isReserved)
       })
