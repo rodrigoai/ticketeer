@@ -149,6 +149,25 @@
               <p class="mt-2 text-xs text-slate-500">Public image URL displayed on the event landing page.</p>
             </div>
             <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Sales Flow</label>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <input v-model="eventForm.saleMode" type="radio" class="mt-1" :value="SALE_MODES.CHECKOUT">
+                  <span>
+                    <span class="block text-sm font-semibold text-slate-900">Checkout</span>
+                    <span class="block text-xs text-slate-500">Current flow with direct Nova.Money checkout page.</span>
+                  </span>
+                </label>
+                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <input v-model="eventForm.saleMode" type="radio" class="mt-1" :value="SALE_MODES.SHOPPING_CART">
+                  <span>
+                    <span class="block text-sm font-semibold text-slate-900">Shopping Cart</span>
+                    <span class="block text-xs text-slate-500">Seat selection, customer form, reservation, and cart redirect.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div v-if="eventForm.saleMode === SALE_MODES.CHECKOUT">
               <label class="block text-sm font-semibold text-slate-700 mb-2">Nova.Money Checkout Page</label>
               <select
                 class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
@@ -170,6 +189,29 @@
               <div v-else-if="checkoutPagesError" class="text-xs text-rose-600 mt-1">{{ checkoutPagesError }}</div>
               <div v-else-if="checkoutPages.length === 0" class="text-xs text-slate-500 mt-1">No checkout pages found.</div>
             </div>
+            <div v-else class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Cart Payment Service ID</label>
+                <input
+                  v-model="eventForm.cartPaymentServiceId"
+                  type="text"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                  placeholder="cf4d85c4-2896-4a77-bda8-a30bb187a592"
+                >
+                <p class="mt-2 text-xs text-slate-500">Used to create Nova.Money carts for this event.</p>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Reservation Expiration (minutes)</label>
+                <input
+                  v-model.number="eventForm.reservationExpiresInMinutes"
+                  type="number"
+                  min="1"
+                  max="120"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                >
+                <p class="mt-2 text-xs text-slate-500">Reservations start on Pay and expire automatically if payment is not completed.</p>
+              </div>
+            </div>
           </form>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
@@ -187,6 +229,11 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
+
+const SALE_MODES = {
+  CHECKOUT: 'checkout',
+  SHOPPING_CART: 'shopping_cart'
+}
 
 // API composable
 const { isLoading, error, get, post, put, delete: deleteApi } = useApi()
@@ -211,8 +258,11 @@ const eventForm = reactive({
   date: '',
   venue: '',
   eventImageUrl: '',
+  saleMode: SALE_MODES.CHECKOUT,
   checkoutPageId: '',
-  checkoutPageTitle: ''
+  checkoutPageTitle: '',
+  cartPaymentServiceId: '',
+  reservationExpiresInMinutes: 10
 })
 
 // Load events
@@ -251,8 +301,11 @@ const editEvent = async (event) => {
     date: event.date ? formatDateForInput(event.date) : '',
     venue: event.venue || '',
     eventImageUrl: event.eventImageUrl || '',
+    saleMode: event.saleMode || SALE_MODES.CHECKOUT,
     checkoutPageId: event.checkoutPageId || '',
     checkoutPageTitle: event.checkoutPageTitle || '',
+    cartPaymentServiceId: event.cartPaymentServiceId || '',
+    reservationExpiresInMinutes: event.reservationExpiresInMinutes || 10,
     createdBy: userId
   })
 
@@ -268,15 +321,28 @@ const saveEvent = async () => {
     return
   }
 
-  if (eventForm.checkoutPageId) {
+  if (eventForm.saleMode === SALE_MODES.CHECKOUT && eventForm.checkoutPageId) {
     const selectedPage = checkoutPages.value.find(page => getCheckoutPageId(page) === eventForm.checkoutPageId)
     if (!selectedPage) {
       error.value = 'Please select a valid checkout page'
       return
     }
     eventForm.checkoutPageTitle = getCheckoutPageTitle(selectedPage)
-  } else {
+  } else if (eventForm.saleMode === SALE_MODES.CHECKOUT) {
     eventForm.checkoutPageTitle = ''
+  } else {
+    eventForm.checkoutPageId = ''
+    eventForm.checkoutPageTitle = ''
+
+    if (!eventForm.cartPaymentServiceId?.trim()) {
+      error.value = 'Cart payment service ID is required for shopping cart sales'
+      return
+    }
+
+    if (!Number.isInteger(Number(eventForm.reservationExpiresInMinutes)) || Number(eventForm.reservationExpiresInMinutes) < 1) {
+      error.value = 'Reservation expiration must be at least 1 minute'
+      return
+    }
   }
 
   if (!isAuthenticated.value) {
@@ -332,8 +398,11 @@ const resetForm = () => {
     date: '',
     venue: '',
     eventImageUrl: '',
+    saleMode: SALE_MODES.CHECKOUT,
     checkoutPageId: '',
-    checkoutPageTitle: ''
+    checkoutPageTitle: '',
+    cartPaymentServiceId: '',
+    reservationExpiresInMinutes: 10
   })
 }
 

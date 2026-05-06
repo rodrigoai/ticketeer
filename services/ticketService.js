@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { Decimal } = require('decimal.js');
+const { v4: uuidv4 } = require('uuid');
 const qrCodeHashUtil = require('../utils/qrCodeHash');
 
 class TicketService {
@@ -37,6 +38,62 @@ class TicketService {
 
   _generateStoredQrCodeHash() {
     return qrCodeHashUtil.generateStoredQrCodeHash();
+  }
+
+  _isTicketSold(ticket) {
+    return Boolean(ticket?.order && String(ticket.order).trim() !== '');
+  }
+
+  _isReservationActive(ticket, referenceDate = new Date()) {
+    if (!ticket?.reservedUntil) return false;
+    return new Date(ticket.reservedUntil).getTime() > referenceDate.getTime() && !this._isTicketSold(ticket);
+  }
+
+  _isTicketAvailable(ticket, referenceDate = new Date()) {
+    const salesEndDateTime = ticket?.salesEndDateTime ? new Date(ticket.salesEndDateTime) : null;
+    const salesStillOpen = !salesEndDateTime || salesEndDateTime.getTime() > referenceDate.getTime();
+    return salesStillOpen && !this._isTicketSold(ticket) && !this._isReservationActive(ticket, referenceDate);
+  }
+
+  _buildAvailableTicketWhereClause(referenceDate = new Date()) {
+    return {
+      AND: [
+        {
+          OR: [
+            { order: null },
+            { order: '' }
+          ]
+        },
+        {
+          OR: [
+            { salesEndDateTime: null },
+            { salesEndDateTime: { gt: referenceDate } }
+          ]
+        },
+        {
+          OR: [
+            { reservedUntil: null },
+            { reservedUntil: { lte: referenceDate } }
+          ]
+        }
+      ]
+    };
+  }
+
+  _buildReservationUpdateData(reservationKey, reservedUntil) {
+    return {
+      reservationKey,
+      reservedAt: new Date(),
+      reservedUntil
+    };
+  }
+
+  _clearReservationData() {
+    return {
+      reservationKey: null,
+      reservedAt: null,
+      reservedUntil: null
+    };
   }
 
   /**
@@ -571,10 +628,7 @@ class TicketService {
       const remainingCount = await prisma.ticket.count({
         where: {
           eventId: parseInt(eventId),
-          OR: [
-            { order: null },
-            { order: '' }
-          ]
+          AND: this._buildAvailableTicketWhereClause().AND
         }
       });
 
@@ -641,6 +695,7 @@ class TicketService {
             groupKey,
             description: ticket.description,
             checkoutUrl: storedGroup?.checkout_url || '',
+            productId: storedGroup?.product_id || null,
             ticketCount: 0,
             availableCount: 0,
             firstOrder: ticket.identificationNumber || 0,
@@ -651,7 +706,7 @@ class TicketService {
 
         const group = groups.get(groupKey);
         group.ticketCount += 1;
-        if (!ticket.order) {
+        if (this._isTicketAvailable(ticket)) {
           group.availableCount += 1;
         }
         if (normalizedTable !== null && !group.tables.includes(normalizedTable)) {
@@ -698,7 +753,10 @@ class TicketService {
       return prisma.ticketGroup.update({
         where: { id: parseInt(groupId) },
         data: {
-          checkout_url: groupData.checkoutUrl || null
+          checkout_url: groupData.checkoutUrl || null,
+          product_id: Number.isInteger(Number(groupData.productId))
+            ? parseInt(groupData.productId)
+            : null
         }
       });
     } catch (error) {
@@ -734,24 +792,7 @@ class TicketService {
       };
 
       if (availableOnly) {
-        const currentDateTime = new Date();
-
-        whereClause.AND = [
-          // No order field filled (unsold)
-          {
-            OR: [
-              { order: null },
-              { order: '' }
-            ]
-          },
-          // Sales end date time is either null or in the future
-          {
-            OR: [
-              { salesEndDateTime: null },
-              { salesEndDateTime: { gt: currentDateTime } }
-            ]
-          }
-        ];
+        whereClause.AND = this._buildAvailableTicketWhereClause().AND;
       }
 
       const tickets = await prisma.ticket.findMany({
@@ -767,6 +808,8 @@ class TicketService {
           table: true,
           price: true,
           order: true, // Keep order field as required
+          reservedAt: true,
+          reservedUntil: true,
           salesEndDateTime: true,
           created_at: true,
           updated_at: true,
@@ -782,6 +825,276 @@ class TicketService {
       console.error('Error searching tickets:', error);
       throw new Error(`Failed to search tickets: ${error.message}`);
     }
+  }
+
+  async reserveTicketsForCart(eventId, ticketIds, customer, reservationExpiresInMinutes = 10) {
+    const normalizedTicketIds = Array.from(new Set((ticketIds || []).map((id) => parseInt(id, 10)).filter(Number.isInteger)));
+
+    if (!normalizedTicketIds.length) {
+      throw new Error('Select at least one ticket');
+    }
+
+    const expiresInMinutes = Number.isFinite(Number(reservationExpiresInMinutes))
+      ? Math.max(1, parseInt(reservationExpiresInMinutes, 10))
+      : 10;
+
+    const reservationKey = uuidv4();
+    const now = new Date();
+    const reservedUntil = new Date(now.getTime() + (expiresInMinutes * 60 * 1000));
+    const availabilityWhere = this._buildAvailableTicketWhereClause(now);
+
+    return prisma.$transaction(async (tx) => {
+      const tickets = await tx.ticket.findMany({
+        where: {
+          id: { in: normalizedTicketIds },
+          eventId: parseInt(eventId)
+        },
+        orderBy: { identificationNumber: 'asc' }
+      });
+
+      if (tickets.length !== normalizedTicketIds.length) {
+        throw new Error('Some selected tickets were not found');
+      }
+
+      for (const ticket of tickets) {
+        if (!this._isTicketAvailable(ticket, now)) {
+          throw new Error(`Ticket ${ticket.identificationNumber} is no longer available`);
+        }
+      }
+
+      for (const ticketId of normalizedTicketIds) {
+        const updateResult = await tx.ticket.updateMany({
+          where: {
+            id: ticketId,
+            eventId: parseInt(eventId),
+            AND: availabilityWhere.AND
+          },
+          data: this._buildReservationUpdateData(reservationKey, reservedUntil)
+        });
+
+        if (updateResult.count !== 1) {
+          throw new Error('One or more selected tickets are no longer available');
+        }
+      }
+
+      const reservedTickets = await tx.ticket.findMany({
+        where: {
+          id: { in: normalizedTicketIds },
+          eventId: parseInt(eventId)
+        },
+        orderBy: { identificationNumber: 'asc' }
+      });
+
+      return {
+        reservationKey,
+        reservedUntil,
+        customer,
+        tickets: reservedTickets
+      };
+    });
+  }
+
+  async releaseTicketReservations({ eventId, ticketIds, reservationKey }) {
+    const where = {
+      eventId: parseInt(eventId),
+      OR: [
+        { order: null },
+        { order: '' }
+      ]
+    };
+
+    if (Array.isArray(ticketIds) && ticketIds.length) {
+      where.id = {
+        in: ticketIds.map((id) => parseInt(id, 10)).filter(Number.isInteger)
+      };
+    }
+
+    if (reservationKey) {
+      where.reservationKey = reservationKey;
+    }
+
+    return prisma.ticket.updateMany({
+      where,
+      data: this._clearReservationData()
+    });
+  }
+
+  _extractCartWebhookMeta(webhookPayload) {
+    const payload = webhookPayload?.payload || {};
+    const meta = payload.meta || {};
+    const ticketIds = Array.isArray(meta.ticketIds)
+      ? meta.ticketIds.map((id) => parseInt(id, 10)).filter(Number.isInteger)
+      : [];
+    const eventId = parseInt(meta.eventId, 10);
+
+    return {
+      eventType: webhookPayload?.event || '',
+      payload,
+      meta,
+      routeUserId: null,
+      userId: meta.userId || null,
+      eventId: Number.isInteger(eventId) ? eventId : null,
+      ticketIds
+    };
+  }
+
+  async processShoppingCartWebhook(webhookPayload, routeUserId) {
+    const { eventType, payload, userId, eventId, ticketIds } = this._extractCartWebhookMeta(webhookPayload);
+
+    if (!userId || !eventId || !ticketIds.length) {
+      throw new Error('Invalid cart webhook payload: missing meta.userId, meta.eventId, or meta.ticketIds');
+    }
+
+    if (routeUserId !== userId) {
+      throw new Error('Webhook user scope does not match cart metadata');
+    }
+
+    const orderId = payload.id ? String(payload.id) : null;
+    const customer = payload.customer || {};
+
+    return prisma.$transaction(async (tx) => {
+      const tickets = await tx.ticket.findMany({
+        where: {
+          id: { in: ticketIds },
+          eventId
+        },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+              venue: true,
+              opening_datetime: true,
+              created_by: true
+            }
+          }
+        },
+        orderBy: { identificationNumber: 'asc' }
+      });
+
+      if (tickets.length !== ticketIds.length) {
+        throw new Error('Cart webhook references unknown tickets');
+      }
+
+      const invalidScope = tickets.some((ticket) => ticket.event.created_by !== routeUserId || ticket.eventId !== eventId);
+      if (invalidScope) {
+        throw new Error('Cart webhook scope does not match ticket ownership');
+      }
+
+      if (eventType === 'payment.failed') {
+        const result = await tx.ticket.updateMany({
+          where: {
+            id: { in: ticketIds },
+            eventId,
+            OR: [
+              { order: null },
+              { order: '' }
+            ]
+          },
+          data: this._clearReservationData()
+        });
+
+        return {
+          success: true,
+          message: `Released ${result.count} reserved ticket(s) after payment failure.`,
+          orderId,
+          ticketIds,
+          processedTickets: result.count,
+          eventType
+        };
+      }
+
+      if (eventType !== 'order.paid') {
+        return {
+          success: true,
+          message: `Webhook event '${eventType}' acknowledged but not processed`,
+          orderId,
+          ticketIds,
+          processedTickets: 0,
+          eventType
+        };
+      }
+
+      if (!orderId) {
+        throw new Error('Invalid cart webhook payload: missing order ID');
+      }
+
+      const conflictingTickets = tickets.filter((ticket) => this._isTicketSold(ticket) && String(ticket.order) !== orderId);
+      if (conflictingTickets.length) {
+        throw new Error(`Some tickets are already associated with another order: ${conflictingTickets.map(ticket => ticket.id).join(', ')}`);
+      }
+
+      const allAlreadyProcessed = tickets.every((ticket) => String(ticket.order || '') === orderId);
+      if (allAlreadyProcessed) {
+        return {
+          success: true,
+          message: `Cart webhook already processed for order ${orderId}.`,
+          orderId,
+          ticketIds,
+          buyerAssigned: customer.name || null,
+          processedTickets: tickets.length,
+          updatedTickets: tickets,
+          eventType
+        };
+      }
+
+      const updatedTickets = [];
+      for (const ticket of tickets) {
+        const updateData = {
+          order: orderId,
+          buyer: customer.name || null,
+          buyerDocument: customer.identification || null,
+          buyerEmail: customer.email ? String(customer.email).trim().toLowerCase() : null,
+          buyerPhone: customer.phone || null,
+          ...this._clearReservationData()
+        };
+
+        if (!ticket.qrCodeHash && ticket.event?.created_by) {
+          updateData.qrCodeHash = this._generateQrCodeHashForTicket(ticket, ticket.event.created_by);
+        }
+
+        const updatedTicket = await tx.ticket.update({
+          where: { id: ticket.id },
+          data: updateData
+        });
+
+        updatedTickets.push(updatedTicket);
+      }
+
+      try {
+        if (customer.email) {
+          const emailService = require('./emailService');
+          await emailService.sendQrCodeEmailsForTickets(
+            updatedTickets.map((ticket) => ({
+              id: ticket.id,
+              eventId: ticket.eventId,
+              identificationNumber: ticket.identificationNumber,
+              buyer: ticket.buyer,
+              buyerEmail: ticket.buyerEmail
+            })),
+            {
+              name: tickets[0].event.name,
+              venue: tickets[0].event.venue,
+              date: tickets[0].event.opening_datetime
+            },
+            routeUserId
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send QR emails for shopping cart purchase:', emailError);
+      }
+
+      return {
+        success: true,
+        message: `Shopping cart webhook processed successfully for order ${orderId}.`,
+        orderId,
+        ticketIds,
+        buyerAssigned: customer.name || null,
+        processedTickets: updatedTickets.length,
+        updatedTickets,
+        eventType
+      };
+    });
   }
 
   /**
@@ -1265,24 +1578,7 @@ class TicketService {
       };
 
       if (availableOnly) {
-        const currentDateTime = new Date();
-
-        whereClause.AND = [
-          // No order field filled (unsold)
-          {
-            OR: [
-              { order: null },
-              { order: '' }
-            ]
-          },
-          // Sales end date time is either null or in the future
-          {
-            OR: [
-              { salesEndDateTime: null },
-              { salesEndDateTime: { gt: currentDateTime } }
-            ]
-          }
-        ];
+        whereClause.AND = this._buildAvailableTicketWhereClause().AND;
       }
 
       const tickets = await prisma.ticket.findMany({
@@ -1298,6 +1594,8 @@ class TicketService {
           table: true,
           price: true,
           order: true, // Keep order field as required
+          reservedAt: true,
+          reservedUntil: true,
           salesEndDateTime: true,
           created_at: true,
           updated_at: true,
@@ -1347,9 +1645,12 @@ class TicketService {
           eventId: true,
           description: true,
           identificationNumber: true,
+          location: true,
           table: true,
           price: true,
           order: true,
+          reservedAt: true,
+          reservedUntil: true,
           salesEndDateTime: true,
           created_at: true,
           updated_at: true

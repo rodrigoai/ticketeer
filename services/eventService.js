@@ -14,11 +14,14 @@ class EventService {
         opening_datetime,
         closing_datetime,
         map_image,
-        description,
-        venue,
-        checkout_page_id,
-        checkout_page_title,
-        created_by
+      description,
+      venue,
+      sale_mode,
+      checkout_page_id,
+      checkout_page_title,
+      cart_payment_service_id,
+      reservation_expires_in_minutes,
+      created_by
       } = eventData;
 
       const event = await prisma.event.create({
@@ -31,8 +34,11 @@ class EventService {
           map_image,
           description,
           venue,
+          sale_mode,
           checkout_page_id,
           checkout_page_title,
+          cart_payment_service_id,
+          reservation_expires_in_minutes,
           created_by
         }
       });
@@ -117,8 +123,11 @@ class EventService {
         description,
         venue,
         status,
+        sale_mode,
         checkout_page_id,
-        checkout_page_title
+        checkout_page_title,
+        cart_payment_service_id,
+        reservation_expires_in_minutes
       } = eventData;
 
       // First check if the event exists and user owns it
@@ -150,8 +159,11 @@ class EventService {
           description,
           venue,
           status,
+          sale_mode,
           checkout_page_id,
-          checkout_page_title
+          checkout_page_title,
+          cart_payment_service_id,
+          reservation_expires_in_minutes
         }
       });
 

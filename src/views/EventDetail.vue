@@ -101,8 +101,11 @@
               <p class="text-sm text-slate-500">
                 {{ group.ticketCount }} ticket(s), {{ group.availableCount }} available
               </p>
-              <p class="text-xs text-slate-500 break-all">
+              <p class="text-xs text-slate-500 break-all" v-if="event?.saleMode === 'checkout'">
                 {{ group.checkoutUrl || 'Using event checkout URL fallback' }}
+              </p>
+              <p class="text-xs text-slate-500 break-all" v-else>
+                Product ID: {{ group.productId || 'Not configured' }}
               </p>
             </div>
             <button
@@ -345,7 +348,7 @@
               <p class="mt-1 text-sm font-semibold text-slate-900">{{ groupForm.tables || '-' }}</p>
             </div>
           </div>
-          <div>
+          <div v-if="event?.saleMode === 'checkout'">
             <label for="groupCheckoutUrl" class="block text-sm font-semibold text-slate-700 mb-2">Group checkout URL</label>
             <input
               id="groupCheckoutUrl"
@@ -355,6 +358,18 @@
               placeholder="https://..."
             >
             <p class="mt-2 text-xs text-slate-500">Leave empty to use the event checkout URL on the public landing page.</p>
+          </div>
+          <div v-else>
+            <label for="groupProductId" class="block text-sm font-semibold text-slate-700 mb-2">Product ID</label>
+            <input
+              id="groupProductId"
+              v-model.number="groupForm.productId"
+              type="number"
+              min="1"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+              placeholder="45"
+            >
+            <p class="mt-2 text-xs text-slate-500">Nova.Money product ID used in the shopping cart payload for this group.</p>
           </div>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
@@ -1054,7 +1069,8 @@ const bulkEditForm = reactive({
 const groupForm = reactive({
   description: '',
   tables: '',
-  checkoutUrl: ''
+  checkoutUrl: '',
+  productId: null
 })
 
 // Headers are now handled directly in the template
@@ -1144,7 +1160,8 @@ const editGroup = (group) => {
   Object.assign(groupForm, {
     description: group.description || '',
     tables: group.tables?.length ? group.tables.join(', ') : '',
-    checkoutUrl: group.checkoutUrl || ''
+    checkoutUrl: group.checkoutUrl || '',
+    productId: group.productId || null
   })
   isGroupModalOpen.value = true
 }
@@ -1157,12 +1174,13 @@ const saveGroup = async () => {
 
   try {
     await put(`/api/events/${eventId.value}/groups/${currentGroupId.value}`, {
-      checkoutUrl: groupForm.checkoutUrl.trim()
+      checkoutUrl: groupForm.checkoutUrl.trim(),
+      productId: groupForm.productId
     })
 
     isGroupModalOpen.value = false
     currentGroupId.value = null
-    Object.assign(groupForm, { description: '', tables: '', checkoutUrl: '' })
+    Object.assign(groupForm, { description: '', tables: '', checkoutUrl: '', productId: null })
     await loadGroups()
     error.value = null
   } catch (err) {

@@ -49,7 +49,11 @@ function createWebhookRoutes({ prisma }) {
         });
       }
 
-      if (webhookPayload.event !== 'order.paid') {
+      const isShoppingCartWebhook = Array.isArray(webhookPayload?.payload?.meta?.ticketIds)
+        && webhookPayload?.payload?.meta?.userId
+        && webhookPayload?.payload?.meta?.eventId;
+
+      if (!isShoppingCartWebhook && webhookPayload.event !== 'order.paid') {
         console.log(`Ignoring webhook event: ${webhookPayload.event}`);
         return res.json({
           success: true,
@@ -58,7 +62,9 @@ function createWebhookRoutes({ prisma }) {
       }
 
       console.log('userID: ', userId);
-      const result = await ticketService.processCheckoutWebhook(webhookPayload, userId);
+      const result = isShoppingCartWebhook
+        ? await ticketService.processShoppingCartWebhook(webhookPayload, userId)
+        : await ticketService.processCheckoutWebhook(webhookPayload, userId);
 
       console.log('Webhook processed successfully:', result);
 

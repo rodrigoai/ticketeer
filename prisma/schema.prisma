@@ -18,8 +18,11 @@ model Event {
   map_image         String?
   description       String?
   venue             String?
+  sale_mode         String   @default("checkout")
   checkout_page_id  String?
   checkout_page_title String?
+  cart_payment_service_id String?
+  reservation_expires_in_minutes Int @default(10)
   created_by        String
   nextTicketNumber  Int      @default(1)
   created_at        DateTime @default(now())
@@ -38,6 +41,7 @@ model TicketGroup {
   description   String
   table         Int?
   checkout_url  String?
+  product_id    Int?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -68,6 +72,9 @@ model Ticket {
   buyer                String?
   buyerDocument        String?
   buyerPhone           String?
+  reservationKey       String?
+  reservedAt           DateTime?
+  reservedUntil        DateTime?
   created_at           DateTime  @default(now())
   updated_at           DateTime  @updatedAt
   buyerEmail           String?

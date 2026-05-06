@@ -9,6 +9,7 @@ const createHealthRoutes = require('./routes/healthRoutes');
 const createDashboardRoutes = require('./routes/dashboardRoutes');
 const createCheckinRoutes = require('./routes/checkinRoutes');
 const createWebhookRoutes = require('./routes/webhookRoutes');
+const novaMoneyService = require('./services/novaMoneyService');
 require('dotenv').config();
 
 const app = express();
@@ -31,6 +32,39 @@ const buildNovaCheckoutUrl = (tenant, checkoutPageId, eventId) => {
   if (!eventId) return baseUrl;
   const encodedEventId = Buffer.from(String(eventId)).toString('base64').replace(/=+$/, '');
   return `${baseUrl}?meta.eventId=${encodedEventId}`;
+};
+
+const SALE_MODES = {
+  CHECKOUT: 'checkout',
+  SHOPPING_CART: 'shopping_cart'
+};
+
+const normalizeSaleMode = (value) => {
+  return value === SALE_MODES.SHOPPING_CART ? SALE_MODES.SHOPPING_CART : SALE_MODES.CHECKOUT;
+};
+
+const normalizePhoneDigits = (value) => String(value || '').replace(/\D/g, '');
+
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+
+const validateEventSalesSettings = ({ saleMode, checkoutPageId, checkoutPageTitle, cartPaymentServiceId, reservationExpiresInMinutes }) => {
+  if (saleMode === SALE_MODES.CHECKOUT) {
+    if ((checkoutPageId && !checkoutPageTitle) || (!checkoutPageId && checkoutPageTitle)) {
+      return 'Checkout page ID and title must be provided together';
+    }
+    return null;
+  }
+
+  if (!cartPaymentServiceId) {
+    return 'Cart payment service ID is required for shopping cart sales';
+  }
+
+  const reservationMinutes = parseInt(reservationExpiresInMinutes, 10);
+  if (!Number.isInteger(reservationMinutes) || reservationMinutes < 1 || reservationMinutes > 120) {
+    return 'Reservation expiration must be between 1 and 120 minutes';
+  }
+
+  return null;
 };
 
 // CORS middleware with custom logic for public vs private endpoints
@@ -263,8 +297,11 @@ app.get('/api/events', requiresAuth, async (req, res) => {
       venue: event.venue,
       price: 0, // We'll need to add price to schema or calculate from tickets
       status: event.status,
+      saleMode: event.sale_mode,
       checkoutPageId: event.checkout_page_id,
       checkoutPageTitle: event.checkout_page_title,
+      cartPaymentServiceId: event.cart_payment_service_id,
+      reservationExpiresInMinutes: event.reservation_expires_in_minutes,
       created_by: event.created_by,
       created_at: event.created_at,
       updated_at: event.updated_at
@@ -293,8 +330,21 @@ app.post('/api/events', requiresAuth, async (req, res) => {
     console.log('📥 Request body:', req.body);
     console.log('👤 Auth data:', req.auth);
 
-    const { title, description, date, venue, price, eventImageUrl, checkoutPageId, checkoutPageTitle } = req.body;
+    const {
+      title,
+      description,
+      date,
+      venue,
+      price,
+      eventImageUrl,
+      saleMode: rawSaleMode,
+      checkoutPageId,
+      checkoutPageTitle,
+      cartPaymentServiceId,
+      reservationExpiresInMinutes
+    } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
+    const saleMode = normalizeSaleMode(rawSaleMode);
 
     console.log('🎯 Extracted data:', { title, description, date, venue, price, userId });
 
@@ -308,11 +358,19 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       });
     }
 
-    if ((checkoutPageId && !checkoutPageTitle) || (!checkoutPageId && checkoutPageTitle)) {
+    const salesSettingsError = validateEventSalesSettings({
+      saleMode,
+      checkoutPageId,
+      checkoutPageTitle,
+      cartPaymentServiceId,
+      reservationExpiresInMinutes
+    });
+
+    if (salesSettingsError) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid checkout page selection',
-        message: 'Checkout page ID and title must be provided together'
+        error: 'Invalid sales configuration',
+        message: salesSettingsError
       });
     }
 
@@ -327,8 +385,13 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       opening_datetime: new Date(date),
       closing_datetime: new Date(date), // For now, same as opening. TODO: Add separate closing time
       venue: venue,
-      checkout_page_id: checkoutPageId || null,
-      checkout_page_title: checkoutPageTitle || null,
+      sale_mode: saleMode,
+      checkout_page_id: saleMode === SALE_MODES.CHECKOUT ? (checkoutPageId || null) : null,
+      checkout_page_title: saleMode === SALE_MODES.CHECKOUT ? (checkoutPageTitle || null) : null,
+      cart_payment_service_id: saleMode === SALE_MODES.SHOPPING_CART ? String(cartPaymentServiceId).trim() : null,
+      reservation_expires_in_minutes: saleMode === SALE_MODES.SHOPPING_CART
+        ? parseInt(reservationExpiresInMinutes, 10)
+        : 10,
       created_by: userId
     };
 
@@ -347,8 +410,11 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       eventImageUrl: newEvent.event_image_url,
       venue: newEvent.venue,
       price: parseFloat(price) || 0,
+      saleMode: newEvent.sale_mode,
       checkoutPageId: newEvent.checkout_page_id,
       checkoutPageTitle: newEvent.checkout_page_title,
+      cartPaymentServiceId: newEvent.cart_payment_service_id,
+      reservationExpiresInMinutes: newEvent.reservation_expires_in_minutes,
       created_by: newEvent.created_by
     };
 
@@ -390,8 +456,11 @@ app.get('/api/events/:id', requiresAuth, async (req, res) => {
       eventImageUrl: event.event_image_url,
       venue: event.venue,
       status: event.status,
+      saleMode: event.sale_mode,
       checkoutPageId: event.checkout_page_id,
       checkoutPageTitle: event.checkout_page_title,
+      cartPaymentServiceId: event.cart_payment_service_id,
+      reservationExpiresInMinutes: event.reservation_expires_in_minutes,
       created_by: event.created_by,
       created_at: event.created_at,
       updated_at: event.updated_at
@@ -416,16 +485,37 @@ app.get('/api/events/:id', requiresAuth, async (req, res) => {
 app.put('/api/events/:id', requiresAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, date, venue, price, eventImageUrl, checkoutPageId, checkoutPageTitle } = req.body;
+    const {
+      title,
+      description,
+      date,
+      venue,
+      price,
+      eventImageUrl,
+      saleMode: rawSaleMode,
+      checkoutPageId,
+      checkoutPageTitle,
+      cartPaymentServiceId,
+      reservationExpiresInMinutes
+    } = req.body;
     const userId = req.auth.payload?.sub || req.auth.sub; // Get user ID from JWT token
+    const saleMode = normalizeSaleMode(rawSaleMode);
 
     const eventService = require('./services/eventService');
 
-    if ((checkoutPageId && !checkoutPageTitle) || (!checkoutPageId && checkoutPageTitle)) {
+    const salesSettingsError = validateEventSalesSettings({
+      saleMode,
+      checkoutPageId,
+      checkoutPageTitle,
+      cartPaymentServiceId,
+      reservationExpiresInMinutes
+    });
+
+    if (salesSettingsError) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid checkout page selection',
-        message: 'Checkout page ID and title must be provided together'
+        error: 'Invalid sales configuration',
+        message: salesSettingsError
       });
     }
 
@@ -437,8 +527,13 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
       opening_datetime: date ? new Date(date) : undefined,
       closing_datetime: date ? new Date(date) : undefined, // TODO: Add separate closing time
       venue: venue,
-      checkout_page_id: checkoutPageId || null,
-      checkout_page_title: checkoutPageTitle || null
+      sale_mode: saleMode,
+      checkout_page_id: saleMode === SALE_MODES.CHECKOUT ? (checkoutPageId || null) : null,
+      checkout_page_title: saleMode === SALE_MODES.CHECKOUT ? (checkoutPageTitle || null) : null,
+      cart_payment_service_id: saleMode === SALE_MODES.SHOPPING_CART ? String(cartPaymentServiceId).trim() : null,
+      reservation_expires_in_minutes: saleMode === SALE_MODES.SHOPPING_CART
+        ? parseInt(reservationExpiresInMinutes, 10)
+        : 10
     };
 
     const updatedEvent = await eventService.updateEvent(id, eventData, userId);
@@ -453,8 +548,11 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
       eventImageUrl: updatedEvent.event_image_url,
       venue: updatedEvent.venue,
       price: parseFloat(price) || 0,
+      saleMode: updatedEvent.sale_mode,
       checkoutPageId: updatedEvent.checkout_page_id,
       checkoutPageTitle: updatedEvent.checkout_page_title,
+      cartPaymentServiceId: updatedEvent.cart_payment_service_id,
+      reservationExpiresInMinutes: updatedEvent.reservation_expires_in_minutes,
       created_by: updatedEvent.created_by
     };
 
@@ -523,8 +621,12 @@ app.get('/api/public/events/:id', async (req, res) => {
     }
 
     const profile = await userProfileService.getProfileByUserId(event.created_by);
-    const checkoutUrl = buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, event.id);
-    const checkoutBaseUrl = buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, null);
+    const checkoutUrl = event.sale_mode === SALE_MODES.CHECKOUT
+      ? buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, event.id)
+      : null;
+    const checkoutBaseUrl = event.sale_mode === SALE_MODES.CHECKOUT
+      ? buildNovaCheckoutUrl(profile?.nova_money_tenant, event.checkout_page_id, null)
+      : null;
     const landingTickets = await ticketService.getLandingTicketsByEvent(event.id);
     const storedGroups = await prisma.ticketGroup.findMany({
       where: { eventId: event.id }
@@ -535,10 +637,14 @@ app.get('/api/public/events/:id', async (req, res) => {
       eventId: ticket.eventId,
       description: ticket.description,
       identificationNumber: ticket.identificationNumber,
+      location: ticket.location,
       table: ticket.table,
       price: parseFloat(ticket.price) || 0,
       order: ticket.order,
+      reservedUntil: ticket.reservedUntil,
       salesEndDateTime: ticket.salesEndDateTime,
+      isAvailable: ticketService._isTicketAvailable(ticket),
+      isReserved: ticketService._isReservationActive(ticket),
       created_at: ticket.created_at,
       updated_at: ticket.updated_at
     }));
@@ -558,6 +664,7 @@ app.get('/api/public/events/:id', async (req, res) => {
           totalCount: 0,
           availableCount: 0,
           checkoutUrl: storedGroup?.checkout_url || '',
+          productId: storedGroup?.product_id || null,
           firstOrder: ticket.identificationNumber || 0,
           tables: []
         });
@@ -565,7 +672,7 @@ app.get('/api/public/events/:id', async (req, res) => {
 
       const group = ticketGroupsMap.get(groupKey);
       group.totalCount += 1;
-      if (!ticket.order) {
+      if (ticket.isAvailable) {
         group.availableCount += 1;
       }
       if (normalizedTable !== null && !group.tables.includes(normalizedTable)) {
@@ -592,8 +699,11 @@ app.get('/api/public/events/:id', async (req, res) => {
         closing_datetime: event.closing_datetime,
         eventImageUrl: event.event_image_url,
         venue: event.venue,
+        saleMode: event.sale_mode,
         checkoutPageId: event.checkout_page_id,
         checkoutPageTitle: event.checkout_page_title,
+        cartPaymentServiceId: event.cart_payment_service_id,
+        reservationExpiresInMinutes: event.reservation_expires_in_minutes,
         created_by: event.created_by
       },
       checkoutUrl,
@@ -614,6 +724,153 @@ app.get('/api/public/events/:id', async (req, res) => {
       success: false,
       error: 'Failed to fetch event',
       message: error.message
+    });
+  }
+});
+
+app.post('/api/public/events/:id/cart-checkout', async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.id, 10);
+    const { ticketIds, customer } = req.body || {};
+    const eventService = require('./services/eventService');
+    const userProfileService = require('./services/userProfileService');
+    const ticketService = require('./services/ticketService');
+
+    const event = await eventService.getEventById(eventId);
+    if (!event || event.status !== 'active') {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found',
+        message: 'Event does not exist or is not available'
+      });
+    }
+
+    if (event.sale_mode !== SALE_MODES.SHOPPING_CART) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid sales mode',
+        message: 'This event does not use the shopping cart flow'
+      });
+    }
+
+    const name = String(customer?.name || '').trim();
+    const email = String(customer?.email || '').trim().toLowerCase();
+    const phoneDigits = normalizePhoneDigits(customer?.phone);
+
+    if (!name || name.length < 2 || !isValidEmail(email) || phoneDigits.length !== 11) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid customer information',
+        message: 'Name, email, and a valid Brazilian phone number are required'
+      });
+    }
+
+    const normalizedTicketIds = Array.from(new Set((ticketIds || []).map((id) => parseInt(id, 10)).filter(Number.isInteger)));
+    if (!normalizedTicketIds.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid cart',
+        message: 'Select at least one ticket before continuing'
+      });
+    }
+
+    const profile = await userProfileService.getProfileByUserId(event.created_by);
+    const tenant = novaMoneyService.normalizeTenant(profile?.nova_money_tenant || '');
+    const apiKey = profile?.nova_money_api_key || '';
+
+    if (!tenant || !apiKey || !event.cart_payment_service_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nova.Money integration not configured',
+        message: 'The organizer has not configured shopping cart payments correctly'
+      });
+    }
+
+    const storedGroups = await prisma.ticketGroup.findMany({
+      where: { eventId: event.id }
+    });
+    const storedGroupMap = new Map(storedGroups.map((group) => [group.groupKey, group]));
+
+    const reservation = await ticketService.reserveTicketsForCart(
+      event.id,
+      normalizedTicketIds,
+      { name, email, phone: phoneDigits },
+      event.reservation_expires_in_minutes
+    );
+
+    try {
+      const itemsMap = new Map();
+      let total = 0;
+
+      for (const ticket of reservation.tickets) {
+        const groupKey = ticket.description || '';
+        const group = storedGroupMap.get(groupKey);
+        const productId = group?.product_id;
+
+        if (!productId) {
+          throw new Error(`Ticket group '${ticket.description}' is missing a product ID`);
+        }
+
+        total += parseFloat(ticket.price);
+
+        if (!itemsMap.has(productId)) {
+          itemsMap.set(productId, {
+            id: productId,
+            name: ticket.description || 'Ingresso',
+            quantity: 0,
+            value: parseFloat(ticket.price)
+          });
+        }
+
+        itemsMap.get(productId).quantity += 1;
+      }
+
+      const payload = {
+        payment_method: 'credit_card',
+        total: Number(total.toFixed(2)),
+        customer: {
+          email,
+          phone: phoneDigits,
+          name
+        },
+        items: Array.from(itemsMap.values()),
+        meta: {
+          userId: event.created_by,
+          eventId: event.id,
+          ticketIds: reservation.tickets.map((ticket) => ticket.id)
+        }
+      };
+
+      const novaCart = await novaMoneyService.createCart({
+        tenant,
+        apiKey,
+        cartPaymentServiceId: event.cart_payment_service_id,
+        payload
+      });
+
+      return res.status(201).json({
+        success: true,
+        cart: novaCart,
+        reservation: {
+          key: reservation.reservationKey,
+          reservedUntil: reservation.reservedUntil
+        }
+      });
+    } catch (error) {
+      await ticketService.releaseTicketReservations({
+        eventId: event.id,
+        ticketIds: reservation.tickets.map((ticket) => ticket.id),
+        reservationKey: reservation.reservationKey
+      });
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error creating shopping cart checkout:', error);
+    res.status(error.status || 500).json({
+      success: false,
+      error: 'Failed to create shopping cart checkout',
+      message: error.message,
+      details: error.data
     });
   }
 });
@@ -725,6 +982,7 @@ app.get('/api/events/:eventId/groups', requiresAuth, async (req, res) => {
         groupKey: group.groupKey,
         description: group.description,
         checkoutUrl: group.checkoutUrl || '',
+        productId: group.productId,
         ticketCount: group.ticketCount,
         availableCount: group.availableCount,
         price: parseFloat(group.price) || 0,
@@ -747,10 +1005,10 @@ app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) =
   try {
     const { eventId, groupId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    const { checkoutUrl } = req.body;
+    const { checkoutUrl, productId } = req.body;
     const ticketService = require('./services/ticketService');
 
-    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { checkoutUrl }, userId);
+    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { checkoutUrl, productId }, userId);
 
     res.json({
       success: true,
@@ -759,7 +1017,8 @@ app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) =
         eventId: updatedGroup.eventId,
         groupKey: updatedGroup.groupKey,
         description: updatedGroup.description,
-        checkoutUrl: updatedGroup.checkout_url || ''
+        checkoutUrl: updatedGroup.checkout_url || '',
+        productId: updatedGroup.product_id || null
       },
       message: 'Ticket group updated successfully',
       user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
