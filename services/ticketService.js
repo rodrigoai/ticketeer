@@ -1778,7 +1778,7 @@ class TicketService {
 
   /**
    * Get tickets for public event landing page (sales still open)
-   * Includes sold tickets to allow sold-out states to be shown.
+   * Excludes already sold tickets so bought seats do not appear publicly.
    * @param {number} eventId - Event ID to fetch tickets for
    * @returns {Array} Tickets with sales still open (privacy-protected)
    */
@@ -1789,9 +1789,19 @@ class TicketService {
       const tickets = await prisma.ticket.findMany({
         where: {
           eventId: parseInt(eventId),
-          OR: [
-            { salesEndDateTime: null },
-            { salesEndDateTime: { gt: currentDateTime } }
+          AND: [
+            {
+              OR: [
+                { order: null },
+                { order: '' }
+              ]
+            },
+            {
+              OR: [
+                { salesEndDateTime: null },
+                { salesEndDateTime: { gt: currentDateTime } }
+              ]
+            }
           ]
         },
         orderBy: { identificationNumber: 'asc' },
