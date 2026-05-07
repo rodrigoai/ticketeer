@@ -287,6 +287,7 @@ app.get('/api/events', requiresAuth, async (req, res) => {
     // Map database fields to frontend expectations
     const mappedEvents = events.map(event => ({
       id: event.id,
+      publicHash: event.public_hash,
       title: event.name,
       name: event.name,
       description: event.description,
@@ -409,6 +410,7 @@ app.post('/api/events', requiresAuth, async (req, res) => {
     // Map response to frontend format
     const mappedEvent = {
       id: newEvent.id,
+      publicHash: newEvent.public_hash,
       title: newEvent.name,
       name: newEvent.name,
       description: newEvent.description,
@@ -455,6 +457,7 @@ app.get('/api/events/:id', requiresAuth, async (req, res) => {
     // Map database fields to frontend expectations
     const mappedEvent = {
       id: event.id,
+      publicHash: event.public_hash,
       title: event.name,
       name: event.name,
       description: event.description,
@@ -555,6 +558,7 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
     // Map response to frontend format
     const mappedEvent = {
       id: updatedEvent.id,
+      publicHash: updatedEvent.public_hash,
       title: updatedEvent.name,
       name: updatedEvent.name,
       description: updatedEvent.description,
@@ -619,14 +623,14 @@ app.delete('/api/events/:id', requiresAuth, async (req, res) => {
 // ==========================================
 
 // Public event landing data (no auth required)
-app.get('/api/public/events/:id', async (req, res) => {
+app.get('/api/public/events/:hash', async (req, res) => {
   try {
-    const { id } = req.params;
+    const { hash } = req.params;
     const eventService = require('./services/eventService');
     const userProfileService = require('./services/userProfileService');
     const ticketService = require('./services/ticketService');
 
-    const event = await eventService.getEventById(id);
+    const event = await eventService.getEventByPublicHash(hash);
 
     if (!event || event.status !== 'active') {
       return res.status(404).json({
@@ -727,6 +731,7 @@ app.get('/api/public/events/:id', async (req, res) => {
       success: true,
       event: {
         id: event.id,
+        publicHash: event.public_hash,
         title: event.name,
         name: event.name,
         description: event.description,

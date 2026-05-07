@@ -1025,7 +1025,7 @@ import { useUser } from '@/composables/useUser'
 // Props and route
 const route = useRoute()
 const eventId = computed(() => route.params.id)
-const publicLandingUrl = computed(() => (eventId.value ? `/event/${eventId.value}` : ''))
+const publicLandingUrl = computed(() => (event.value?.publicHash ? `/event/${event.value.publicHash}` : ''))
 
 // Composables
 const { isLoading, error, get, post, put, delete: deleteApi } = useApi()

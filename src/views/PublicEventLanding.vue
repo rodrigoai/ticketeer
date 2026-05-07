@@ -754,7 +754,7 @@ const loadEvent = async () => {
   cartSuccessMessage.value = ''
 
   try {
-    const data = await get(`/api/public/events/${route.params.id}`)
+    const data = await get(`/api/public/events/${route.params.hash}`)
     event.value = data.event || null
     checkoutBaseUrl.value = data.checkoutBaseUrl || ''
     tickets.value = data.tickets || []

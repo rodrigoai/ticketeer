@@ -1,8 +1,22 @@
 const prisma = require('../config/prisma');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 class EventService {
+  async generatePublicHash() {
+    while (true) {
+      const candidate = crypto.randomBytes(8).toString('base64url').slice(0, 11);
+      const existingEvent = await prisma.event.findUnique({
+        where: { public_hash: candidate },
+        select: { id: true }
+      });
+
+      if (!existingEvent) {
+        return candidate;
+      }
+    }
+  }
   
   // Create a new event
   async createEvent(eventData) {
@@ -28,6 +42,7 @@ class EventService {
       const event = await prisma.event.create({
         data: {
           name,
+          public_hash: await this.generatePublicHash(),
           event_image_url,
           mobile_event_image_url,
           promotional_image,
@@ -108,6 +123,31 @@ class EventService {
       return event;
     } catch (error) {
       console.error('Error fetching event:', error);
+      throw new Error('Failed to fetch event: ' + error.message);
+    }
+  }
+
+  async getEventByPublicHash(publicHash) {
+    try {
+      const normalizedHash = String(publicHash || '').trim();
+
+      if (!normalizedHash) {
+        throw new Error('Event not found');
+      }
+
+      const event = await prisma.event.findUnique({
+        where: {
+          public_hash: normalizedHash
+        }
+      });
+
+      if (!event) {
+        throw new Error('Event not found');
+      }
+
+      return event;
+    } catch (error) {
+      console.error('Error fetching event by public hash:', error);
       throw new Error('Failed to fetch event: ' + error.message);
     }
   }

@@ -75,7 +75,7 @@ export const createRoutes = (app) => {
       // Note: No authGuard - confirmation pages should be public
     },
     {
-      path: '/event/:id',
+      path: '/event/:hash',
       name: 'PublicEventLanding',
       component: PublicEventLanding,
       props: true

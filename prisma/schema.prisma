@@ -11,6 +11,7 @@ datasource db {
 model Event {
   id                Int      @id @default(autoincrement())
   name              String
+  public_hash       String   @unique
   event_image_url   String?
   mobile_event_image_url String?
   promotional_image String?
