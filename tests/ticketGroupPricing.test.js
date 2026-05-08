@@ -171,4 +171,44 @@ describe('Ticket group tiered pricing', () => {
     }));
     expect(updatedGroup.pricingTiers).toHaveLength(2);
   });
+
+  test('updateTicketGroup stores timezone-less pricing tier datetimes using the app timezone', async () => {
+    mockPrisma.event.findFirst.mockResolvedValue({ id: 26, created_by: 'user-1' });
+    mockPrisma.ticketGroup.findFirst.mockResolvedValue({ id: 9, eventId: 26 });
+    mockPrisma.ticketGroup.update.mockImplementation(async ({ data }) => ({
+      id: 9,
+      pricingTiers: data.pricingTiers.create
+    }));
+
+    const updatedGroup = await ticketService.updateTicketGroup(26, 9, {
+      checkoutUrl: '',
+      productId: null,
+      color: '#94a3b8',
+      pricingTiers: [
+        {
+          name: 'Lote 1',
+          startDateTime: '2026-05-08T20:00',
+          endDateTime: '2026-05-08T23:30',
+          price: 80
+        }
+      ]
+    }, 'user-1');
+
+    expect(mockPrisma.ticketGroup.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        pricingTiers: expect.objectContaining({
+          create: [
+            expect.objectContaining({
+              name: 'Lote 1',
+              start_at: expect.any(Date),
+              end_at: expect.any(Date),
+              price: '80'
+            })
+          ]
+        })
+      })
+    }));
+    expect(updatedGroup.pricingTiers[0].start_at.toISOString()).toBe('2026-05-08T23:00:00.000Z');
+    expect(updatedGroup.pricingTiers[0].end_at.toISOString()).toBe('2026-05-09T02:30:00.000Z');
+  });
 });

@@ -241,6 +241,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
+import { formatDateTimeLocalInput, serializeDateTimeLocalInput } from '@/utils/dateTime'
 
 const SALE_MODES = {
   CHECKOUT: 'checkout',
@@ -312,7 +313,7 @@ const editEvent = async (event) => {
   Object.assign(eventForm, {
     title: event.title || event.name,
     description: event.description || '',
-    date: event.date ? formatDateForInput(event.date) : '',
+    date: formatDateTimeLocalInput(event.date),
     venue: event.venue || '',
     eventImageUrl: event.eventImageUrl || '',
     mobileEventImageUrl: event.mobileEventImageUrl || '',
@@ -367,12 +368,17 @@ const saveEvent = async () => {
   }
   
   try {
+    const payload = {
+      ...eventForm,
+      date: serializeDateTimeLocalInput(eventForm.date)
+    }
+
     if (isEditing.value) {
-      const result = await put(`/api/events/${currentEventId.value}`, eventForm)
+      const result = await put(`/api/events/${currentEventId.value}`, payload)
       console.log('Event updated:', result)
     } else {
       // Note: created_by is automatically set by the server from JWT token
-      const result = await post('/api/events', eventForm)
+      const result = await post('/api/events', payload)
       console.log('Event created:', result)
     }
     
@@ -492,13 +498,6 @@ const emptyStateLabel = computed(() => (showPastEvents.value ? 'No past events y
 const formatDate = (dateString) => {
   if (!dateString) return 'No date'
   return new Date(dateString).toLocaleString()
-}
-
-// Format date for input field (datetime-local)
-const formatDateForInput = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:MM
 }
 
 // Load events on component mount

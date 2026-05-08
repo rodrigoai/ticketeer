@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const { Decimal } = require('decimal.js');
 const { v4: uuidv4 } = require('uuid');
 const qrCodeHashUtil = require('../utils/qrCodeHash');
+const { parseDateTimeInput } = require('../utils/dateTime');
 
 class TicketService {
   _buildGroupKey(description, table) {
@@ -115,8 +116,8 @@ class TicketService {
 
     const normalizedTiers = pricingTiers.map((tier, index) => {
       const name = String(tier?.name || '').trim();
-      const startAt = tier?.startDateTime ? new Date(tier.startDateTime) : null;
-      const endAt = tier?.endDateTime ? new Date(tier.endDateTime) : null;
+      const startAt = tier?.startDateTime ? parseDateTimeInput(tier.startDateTime) : null;
+      const endAt = tier?.endDateTime ? parseDateTimeInput(tier.endDateTime) : null;
       const hasValidDates = startAt instanceof Date && !Number.isNaN(startAt.getTime()) && endAt instanceof Date && !Number.isNaN(endAt.getTime());
 
       if (!name) {
@@ -319,7 +320,7 @@ class TicketService {
             buyer: buyer || null,
             buyerDocument: buyerDocument || null,
             buyerEmail: buyerEmail || null,
-            salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null,
+            salesEndDateTime: salesEndDateTime ? parseDateTimeInput(salesEndDateTime) : null,
             qrCodeHash: this._generateStoredQrCodeHash()
           }
         });
@@ -404,7 +405,7 @@ class TicketService {
             buyer: buyer || null,
             buyerDocument: buyerDocument || null,
             buyerEmail: buyerEmail || null,
-            salesEndDateTime: salesEndDateTime ? new Date(salesEndDateTime) : null,
+            salesEndDateTime: salesEndDateTime ? parseDateTimeInput(salesEndDateTime) : null,
             qrCodeHash: this._generateStoredQrCodeHash()
           });
         }
@@ -531,11 +532,11 @@ class TicketService {
       if (buyer !== undefined) updateData.buyer = buyer || null;
       if (buyerDocument !== undefined) updateData.buyerDocument = buyerDocument || null;
       if (buyerEmail !== undefined) updateData.buyerEmail = buyerEmail || null;
-      if (salesEndDateTime !== undefined) updateData.salesEndDateTime = salesEndDateTime ? new Date(salesEndDateTime) : null;
+      if (salesEndDateTime !== undefined) updateData.salesEndDateTime = salesEndDateTime ? parseDateTimeInput(salesEndDateTime) : null;
       if (checkedIn !== undefined) updateData.checkedIn = Boolean(checkedIn);
-      if (checkedInAt !== undefined) updateData.checkedInAt = checkedInAt ? new Date(checkedInAt) : null;
+      if (checkedInAt !== undefined) updateData.checkedInAt = checkedInAt ? parseDateTimeInput(checkedInAt) : null;
       if (accessoryCollected !== undefined) updateData.accessoryCollected = Boolean(accessoryCollected);
-      if (accessoryCollectedAt !== undefined) updateData.accessoryCollectedAt = accessoryCollectedAt ? new Date(accessoryCollectedAt) : null;
+      if (accessoryCollectedAt !== undefined) updateData.accessoryCollectedAt = accessoryCollectedAt ? parseDateTimeInput(accessoryCollectedAt) : null;
       if (accessoryCollectedNotes !== undefined) updateData.accessoryCollectedNotes = accessoryCollectedNotes || null;
 
       const updatedTicket = await prisma.$transaction(async (tx) => {
@@ -642,9 +643,9 @@ class TicketService {
       if (buyerDocument !== undefined) updates.buyerDocument = buyerDocument || null;
       if (buyerEmail !== undefined) updates.buyerEmail = buyerEmail || null;
       if (checkedIn !== undefined) updates.checkedIn = Boolean(checkedIn);
-      if (checkedInAt !== undefined) updates.checkedInAt = checkedInAt ? new Date(checkedInAt) : null;
+      if (checkedInAt !== undefined) updates.checkedInAt = checkedInAt ? parseDateTimeInput(checkedInAt) : null;
       if (accessoryCollected !== undefined) updates.accessoryCollected = Boolean(accessoryCollected);
-      if (accessoryCollectedAt !== undefined) updates.accessoryCollectedAt = accessoryCollectedAt ? new Date(accessoryCollectedAt) : null;
+      if (accessoryCollectedAt !== undefined) updates.accessoryCollectedAt = accessoryCollectedAt ? parseDateTimeInput(accessoryCollectedAt) : null;
       if (accessoryCollectedNotes !== undefined) updates.accessoryCollectedNotes = accessoryCollectedNotes || null;
 
       // If no fields to update, return early

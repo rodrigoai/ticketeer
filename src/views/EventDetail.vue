@@ -1020,6 +1020,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
+import { formatDateTimeLocalInput, serializeDateTimeLocalInput } from '@/utils/dateTime'
 // REMOVED: import EasyDataTable
 
 // Props and route
@@ -1261,12 +1262,7 @@ const showBatchCreateModal = () => {
 }
 
 const toDateTimeLocalValue = (value) => {
-  if (!value) return ''
-  try {
-    return new Date(value).toISOString().slice(0, 16)
-  } catch (error) {
-    return ''
-  }
+  return formatDateTimeLocalInput(value)
 }
 
 const mapPricingTierForm = (tier = {}) => ({
@@ -1310,8 +1306,8 @@ const saveGroup = async () => {
       color: groupForm.color.trim(),
       pricingTiers: groupForm.pricingTiers.map((tier) => ({
         name: tier.name.trim(),
-        startDateTime: tier.startDateTime ? new Date(tier.startDateTime).toISOString() : '',
-        endDateTime: tier.endDateTime ? new Date(tier.endDateTime).toISOString() : '',
+        startDateTime: serializeDateTimeLocalInput(tier.startDateTime),
+        endDateTime: serializeDateTimeLocalInput(tier.endDateTime),
         price: tier.price
       }))
     })
@@ -1415,11 +1411,11 @@ const editTicket = (ticket) => {
     buyerDocument: ticket.buyerDocument || '',
     buyerEmail: ticket.buyerEmail || '',
     order: ticket.order || '',
-    salesEndDateTime: ticket.salesEndDateTime ? new Date(ticket.salesEndDateTime).toISOString().slice(0, 16) : '',
+    salesEndDateTime: formatDateTimeLocalInput(ticket.salesEndDateTime),
     checkedIn: ticket.checkedIn || false,
-    checkedInAt: ticket.checkedInAt ? new Date(ticket.checkedInAt).toISOString().slice(0, 16) : '',
+    checkedInAt: formatDateTimeLocalInput(ticket.checkedInAt),
     accessoryCollected: ticket.accessoryCollected || false,
-    accessoryCollectedAt: ticket.accessoryCollectedAt ? new Date(ticket.accessoryCollectedAt).toISOString().slice(0, 16) : '',
+    accessoryCollectedAt: formatDateTimeLocalInput(ticket.accessoryCollectedAt),
     accessoryCollectedNotes: ticket.accessoryCollectedNotes || ''
   })
   
@@ -1434,11 +1430,18 @@ const saveTicket = async () => {
   }
   
   try {
+    const payload = {
+      ...ticketForm,
+      salesEndDateTime: serializeDateTimeLocalInput(ticketForm.salesEndDateTime),
+      checkedInAt: serializeDateTimeLocalInput(ticketForm.checkedInAt),
+      accessoryCollectedAt: serializeDateTimeLocalInput(ticketForm.accessoryCollectedAt)
+    }
+
     let result
     if (isEditingTicket.value) {
-      result = await put(`/api/tickets/${currentTicketId.value}`, ticketForm)
+      result = await put(`/api/tickets/${currentTicketId.value}`, payload)
     } else {
-      result = await post(`/api/events/${eventId.value}/tickets`, ticketForm)
+      result = await post(`/api/events/${eventId.value}/tickets`, payload)
     }
     
     console.log('Ticket saved:', result)
@@ -1465,7 +1468,10 @@ const saveBatchTickets = async () => {
   }
   
   try {
-    const result = await post(`/api/events/${eventId.value}/tickets/batch`, batchForm)
+    const result = await post(`/api/events/${eventId.value}/tickets/batch`, {
+      ...batchForm,
+      salesEndDateTime: serializeDateTimeLocalInput(batchForm.salesEndDateTime)
+    })
     console.log('Batch tickets created:', result)
     
     // Close modal and reload
@@ -1568,7 +1574,7 @@ const resetBatchForm = () => {
 const onCheckedInChange = () => {
   if (ticketForm.checkedIn && !ticketForm.checkedInAt) {
     // If checking in and no date set, set current date/time
-    ticketForm.checkedInAt = new Date().toISOString().slice(0, 16)
+    ticketForm.checkedInAt = formatDateTimeLocalInput(new Date())
   } else if (!ticketForm.checkedIn) {
     // If unchecking, clear the check-in date
     ticketForm.checkedInAt = ''
@@ -1579,7 +1585,7 @@ const onCheckedInChange = () => {
 const onAccessoryCollectedChange = () => {
   if (ticketForm.accessoryCollected && !ticketForm.accessoryCollectedAt) {
     // If marking as collected and no date set, set current date/time
-    ticketForm.accessoryCollectedAt = new Date().toISOString().slice(0, 16)
+    ticketForm.accessoryCollectedAt = formatDateTimeLocalInput(new Date())
   } else if (!ticketForm.accessoryCollected) {
     // If unmarking, clear the pickup date
     ticketForm.accessoryCollectedAt = ''
@@ -1727,7 +1733,7 @@ const saveBulkEdit = async () => {
     
     // Handle checkedInAt
     if (bulkEditForm.checkedInAt) {
-      updates.checkedInAt = bulkEditForm.checkedInAt
+      updates.checkedInAt = serializeDateTimeLocalInput(bulkEditForm.checkedInAt)
     }
     
     // Handle accessoryCollected
@@ -1737,7 +1743,7 @@ const saveBulkEdit = async () => {
     
     // Handle accessoryCollectedAt
     if (bulkEditForm.accessoryCollectedAt) {
-      updates.accessoryCollectedAt = bulkEditForm.accessoryCollectedAt
+      updates.accessoryCollectedAt = serializeDateTimeLocalInput(bulkEditForm.accessoryCollectedAt)
     }
 
     // Handle accessoryCollectedNotes

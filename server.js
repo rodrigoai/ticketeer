@@ -389,8 +389,8 @@ app.post('/api/events', requiresAuth, async (req, res) => {
       event_image_url: eventImageUrl || null,
       mobile_event_image_url: mobileEventImageUrl || null,
       map_image: eventMapUrl || null,
-      opening_datetime: new Date(date),
-      closing_datetime: new Date(date), // For now, same as opening. TODO: Add separate closing time
+      opening_datetime: date,
+      closing_datetime: date, // For now, same as opening. TODO: Add separate closing time
       venue: venue,
       sale_mode: saleMode,
       checkout_page_id: saleMode === SALE_MODES.CHECKOUT ? (checkoutPageId || null) : null,
@@ -541,8 +541,8 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
       event_image_url: eventImageUrl || null,
       mobile_event_image_url: mobileEventImageUrl || null,
       map_image: eventMapUrl || null,
-      opening_datetime: date ? new Date(date) : undefined,
-      closing_datetime: date ? new Date(date) : undefined, // TODO: Add separate closing time
+      opening_datetime: date || undefined,
+      closing_datetime: date || undefined, // TODO: Add separate closing time
       venue: venue,
       sale_mode: saleMode,
       checkout_page_id: saleMode === SALE_MODES.CHECKOUT ? (checkoutPageId || null) : null,

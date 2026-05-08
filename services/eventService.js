@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { parseDateTimeInput } = require('../utils/dateTime');
 
 class EventService {
   async generatePublicHash() {
@@ -46,8 +47,8 @@ class EventService {
           event_image_url,
           mobile_event_image_url,
           promotional_image,
-          opening_datetime: new Date(opening_datetime),
-          closing_datetime: new Date(closing_datetime),
+          opening_datetime: parseDateTimeInput(opening_datetime),
+          closing_datetime: parseDateTimeInput(closing_datetime),
           map_image,
           description,
           venue,
@@ -197,8 +198,8 @@ class EventService {
           event_image_url,
           mobile_event_image_url,
           promotional_image,
-          opening_datetime: opening_datetime ? new Date(opening_datetime) : undefined,
-          closing_datetime: closing_datetime ? new Date(closing_datetime) : undefined,
+          opening_datetime: opening_datetime ? parseDateTimeInput(opening_datetime) : undefined,
+          closing_datetime: closing_datetime ? parseDateTimeInput(closing_datetime) : undefined,
           map_image,
           description,
           venue,
