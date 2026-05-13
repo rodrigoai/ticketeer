@@ -183,7 +183,7 @@
         </div>
 
         <div class="overflow-x-auto">
-          <table class="min-w-full caption-bottom text-left text-sm text-slate-600">
+          <table class="w-full min-w-[900px] table-fixed caption-bottom text-left text-sm text-slate-600">
             <thead class="border-b bg-slate-50 text-slate-500 uppercase text-[0.65rem] tracking-[0.4em]">
               <tr>
                 <th class="px-5 py-3 w-10 text-center">
@@ -194,33 +194,51 @@
                     class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                   >
                 </th>
-                <th @click="sortBy('checkedIn')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
-                  Status <i v-if="sortKey === 'checkedIn'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                <th class="w-24 px-4 py-3 font-semibold whitespace-nowrap">
+                  <div class="flex items-center justify-center gap-3 tracking-normal">
+                    <button
+                      type="button"
+                      class="text-slate-500 transition hover:text-slate-900"
+                      @click="sortBy('checkedIn')"
+                      title="Sort by check-in status"
+                    >
+                      <span class="sr-only">Sort by check-in status</span>
+                      <i class="fas fa-check-circle"></i>
+                      <i v-if="sortKey === 'checkedIn'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="text-slate-500 transition hover:text-slate-900"
+                      @click="sortBy('accessoryCollected')"
+                      title="Sort by kit status"
+                    >
+                      <span class="sr-only">Sort by kit status</span>
+                      <i class="fas fa-box"></i>
+                      <i v-if="sortKey === 'accessoryCollected'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                    </button>
+                  </div>
                 </th>
-                <th @click="sortBy('accessoryCollected')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
-                  Kit <i v-if="sortKey === 'accessoryCollected'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                </th>
-                <th @click="sortBy('identificationNumber')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                <th @click="sortBy('identificationNumber')" class="w-24 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
                   # <i v-if="sortKey === 'identificationNumber'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
                 </th>
                 <th @click="sortBy('description')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
                   Description <i v-if="sortKey === 'description'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
                 </th>
-                <th @click="sortBy('table')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                <th @click="sortBy('table')" class="w-24 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
                   Table <i v-if="sortKey === 'table'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
                 </th>
-                <th @click="sortBy('order')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                <th @click="sortBy('order')" class="w-36 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
                   Order <i v-if="sortKey === 'order'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
                 </th>
-                <th @click="sortBy('buyer')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                <th @click="sortBy('buyer')" class="w-56 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
                   Buyer <i v-if="sortKey === 'buyer'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
                 </th>
-                <th class="px-5 py-3 font-semibold text-right">Actions</th>
+                <th class="w-32 px-5 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr v-if="isLoadingTickets">
-                <td colspan="9" class="px-5 py-12 text-center text-slate-500">
+                <td colspan="8" class="px-5 py-12 text-center text-slate-500">
                   <div class="inline-flex items-center gap-2">
                     <span class="w-4 h-4 rounded-full border-2 border-slate-500 border-t-transparent animate-spin"></span>
                     Loading tickets...
@@ -228,7 +246,7 @@
                 </td>
               </tr>
               <tr v-else-if="sortedTickets.length === 0">
-                <td colspan="9" class="px-5 py-12 text-center text-slate-500">
+                <td colspan="8" class="px-5 py-12 text-center text-slate-500">
                   {{ tickets.length === 0 ? 'No tickets yet. Create your first ticket for this event!' : 'No tickets found matching your search.' }}
                 </td>
               </tr>
@@ -246,21 +264,21 @@
                     class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                   >
                 </td>
-                <td class="px-5 py-4 text-center">
-                  <span v-if="ticket.checkedIn" class="text-emerald-500" title="Checked In">
-                    <i class="fas fa-check-circle text-lg"></i>
-                  </span>
-                  <span v-else class="text-slate-200" title="Not Checked In">
-                    <i class="far fa-circle text-lg"></i>
-                  </span>
-                </td>
-                <td class="px-5 py-4 text-center">
-                  <span v-if="ticket.accessoryCollected" class="text-sky-500" title="Kit Picked Up">
-                    <i class="fas fa-box text-lg"></i>
-                  </span>
-                  <span v-else class="text-slate-200" title="Kit Not Picked Up">
-                    <i class="fas fa-box text-lg opacity-30"></i>
-                  </span>
+                <td class="px-4 py-4">
+                  <div class="flex items-center justify-center gap-3">
+                    <span v-if="ticket.checkedIn" class="text-emerald-500" title="Checked In">
+                      <i class="fas fa-check-circle text-lg"></i>
+                    </span>
+                    <span v-else class="text-slate-200" title="Not Checked In">
+                      <i class="far fa-circle text-lg"></i>
+                    </span>
+                    <span v-if="ticket.accessoryCollected" class="text-sky-500" title="Kit Picked Up">
+                      <i class="fas fa-box text-lg"></i>
+                    </span>
+                    <span v-else class="text-slate-200" title="Kit Not Picked Up">
+                      <i class="fas fa-box text-lg opacity-30"></i>
+                    </span>
+                  </div>
                 </td>
                 <td class="px-5 py-4">
                   <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -287,9 +305,9 @@
                   </a>
                   <span v-else class="text-slate-400">-</span>
                 </td>
-                <td class="px-5 py-4">
-                  <p class="font-semibold text-slate-900">{{ ticket.buyer || '-' }}</p>
-                  <p class="text-xs text-slate-500">{{ ticket.buyerEmail || '' }}</p>
+                <td class="min-w-0 px-5 py-4">
+                  <p class="truncate font-semibold text-slate-900" :title="ticket.buyer || ''">{{ ticket.buyer || '-' }}</p>
+                  <p class="truncate text-xs text-slate-500" :title="ticket.buyerEmail || ''">{{ ticket.buyerEmail || '' }}</p>
                 </td>
                 <td class="px-5 py-4">
                   <div class="flex justify-end gap-1.5">
