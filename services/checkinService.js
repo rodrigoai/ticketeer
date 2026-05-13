@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const qrCodeHashUtil = require('../utils/qrCodeHash');
+const ticketQrLookupService = require('./ticketQrLookupService');
 
 class CheckinService {
   
@@ -15,8 +16,7 @@ class CheckinService {
         throw new Error('Invalid hash format');
       }
 
-      const ticket = await prisma.ticket.findUnique({
-        where: { qrCodeHash: hash },
+      const ticket = await ticketQrLookupService.findTicketByHash(hash, {
         include: {
           event: {
             select: {

@@ -193,6 +193,7 @@ class OrderService {
           updatedTickets.push({
             id: updatedTicket.id,
             eventId: updatedTicket.eventId, // Include eventId for QR code generation
+            qrCodeHash: updatedTicket.qrCodeHash,
             identificationNumber: updatedTicket.identificationNumber,
             buyer: updatedTicket.buyer,
             buyerDocument: cpfValidator.format(updatedTicket.buyerDocument),

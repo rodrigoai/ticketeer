@@ -204,6 +204,7 @@ class TicketService {
             {
               id: ticketWithBuyerInfo.id,
               eventId: ticketsToUpdate[0].eventId,
+              qrCodeHash: ticketWithBuyerInfo.qrCodeHash,
               identificationNumber: ticketWithBuyerInfo.identificationNumber,
               buyer: ticketWithBuyerInfo.buyer,
               buyerEmail: ticketWithBuyerInfo.buyerEmail

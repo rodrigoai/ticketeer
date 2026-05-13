@@ -337,6 +337,127 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       expect(checkinResult.ticket.checkedIn).toBe(true);
       expect(checkinResult.ticket.checkedInAt).toBeInstanceOf(Date);
     });
+
+    test('sends stored QR hash for tickets that already have one', async () => {
+      const userId = 'auth0|testuser123';
+      const orderId = 'ORDER-STORED-QR';
+      const storedQrCodeHash = '0123456789abcdef0123456789abcdef';
+      const customer = {
+        name: 'Stored Hash Buyer',
+        identification: '123.456.789-09',
+        email: 'stored@example.com'
+      };
+      const mockTicket = {
+        id: 77,
+        identificationNumber: 12,
+        eventId: 1,
+        table: null,
+        order: null,
+        qrCodeHash: storedQrCodeHash,
+        event: {
+          id: 1,
+          created_by: userId,
+          name: 'Stored Hash Event',
+          venue: 'Main Hall',
+          opening_datetime: new Date('2026-06-01T20:00:00.000Z')
+        }
+      };
+
+      const webhookPayload = {
+        payload: {
+          id: orderId,
+          customer,
+          meta: {
+            eventId: encodeMeta(1)
+          },
+          items: [{ quantity: 1 }]
+        }
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (callback) => {
+        return await callback({
+          ticket: {
+            findMany: jest.fn().mockResolvedValue([mockTicket]),
+            update: jest.fn().mockImplementation(({ data }) => Promise.resolve({
+              ...mockTicket,
+              ...data
+            }))
+          }
+        });
+      });
+
+      const result = await ticketService.processCheckoutWebhook(webhookPayload, userId);
+
+      expect(result.success).toBe(true);
+      expect(emailService.sendTicketQrCodeEmail).toHaveBeenCalledWith(
+        customer.email,
+        expect.objectContaining({
+          id: mockTicket.id,
+          qrCodeHash: storedQrCodeHash
+        }),
+        expect.any(Object),
+        userId
+      );
+    });
+
+    test('accepts legacy deterministic QR hashes already sent by email', async () => {
+      const userId = 'auth0|testuser123';
+      const legacyHash = qrCodeHashUtil.generateQrCodeHash(userId, 1, 88);
+      const storedQrCodeHash = 'fedcba9876543210fedcba9876543210';
+      const event = {
+        id: 1,
+        name: 'Legacy QR Event',
+        venue: 'Main Hall',
+        opening_datetime: new Date('2026-06-01T20:00:00.000Z'),
+        closing_datetime: new Date('2026-06-02T02:00:00.000Z'),
+        created_by: userId
+      };
+      const ticket = {
+        id: 88,
+        identificationNumber: 3,
+        eventId: event.id,
+        description: 'General Admission',
+        location: null,
+        table: null,
+        price: '100',
+        order: 'ORDER-LEGACY',
+        buyer: 'Legacy Buyer',
+        buyerDocument: '12345678909',
+        buyerEmail: 'legacy@example.com',
+        checkedIn: false,
+        checkedInAt: null,
+        qrCodeHash: storedQrCodeHash,
+        event
+      };
+
+      mockPrisma.ticket.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.ticket.findUnique.mockResolvedValueOnce(ticket);
+      mockPrisma.ticket.findMany.mockResolvedValueOnce([{
+        id: ticket.id,
+        eventId: ticket.eventId,
+        qrCodeHash: ticket.qrCodeHash,
+        event: {
+          created_by: userId
+        }
+      }]);
+      mockPrisma.ticket.update
+        .mockImplementationOnce(({ data }) => Promise.resolve({
+          ...ticket,
+          checkedIn: data.checkedIn,
+          checkedInAt: data.checkedInAt
+        }));
+
+      const checkinResult = await CheckinService.processCheckin(legacyHash);
+
+      expect(mockPrisma.ticket.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+        where: { qrCodeHash: legacyHash }
+      }));
+      expect(mockPrisma.ticket.findMany).toHaveBeenCalled();
+      expect(mockPrisma.ticket.update).toHaveBeenCalledTimes(1);
+      expect(checkinResult.success).toBe(true);
+      expect(checkinResult.ticket.id).toBe(ticket.id);
+      expect(checkinResult.ticket.checkedIn).toBe(true);
+    });
   });
 
   describe('processCheckoutWebhook - Multi-Ticket Purchase', () => {
