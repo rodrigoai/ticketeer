@@ -113,8 +113,20 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve Vue.js SPA built files
-app.use(express.static(path.join(__dirname, 'dist')));
+// Serve Vue.js SPA built files. The HTML entrypoint should always be
+// revalidated after deploys, while hashed assets can be cached long-term.
+app.use(express.static(path.join(__dirname, 'dist'), {
+  setHeaders: (res, filePath) => {
+    if (path.basename(filePath) === 'index.html') {
+      res.setHeader('Cache-Control', 'no-cache');
+      return;
+    }
+
+    if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -2018,6 +2030,14 @@ app.get('*', (req, res, next) => {
       message: 'The requested API endpoint does not exist'
     });
   }
+
+  // Missing static assets should stay missing. Returning index.html for an old
+  // hashed JS/CSS asset causes browsers to reject it with a strict MIME error.
+  if (path.extname(req.path)) {
+    return res.status(404).type('text/plain').send('Static asset not found');
+  }
+
+  res.setHeader('Cache-Control', 'no-cache');
 
   // Serve the Vue SPA index.html for all routes (including /confirmation/:hash)
   // Vue Router will handle client-side routing
