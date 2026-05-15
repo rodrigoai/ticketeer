@@ -206,6 +206,64 @@ describe('Buyer Confirmation Feature Tests', () => {
       expect(url).toContain('/confirmation/');
     });
 
+    test('should generate scoped confirmation hash for an order and event', async () => {
+      const orderId = 'ORDER-SCOPED-TEST';
+      const eventId = 29;
+      const userId = 'auth0|organizer';
+
+      mockPrisma.ticket.findMany.mockResolvedValue([
+        {
+          id: 1,
+          order: orderId,
+          event: {
+            id: eventId,
+            created_by: userId
+          }
+        },
+        {
+          id: 2,
+          order: orderId,
+          event: {
+            id: eventId,
+            created_by: userId
+          }
+        }
+      ]);
+
+      const hash = await orderService.getConfirmationHashByOrderId(orderId, userId, eventId);
+
+      expect(mockPrisma.ticket.findMany).toHaveBeenCalledWith({
+        where: { order: orderId },
+        include: {
+          event: {
+            select: {
+              id: true,
+              created_by: true
+            }
+          }
+        }
+      });
+      expect(orderHash.verifyHash(hash, `${orderId}:${eventId}`)).toBe(true);
+      expect(orderHash.verifyHash(hash, orderId)).toBe(false);
+    });
+
+    test('should reject confirmation hash requests for events owned by another user', async () => {
+      mockPrisma.ticket.findMany.mockResolvedValue([
+        {
+          id: 1,
+          order: 'ORDER-ACCESS-TEST',
+          event: {
+            id: 29,
+            created_by: 'auth0|another-user'
+          }
+        }
+      ]);
+
+      await expect(
+        orderService.getConfirmationHashByOrderId('ORDER-ACCESS-TEST', 'auth0|organizer', 29)
+      ).rejects.toThrow('Access denied');
+    });
+
     test('should validate buyers data correctly', () => {
       const validBuyers = [
         {

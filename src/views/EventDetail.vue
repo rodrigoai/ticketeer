@@ -293,16 +293,16 @@
                   {{ ticket.table || '-' }}
                 </td>
                 <td class="px-5 py-4">
-                  <a 
+                  <button
                     v-if="ticket.order"
-                    :href="getCachedConfirmationUrl(ticket.order)" 
-                    target="_blank" 
+                    type="button"
                     class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 border border-sky-100 hover:bg-sky-100 transition shadow-sm"
                     title="Open confirmation page"
+                    @click="openConfirmationPage(ticket.order)"
                   >
                     <i class="fas fa-external-link-alt text-[10px]"></i>
                     {{ ticket.order }}
-                  </a>
+                  </button>
                   <span v-else class="text-slate-400">-</span>
                 </td>
                 <td class="min-w-0 px-5 py-4">
@@ -1228,13 +1228,6 @@ const loadTickets = async () => {
     
     tickets.value = data.tickets || []
     error.value = null
-    
-    // Preload confirmation URLs for all orders in background
-    if (tickets.value.length > 0) {
-      preloadConfirmationUrls().catch(err => {
-        console.debug('Some confirmation URLs could not be preloaded:', err)
-      })
-    }
   } catch (err) {
     console.error('Failed to load tickets:', err)
     tickets.value = []
@@ -1620,59 +1613,44 @@ const formatDate = (dateString) => {
 const confirmationUrlCache = ref({})
 const pendingUrls = new Set() // Track URLs being generated to prevent duplicate requests
 
-// Generate confirmation URL synchronously without API calls
-const getConfirmationUrl = (orderId) => {
-  if (!orderId) return '#'
-  
-  // Check cache first
+const openConfirmationPage = async (orderId) => {
+  if (!orderId || pendingUrls.has(orderId)) return
+
   if (confirmationUrlCache.value[orderId]) {
-    return confirmationUrlCache.value[orderId]
+    window.open(confirmationUrlCache.value[orderId], '_blank', 'noopener')
+    return
   }
-  
-  // Return a simple base64 encoded URL (no API call needed for display)
-  const baseUrl = window.location.origin
-  const encodedId = btoa(orderId).replace(/[+/=]/g, '')
-  return `${baseUrl}/confirmation/${encodedId}`
-}
 
-// Preload confirmation URLs for all orders in the tickets list
-const preloadConfirmationUrls = async () => {
-  // Get unique order IDs from tickets
-  const orderIds = [...new Set(tickets.value.map(t => t.order).filter(Boolean))]
-  
-  // Only fetch URLs that aren't cached and aren't already being fetched
-  const uncachedOrders = orderIds.filter(orderId => 
-    !confirmationUrlCache.value[orderId] && !pendingUrls.has(orderId)
-  )
-  
-  if (uncachedOrders.length === 0) return
-  
-  // Mark these orders as pending
-  uncachedOrders.forEach(orderId => pendingUrls.add(orderId))
-  
-  // Fetch all hashes in parallel with error handling per order
-  await Promise.allSettled(
-    uncachedOrders.map(async (orderId) => {
-      try {
-        const response = await get(`/api/orders/${orderId}/confirmation-hash?eventId=${eventId.value}`)
-        const baseUrl = window.location.origin
-        confirmationUrlCache.value[orderId] = `${baseUrl}/confirmation/${response.hash}`
-      } catch (error) {
-        // Silently use fallback URL on error
-        const baseUrl = window.location.origin
-        const encodedId = btoa(orderId).replace(/[+/=]/g, '')
-        confirmationUrlCache.value[orderId] = `${baseUrl}/confirmation/${encodedId}`
-      } finally {
-        pendingUrls.delete(orderId)
-      }
-    })
-  )
-}
+  const targetWindow = window.open('', '_blank')
+  if (targetWindow) {
+    targetWindow.opener = null
+    targetWindow.document.write('<!doctype html><title>Opening confirmation...</title><p>Opening confirmation...</p>')
+    targetWindow.document.close()
+  }
+  pendingUrls.add(orderId)
 
-// Get cached or computed confirmation URL for display
-const getCachedConfirmationUrl = (orderId) => {
-  if (!orderId) return '#'
-  return getConfirmationUrl(orderId)
+  try {
+    const response = await get(`/api/orders/${orderId}/confirmation-hash?eventId=${eventId.value}`)
+    if (!response?.hash) {
+      throw new Error('Confirmation hash was not returned')
+    }
+
+    const confirmationUrl = `${window.location.origin}/confirmation/${response.hash}`
+    confirmationUrlCache.value[orderId] = confirmationUrl
+
+    if (targetWindow) {
+      targetWindow.location.href = confirmationUrl
+    } else {
+      window.open(confirmationUrl, '_blank', 'noopener')
+    }
+  } catch (err) {
+    if (targetWindow) {
+      targetWindow.close()
+    }
+    error.value = err?.message || 'Failed to open confirmation page'
+  } finally {
+    pendingUrls.delete(orderId)
+  }
 }
 
 // Toggle ticket selection
