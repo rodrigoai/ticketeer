@@ -17,7 +17,7 @@ class QrCodeService {
         dark: '#000000',  // Black dots
         light: '#FFFFFF'  // White background
       },
-      width: 200  // 200px width
+      width: 360
     };
   }
 

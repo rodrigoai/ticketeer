@@ -488,7 +488,7 @@ Equipe Nova Money
         .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px; }
         .ticket-info { background: #e9ecef; padding: 20px; border-radius: 8px; margin: 20px 0; }
         .qr-section { background: #fff; border: 2px solid #007bff; padding: 25px; border-radius: 10px; text-align: center; margin: 25px 0; }
-        .qr-code { max-width: 200px; height: auto; margin: 15px 0; }
+        .qr-code { max-width: 280px; width: 100%; height: auto; margin: 15px 0; }
         .important { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
         .hash-code { font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 5px; word-break: break-all; }
         .ticket-number { font-size: 24px; font-weight: bold; color: #007bff; }

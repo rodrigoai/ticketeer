@@ -18,7 +18,7 @@
         </div>
 
         <!-- Camera Preview (if using device camera) -->
-        <div v-if="showCamera" class="rounded-3xl overflow-hidden shadow-lg border border-slate-100 relative bg-black aspect-[4/3]">
+        <div v-if="showCamera" class="scanner-frame rounded-3xl overflow-hidden shadow-lg border border-slate-100 relative bg-black">
           <div id="qr-reader" class="absolute inset-0 w-full h-full"></div>
         </div>
 
@@ -94,6 +94,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Html5Qrcode } from 'html5-qrcode'
+import { createQrScannerConfig, qrScannerOptions } from '@/utils/qrScanner'
 
 export default {
   name: 'QRCodeCheckin',
@@ -126,13 +127,13 @@ export default {
         await new Promise(resolve => setTimeout(resolve, 100))
 
         // Initialize QR Code scanner
-        html5QrCode = new Html5Qrcode("qr-reader")
+        html5QrCode = new Html5Qrcode("qr-reader", qrScannerOptions)
         
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } }
+        const config = createQrScannerConfig()
         
         // Request camera permission and start scanning
         await html5QrCode.start(
-          { facingMode: "environment" },
+          config.videoConstraints,
           config,
           onScanSuccess,
           onScanError
@@ -253,6 +254,17 @@ export default {
 <style scoped>
 .animate-fade-in {
   animation: fadeIn 0.3s ease-in-out;
+}
+
+.scanner-frame {
+  height: min(68vh, 560px);
+  min-height: 360px;
+}
+
+#qr-reader :deep(video) {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
 }
 
 @keyframes fadeIn {
