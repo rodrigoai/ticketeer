@@ -8,6 +8,7 @@ import TicketCheckin from '@/views/TicketCheckin.vue'
 import TicketAccessoryPickup from '@/views/TicketAccessoryPickup.vue'
 import QRCodeCheckin from '@/views/QRCodeCheckin.vue'
 import QRCodeAccessoryPickup from '@/views/QRCodeAccessoryPickup.vue'
+import TicketSearchCheckin from '@/views/TicketSearchCheckin.vue'
 import PublicEventLanding from '@/views/PublicEventLanding.vue'
 import LandingPage from '@/views/LandingPage.vue'
 
@@ -52,6 +53,13 @@ export const createRoutes = (app) => {
       path: '/events/:id',
       name: 'EventDetail',
       component: EventDetail,
+      beforeEnter: authGuard,
+      props: true
+    },
+    {
+      path: '/events/:id/checkin-search',
+      name: 'TicketSearchCheckin',
+      component: TicketSearchCheckin,
       beforeEnter: authGuard,
       props: true
     },

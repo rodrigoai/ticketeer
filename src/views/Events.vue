@@ -104,6 +104,12 @@
             >
               <i class="fas fa-ticket-alt mr-2"></i> Manage Tickets
             </router-link>
+            <router-link
+              :to="`/events/${event.id}/checkin-search`"
+              class="inline-flex w-full items-center justify-center rounded-full border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              <i class="fas fa-search mr-2"></i>Search Check-in
+            </router-link>
             <div class="flex gap-2">
               <button class="flex-1 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="editEvent(event)">
                 <i class="fas fa-edit mr-2"></i>Edit

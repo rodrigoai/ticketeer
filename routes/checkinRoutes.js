@@ -131,6 +131,79 @@ function createCheckinRoutes({ requiresAuth }) {
     }
   });
 
+  router.get('/events/:eventId/checkin/search', requiresAuth, async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const { query = '', field = 'any' } = req.query;
+      const userId = getAuthenticatedUserId(req);
+
+      const result = await checkinService.searchTicketsForCheckin(eventId, userId, {
+        query,
+        field
+      });
+
+      res.json({
+        ...result,
+        user: getAuthenticatedUserLabel(req)
+      });
+    } catch (error) {
+      console.error('Error searching tickets for check-in:', error);
+
+      if (isAccessDeniedError(error)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Event not found',
+          message: 'Event not found or you do not have access to it'
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to search tickets for check-in',
+        message: error.message
+      });
+    }
+  });
+
+  router.post('/events/:eventId/checkin/tickets', requiresAuth, async (req, res) => {
+    try {
+      const { eventId } = req.params;
+      const { ticketIds } = req.body;
+      const userId = getAuthenticatedUserId(req);
+
+      if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          message: 'ticketIds array is required and must not be empty'
+        });
+      }
+
+      const result = await checkinService.processSelectedTicketCheckins(eventId, userId, ticketIds);
+
+      res.json({
+        ...result,
+        user: getAuthenticatedUserLabel(req)
+      });
+    } catch (error) {
+      console.error('Error processing selected ticket check-ins:', error);
+
+      if (isAccessDeniedError(error) || isTicketAccessDeniedError(error)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Ticket not found',
+          message: 'Event or ticket not found, or you do not have access'
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to process selected ticket check-ins',
+        message: error.message
+      });
+    }
+  });
+
   router.get('/tickets/:ticketId/checkin-hash', requiresAuth, async (req, res) => {
     try {
       const { ticketId } = req.params;

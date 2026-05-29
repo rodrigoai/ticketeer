@@ -46,6 +46,18 @@
           <router-link :to="`/events`" class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
             <i class="fas fa-arrow-left"></i> Back
           </router-link>
+          <router-link
+            :to="`/events/${event.id}/checkin-search`"
+            class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition"
+          >
+            <i class="fas fa-search text-xs"></i> Search Check-in
+          </router-link>
+          <router-link
+            to="/qr-checkin"
+            class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition"
+          >
+            <i class="fas fa-qrcode text-xs"></i> QR Scanner
+          </router-link>
         </div>
       </header>
 
