@@ -1,5 +1,26 @@
 const { SESClient, SendEmailCommand, SendRawEmailCommand } = require('@aws-sdk/client-ses');
 const qrCodeService = require('./qrCodeService');
+const { DEFAULT_APP_TIME_ZONE } = require('../utils/dateTime');
+
+function formatEventDateTimeForEmail(value, options = {}) {
+  if (!value) return options.fallback || 'A definir';
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return options.fallback || 'A definir';
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: process.env.APP_TIMEZONE || DEFAULT_APP_TIME_ZONE,
+    weekday: options.weekday,
+    year: 'numeric',
+    month: options.month || '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
 
 class EmailService {
   constructor() {
@@ -345,7 +366,7 @@ Ingresso #${ticketData.identificationNumber}
 Portador: ${ticketData.buyer}
 Evento: ${eventData.name}
 Local: ${eventData.venue || 'A definir'}
-Data: ${eventData.date ? new Date(eventData.date).toLocaleString('pt-BR') : 'A definir'}
+Data: ${formatEventDateTimeForEmail(eventData.date)}
 
 Código QR: ${qrCodeData.hash}
 
@@ -464,14 +485,11 @@ Equipe Nova Money
    * @returns {string} - HTML email content
    */
   generateQrCodeEmailTemplate({ eventName, eventVenue, eventDate, ticketNumber, buyerName, qrCodeDataUrl, qrCodeHash }) {
-    const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString('pt-BR', {
+    const formattedDate = formatEventDateTimeForEmail(eventDate, {
+      fallback: 'Data a definir',
       weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }) : 'Data a definir';
+      month: 'long'
+    });
 
     return `
 <!DOCTYPE html>

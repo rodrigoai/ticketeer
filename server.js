@@ -1619,46 +1619,12 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
     const userId = req.auth.payload?.sub || req.auth.sub;
 
     const ticketService = require('./services/ticketService');
-    const emailService = require('./services/emailService');
-
-    // Get ticket details
-    const ticket = await ticketService.getTicketById(id, userId);
-
-    // Verify ticket has buyer information
-    if (!ticket.buyer || !ticket.buyerEmail) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot resend email',
-        message: 'Ticket must have buyer name and email information'
-      });
-    }
-
-    // Get event details
-    const eventService = require('./services/eventService');
-    const event = await eventService.getEventById(ticket.eventId, userId);
-
-    // Send QR code email
-    const emailResult = await emailService.sendTicketQrCodeEmail(
-      ticket.buyerEmail,
-      {
-        id: ticket.id,
-        identificationNumber: ticket.identificationNumber,
-        buyer: ticket.buyer,
-        description: ticket.description,
-        eventId: ticket.eventId
-      },
-      {
-        name: event.name,
-        venue: event.venue,
-        date: event.opening_datetime
-      },
-      userId
-    );
+    const emailResult = await ticketService.resendTicketEmail(id, userId);
 
     res.json({
       success: true,
       message: 'Email resent successfully',
-      email: ticket.buyerEmail,
+      email: emailResult.email,
       ticketId: parseInt(id),
       messageId: emailResult.messageId,
       user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
@@ -1667,7 +1633,8 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
     console.error('Error resending email:', error);
 
     if (error.message.includes('Ticket not found') ||
-      error.message.includes('access denied')) {
+      error.message.includes('access denied') ||
+      error.message.includes('access was denied')) {
       return res.status(404).json({
         success: false,
         error: 'Ticket not found',
@@ -1675,9 +1642,59 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
       });
     }
 
+    if (error.message.includes('buyer name and email information')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot resend email',
+        message: 'Ticket must have buyer name and email information'
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: 'Failed to resend email',
+      message: error.message
+    });
+  }
+});
+
+// Resend emails for selected tickets (JWT authenticated)
+app.post('/api/tickets/bulk-resend-email', requiresAuth, async (req, res) => {
+  try {
+    const { ticketIds } = req.body;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'ticketIds array is required and must not be empty'
+      });
+    }
+
+    const ticketService = require('./services/ticketService');
+    const result = await ticketService.resendTicketEmails(ticketIds, userId);
+
+    res.json({
+      success: true,
+      message: `${result.totalSent} ticket email(s) sent successfully`,
+      ...result,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error bulk resending ticket emails:', error);
+
+    if (error.message.includes('not found') || error.message.includes('access was denied')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'One or more tickets were not found or you do not have access to them'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to resend ticket emails',
       message: error.message
     });
   }

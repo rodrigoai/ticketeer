@@ -173,6 +173,14 @@
             <button class="inline-flex items-center gap-1.5 rounded-full bg-primary-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 transition shadow-sm" @click="showBulkEditModal">
               <i class="fas fa-edit"></i> Edit
             </button>
+            <button
+              class="inline-flex items-center gap-1.5 rounded-full bg-sky-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 transition shadow-sm disabled:opacity-60"
+              @click="resendSelectedEmails"
+              :disabled="isResending"
+              title="Resend ticket emails for selected tickets"
+            >
+              <i class="fas fa-envelope"></i> {{ isResending ? 'Sending...' : 'Resend Emails' }}
+            </button>
             <button class="inline-flex items-center gap-1.5 rounded-full bg-rose-500 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 transition shadow-sm" @click="confirmBulkDelete">
               <i class="fas fa-trash"></i> Delete
             </button>
@@ -1523,6 +1531,40 @@ const resendEmail = async (ticket) => {
     console.error('Failed to resend email:', err)
     error.value = err.message || 'Failed to resend email'
     alert(`Failed to resend email: ${err.message}`)
+  } finally {
+    isResending.value = false
+  }
+}
+
+// Resend email for selected tickets
+const resendSelectedEmails = async () => {
+  const count = selectedTicketIds.value.length
+
+  if (count === 0) {
+    return
+  }
+
+  if (!confirm(`Resend ticket emails for ${count} selected ticket(s)? Tickets without buyer name or email will be skipped.`)) {
+    return
+  }
+
+  try {
+    isResending.value = true
+    const result = await post('/api/tickets/bulk-resend-email', {
+      ticketIds: selectedTicketIds.value
+    })
+
+    if (result.success) {
+      const skippedMessage = result.totalSkipped ? ` ${result.totalSkipped} skipped.` : ''
+      const failedMessage = result.totalFailed ? ` ${result.totalFailed} failed.` : ''
+      alert(`${result.totalSent} email(s) sent.${skippedMessage}${failedMessage}`)
+    }
+
+    error.value = result.totalFailed ? 'Some ticket emails could not be resent' : null
+  } catch (err) {
+    console.error('Failed to resend selected emails:', err)
+    error.value = err.message || 'Failed to resend selected emails'
+    alert(`Failed to resend selected emails: ${err.message}`)
   } finally {
     isResending.value = false
   }

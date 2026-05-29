@@ -97,6 +97,45 @@ class TicketService {
     };
   }
 
+  _normalizeTicketIds(ticketIds) {
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      throw new Error('Ticket IDs array is required');
+    }
+
+    const normalizedTicketIds = Array.from(
+      new Set(ticketIds.map((id) => parseInt(id, 10)).filter(Number.isInteger))
+    );
+
+    if (normalizedTicketIds.length === 0) {
+      throw new Error('Ticket IDs array is required');
+    }
+
+    return normalizedTicketIds;
+  }
+
+  async _sendTicketQrCodeEmail(ticket, userId) {
+    const emailService = require('./emailService');
+
+    return emailService.sendTicketQrCodeEmail(
+      ticket.buyerEmail,
+      {
+        id: ticket.id,
+        identificationNumber: ticket.identificationNumber,
+        buyer: ticket.buyer,
+        buyerEmail: ticket.buyerEmail,
+        description: ticket.description,
+        eventId: ticket.eventId,
+        qrCodeHash: ticket.qrCodeHash
+      },
+      {
+        name: ticket.event.name,
+        venue: ticket.event.venue,
+        date: ticket.event.opening_datetime
+      },
+      userId
+    );
+  }
+
   _serializePricingTier(pricingTier) {
     if (!pricingTier) return null;
 
@@ -679,17 +718,7 @@ class TicketService {
    */
   async bulkDeleteTickets(ticketIds, userId) {
     try {
-      if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
-        throw new Error('Ticket IDs array is required');
-      }
-
-      const normalizedTicketIds = Array.from(
-        new Set(ticketIds.map((id) => parseInt(id, 10)).filter(Number.isInteger))
-      );
-
-      if (normalizedTicketIds.length === 0) {
-        throw new Error('Ticket IDs array is required');
-      }
+      const normalizedTicketIds = this._normalizeTicketIds(ticketIds);
 
       await prisma.$transaction(async (tx) => {
         const ownedTickets = await tx.ticket.findMany({
@@ -724,6 +753,106 @@ class TicketService {
       console.error('Error bulk deleting tickets:', error);
       throw new Error(`Failed to bulk delete tickets: ${error.message}`);
     }
+  }
+
+  /**
+   * Resend QR code emails for selected tickets.
+   */
+  async resendTicketEmails(ticketIds, userId) {
+    try {
+      const normalizedTicketIds = this._normalizeTicketIds(ticketIds);
+
+      const tickets = await prisma.ticket.findMany({
+        where: {
+          id: { in: normalizedTicketIds },
+          event: {
+            created_by: userId
+          }
+        },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+              venue: true,
+              opening_datetime: true,
+              created_by: true
+            }
+          }
+        },
+        orderBy: {
+          identificationNumber: 'asc'
+        }
+      });
+
+      if (tickets.length !== normalizedTicketIds.length) {
+        const ownedTicketIdSet = new Set(tickets.map((ticket) => ticket.id));
+        const invalidTicketIds = normalizedTicketIds.filter((id) => !ownedTicketIdSet.has(id));
+        throw new Error(`Some tickets were not found or access was denied: ${invalidTicketIds.join(', ')}`);
+      }
+
+      const successful = [];
+      const failed = [];
+      const skipped = [];
+
+      for (const ticket of tickets) {
+        if (!ticket.buyer || !ticket.buyerEmail) {
+          skipped.push({
+            ticketId: ticket.id,
+            identificationNumber: ticket.identificationNumber,
+            reason: 'Ticket must have buyer name and email information'
+          });
+          continue;
+        }
+
+        try {
+          const result = await this._sendTicketQrCodeEmail(ticket, userId);
+          successful.push({
+            ticketId: ticket.id,
+            identificationNumber: ticket.identificationNumber,
+            email: ticket.buyerEmail,
+            messageId: result.messageId || null
+          });
+        } catch (error) {
+          failed.push({
+            ticketId: ticket.id,
+            identificationNumber: ticket.identificationNumber,
+            email: ticket.buyerEmail,
+            error: error.message
+          });
+        }
+      }
+
+      return {
+        successful,
+        failed,
+        skipped,
+        totalSelected: normalizedTicketIds.length,
+        totalSent: successful.length,
+        totalFailed: failed.length,
+        totalSkipped: skipped.length
+      };
+    } catch (error) {
+      console.error('Error resending ticket emails:', error);
+      throw new Error(`Failed to resend ticket emails: ${error.message}`);
+    }
+  }
+
+  /**
+   * Resend QR code email for one ticket.
+   */
+  async resendTicketEmail(ticketId, userId) {
+    const result = await this.resendTicketEmails([ticketId], userId);
+
+    if (result.totalSkipped > 0) {
+      throw new Error(result.skipped[0].reason);
+    }
+
+    if (result.totalFailed > 0) {
+      throw new Error(result.failed[0].error);
+    }
+
+    return result.successful[0];
   }
 
   /**
