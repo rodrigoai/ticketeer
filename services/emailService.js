@@ -122,15 +122,21 @@ Equipe Nova Money
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirme suas informações</title>
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: white; padding: 30px; border: 1px solid #ddd; }
-        .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px; }
-        .btn { display: inline-block; background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-        .btn:hover { background: #0056b3; }
-        .info-box { background: #e9ecef; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; background: #f3f4f6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+        .header { background: #4338ca; color: #ffffff; padding: 34px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 28px; line-height: 1.2; }
+        .header p { margin: 10px 0 0; color: #e0e7ff; font-size: 16px; }
+        .content { background: #ffffff; padding: 30px; border: 1px solid #d1d5db; border-top: 0; }
+        .footer { background: #111827; padding: 20px; text-align: center; border-radius: 0 0 12px 12px; color: #d1d5db; font-size: 14px; }
+        .summary-box { background: #eef2ff; border: 2px solid #4338ca; padding: 22px; border-radius: 10px; margin: 24px 0; }
+        .summary-label { margin: 0 0 4px; color: #4338ca; font-size: 12px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; }
+        .summary-title { margin: 0 0 16px; color: #111827; font-size: 24px; line-height: 1.25; }
+        .summary-row { margin: 8px 0; color: #374151; font-size: 16px; }
+        .summary-value { color: #111827; font-weight: bold; }
+        .cta-wrap { text-align: center; margin: 30px 0 26px; }
+        .warning { background: #fffbeb; border: 1px solid #f59e0b; color: #78350f; padding: 16px; border-radius: 8px; margin: 24px 0; }
+        .fallback-link { word-break: break-all; background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -143,16 +149,21 @@ Equipe Nova Money
         <div class="content">
             <h2>Olá!</h2>
             
-            <p>Você acabou de comprar <strong>${totalTickets} ingresso(s)</strong> para o evento:</p>
-            <div class="info-box">
-                <h3>📅 ${eventName}</h3>
-                <p><strong>Pedido:</strong> ${orderId}</p>
+            <p>Você acabou de comprar ingressos e precisa confirmar os dados dos portadores para finalizar a emissão.</p>
+
+            <div class="summary-box">
+                <p class="summary-label">Evento</p>
+                <h3 class="summary-title">📅 ${eventName}</h3>
+                <p class="summary-row"><span>Pedido:</span> <span class="summary-value">${orderId}</span></p>
+                <p class="summary-row"><span>Ingressos:</span> <span class="summary-value">${totalTickets}</span></p>
             </div>
             
-            <p>Para finalizar sua compra, você precisa confirmar as informações dos portadores dos ingressos:</p>
+            <p>Use o botão abaixo para informar os dados de cada portador:</p>
             
-            <div style="text-align: center;">
-                <a href="${confirmationUrl}" class="btn">✅ Confirmar Informações</a>
+            <div class="cta-wrap">
+                <a href="${confirmationUrl}" style="display: inline-block; background: #111827; color: #ffffff !important; padding: 16px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; border: 2px solid #111827;">
+                    ✅ Confirmar informações
+                </a>
             </div>
             
             <div class="warning">
@@ -160,7 +171,7 @@ Equipe Nova Money
             </div>
             
             <p>Se você não conseguir clicar no botão acima, copie e cole este link no seu navegador:</p>
-            <p style="word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace;">
+            <p class="fallback-link">
                 ${confirmationUrl}
             </p>
         </div>

@@ -340,10 +340,10 @@
                       <i class="fas fa-edit"></i>
                     </button>
                     <button 
-                      v-if="ticket.buyer && ticket.buyerEmail" 
+                      v-if="canShowEmailAction(ticket)" 
                       class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-sky-600 hover:border-sky-200 hover:bg-sky-50 transition shadow-sm"
-                      @click="resendEmail(ticket)" 
-                      title="Resend email"
+                      @click="sendTicketEmailAction(ticket)" 
+                      :title="getEmailActionTitle(ticket)"
                       :disabled="isResending"
                     >
                       <i class="fas fa-envelope"></i>
@@ -1170,6 +1170,40 @@ const sortedTickets = computed(() => {
   return temp
 })
 
+const isTicketBuyerConfirmed = (ticket) => {
+  return Boolean(ticket?.buyer && ticket?.buyerDocument && ticket?.buyerEmail)
+}
+
+const getOrderTickets = (orderId, eventId) => {
+  if (!orderId) return []
+  return tickets.value.filter((ticket) => ticket.order === orderId && ticket.eventId === eventId)
+}
+
+const isOrderConfirmed = (orderId, eventId) => {
+  const orderTickets = getOrderTickets(orderId, eventId)
+  return orderTickets.length > 0 && orderTickets.every(isTicketBuyerConfirmed)
+}
+
+const canSendConfirmationEmail = (ticket) => {
+  return Boolean(ticket?.order && ticket?.buyerEmail && !isOrderConfirmed(ticket.order, ticket.eventId))
+}
+
+const canResendTicketEmail = (ticket) => {
+  return isTicketBuyerConfirmed(ticket)
+}
+
+const canShowEmailAction = (ticket) => {
+  return canSendConfirmationEmail(ticket) || canResendTicketEmail(ticket)
+}
+
+const getEmailActionTitle = (ticket) => {
+  if (canSendConfirmationEmail(ticket)) {
+    return 'Resend confirmation email'
+  }
+
+  return 'Resend ticket email'
+}
+
 const sortBy = (key) => {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -1597,6 +1631,43 @@ const resendEmail = async (ticket) => {
   } finally {
     isResending.value = false
   }
+}
+
+const resendConfirmationEmail = async (ticket) => {
+  if (!ticket.buyerEmail) {
+    error.value = 'Ticket does not have a buyer email'
+    return
+  }
+
+  if (!confirm(`Resend confirmation email to ${ticket.buyerEmail}?`)) {
+    return
+  }
+
+  try {
+    isResending.value = true
+    const result = await post(`/api/tickets/${ticket.id}/resend-confirmation-email`, {})
+
+    if (result.success) {
+      alert(`Confirmation email successfully sent to ${ticket.buyerEmail}!`)
+    }
+
+    error.value = null
+  } catch (err) {
+    console.error('Failed to resend confirmation email:', err)
+    error.value = err.message || 'Failed to resend confirmation email'
+    alert(`Failed to resend confirmation email: ${err.message}`)
+  } finally {
+    isResending.value = false
+  }
+}
+
+const sendTicketEmailAction = async (ticket) => {
+  if (canSendConfirmationEmail(ticket)) {
+    await resendConfirmationEmail(ticket)
+    return
+  }
+
+  await resendEmail(ticket)
 }
 
 // Resend email for selected tickets

@@ -1664,6 +1664,55 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
   }
 });
 
+// Resend buyer confirmation email for a ticket order (JWT authenticated)
+app.post('/api/tickets/:id/resend-confirmation-email', requiresAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+
+    const ticketService = require('./services/ticketService');
+    const emailResult = await ticketService.resendOrderConfirmationEmailForTicket(id, userId);
+
+    res.json({
+      success: true,
+      message: 'Confirmation email resent successfully',
+      email: emailResult.email,
+      ticketId: parseInt(id),
+      orderId: emailResult.orderId,
+      messageId: emailResult.messageId,
+      user: req.auth.payload?.email || req.auth.payload?.sub || req.auth.email || req.auth.sub
+    });
+  } catch (error) {
+    console.error('Error resending confirmation email:', error);
+
+    if (error.message.includes('Ticket not found') ||
+      error.message.includes('access denied') ||
+      error.message.includes('access was denied')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'Ticket not found or you do not have access to it'
+      });
+    }
+
+    if (error.message.includes('buyer email information') ||
+      error.message.includes('does not belong to an order') ||
+      error.message.includes('already been confirmed')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot resend confirmation email',
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to resend confirmation email',
+      message: error.message
+    });
+  }
+});
+
 // Resend emails for selected tickets (JWT authenticated)
 app.post('/api/tickets/bulk-resend-email', requiresAuth, async (req, res) => {
   try {

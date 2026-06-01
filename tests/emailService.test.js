@@ -65,4 +65,23 @@ describe('EmailService', () => {
     expect(rawEmail).toContain('Data: 08/05/2026, 20:00');
     expect(rawEmail).not.toContain('Data: 08/05/2026, 23:00');
   });
+
+  test('renders confirmation email with prominent event details and high contrast CTA', () => {
+    const emailService = require('../services/emailService');
+
+    const html = emailService.generateConfirmationEmailTemplate({
+      eventName: 'Festival',
+      confirmationUrl: 'https://ticketeer.test/confirmation/hash',
+      orderId: 'order-123',
+      totalTickets: 3
+    });
+
+    expect(html).toContain('class="summary-box"');
+    expect(html).toContain('Festival');
+    expect(html).toContain('Pedido:</span> <span class="summary-value">order-123</span>');
+    expect(html).toContain('Ingressos:</span> <span class="summary-value">3</span>');
+    expect(html).toContain('background: #111827');
+    expect(html).toContain('color: #ffffff !important');
+    expect(html).toContain('Confirmar informações');
+  });
 });

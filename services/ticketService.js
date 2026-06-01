@@ -864,6 +864,86 @@ class TicketService {
   }
 
   /**
+   * Resend the buyer confirmation email for an incomplete order.
+   */
+  async resendOrderConfirmationEmailForTicket(ticketId, userId) {
+    try {
+      const ticket = await prisma.ticket.findFirst({
+        where: {
+          id: parseInt(ticketId, 10),
+          event: {
+            created_by: userId
+          }
+        },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+              created_by: true
+            }
+          }
+        }
+      });
+
+      if (!ticket) {
+        throw new Error('Ticket not found or access denied');
+      }
+
+      if (!ticket.order) {
+        throw new Error('Ticket does not belong to an order');
+      }
+
+      if (!ticket.buyerEmail) {
+        throw new Error('Ticket must have buyer email information');
+      }
+
+      const orderTickets = await prisma.ticket.findMany({
+        where: {
+          eventId: ticket.eventId,
+          order: ticket.order
+        },
+        orderBy: {
+          identificationNumber: 'asc'
+        }
+      });
+
+      const isOrderCompleted = orderTickets.length > 0 && orderTickets.every((orderTicket) =>
+        orderTicket.buyer && orderTicket.buyerDocument && orderTicket.buyerEmail
+      );
+
+      if (isOrderCompleted) {
+        throw new Error('Order has already been confirmed');
+      }
+
+      const orderService = require('./orderService');
+      const emailService = require('./emailService');
+      const confirmationUrl = orderService.generateConfirmationUrl(
+        ticket.order.toString(),
+        ticket.eventId
+      );
+
+      const result = await emailService.sendConfirmationEmail(ticket.buyerEmail, {
+        eventName: ticket.event.name,
+        confirmationUrl,
+        orderId: ticket.order.toString(),
+        totalTickets: orderTickets.length
+      });
+
+      return {
+        ticketId: ticket.id,
+        orderId: ticket.order,
+        email: ticket.buyerEmail,
+        confirmationUrl,
+        messageId: result.messageId || null
+      };
+    } catch (error) {
+      console.error('Error resending order confirmation email:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get ticket statistics for an event
    */
   async getEventTicketStats(eventId, userId) {
