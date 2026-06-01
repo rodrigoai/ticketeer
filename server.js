@@ -1298,6 +1298,7 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       buyer,
       buyerDocument,
       buyerEmail,
+      buyerPhone,
       salesEndDateTime
     } = req.body;
 
@@ -1329,6 +1330,7 @@ app.post('/api/events/:eventId/tickets', requiresAuth, async (req, res) => {
       buyer,
       buyerDocument,
       buyerEmail,
+      buyerPhone,
       salesEndDateTime
     };
 
@@ -1388,6 +1390,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       buyer,
       buyerDocument,
       buyerEmail,
+      buyerPhone,
       salesEndDateTime,
       quantity
     } = req.body;
@@ -1428,6 +1431,7 @@ app.post('/api/events/:eventId/tickets/batch', requiresAuth, async (req, res) =>
       buyer,
       buyerDocument,
       buyerEmail,
+      buyerPhone,
       salesEndDateTime
     };
 
@@ -1534,6 +1538,7 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyer,
       buyerDocument,
       buyerEmail,
+      buyerPhone,
       salesEndDateTime,
       checkedIn,
       checkedInAt,
@@ -1562,6 +1567,7 @@ app.put('/api/tickets/:id', requiresAuth, async (req, res) => {
       buyer,
       buyerDocument,
       buyerEmail,
+      buyerPhone,
       salesEndDateTime,
       checkedIn,
       checkedInAt,

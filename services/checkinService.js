@@ -71,10 +71,13 @@ class CheckinService {
   }
 
   _buildSearchWhere(eventId, query, field) {
-    const normalizedField = ['any', 'ticket', 'buyer', 'email', 'table', 'order'].includes(field) ? field : 'any';
+    const normalizedField = ['any', 'ticket', 'buyer', 'document', 'email', 'table', 'order'].includes(field) ? field : 'any';
     const normalizedQuery = String(query || '').trim();
+    const documentDigitsQuery = normalizedQuery.replace(/\D/g, '');
     const numericQuery = parseInt(normalizedQuery, 10);
-    const hasNumericQuery = /^\d+$/.test(normalizedQuery) && Number.isInteger(numericQuery);
+    const hasNumericQuery = /^\d+$/.test(normalizedQuery) &&
+      Number.isInteger(numericQuery) &&
+      numericQuery <= 2147483647;
 
     if (!normalizedQuery) {
       return null;
@@ -102,6 +105,19 @@ class CheckinService {
       return { ...baseWhere, buyer: textContains('buyer').buyer };
     }
 
+    if (normalizedField === 'document') {
+      const documentConditions = [textContains('buyerDocument')];
+      if (documentDigitsQuery && documentDigitsQuery !== normalizedQuery) {
+        documentConditions.push({
+          buyerDocument: {
+            contains: documentDigitsQuery,
+            mode: 'insensitive'
+          }
+        });
+      }
+      return { ...baseWhere, OR: documentConditions };
+    }
+
     if (normalizedField === 'email') {
       return { ...baseWhere, buyerEmail: textContains('buyerEmail').buyerEmail };
     }
@@ -112,9 +128,19 @@ class CheckinService {
 
     const conditions = [
       textContains('buyer'),
+      textContains('buyerDocument'),
       textContains('buyerEmail'),
       textContains('order')
     ];
+
+    if (documentDigitsQuery && documentDigitsQuery !== normalizedQuery) {
+      conditions.push({
+        buyerDocument: {
+          contains: documentDigitsQuery,
+          mode: 'insensitive'
+        }
+      });
+    }
 
     if (hasNumericQuery) {
       conditions.push({ identificationNumber: numericQuery });

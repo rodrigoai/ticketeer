@@ -264,6 +264,58 @@ describe('Buyer Confirmation Feature Tests', () => {
       ).rejects.toThrow('Access denied');
     });
 
+    test('should include event image fields in confirmation order details', async () => {
+      const orderId = 'ORDER-IMAGE-TEST';
+      const eventId = 42;
+      const hash = orderHash.generateHash(`${orderId}:${eventId}`);
+
+      mockPrisma.ticket.findMany.mockResolvedValue([
+        {
+          id: 1,
+          eventId,
+          identificationNumber: 10,
+          description: 'VIP',
+          location: 'Sector A',
+          table: null,
+          price: 120,
+          order: orderId,
+          buyer: null,
+          buyerDocument: null,
+          buyerEmail: null,
+          event: {
+            id: eventId,
+            name: 'Summer Festival',
+            description: 'Open air event',
+            venue: 'Main Arena',
+            opening_datetime: new Date('2026-08-15T22:00:00.000Z'),
+            event_image_url: 'https://example.com/desktop.jpg',
+            mobile_event_image_url: 'https://example.com/mobile.jpg',
+            created_by: 'auth0|organizer'
+          }
+        }
+      ]);
+
+      const result = await orderService.getOrderByHash(hash);
+
+      expect(mockPrisma.ticket.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        include: {
+          event: {
+            select: expect.objectContaining({
+              description: true,
+              event_image_url: true,
+              mobile_event_image_url: true
+            })
+          }
+        }
+      }));
+      expect(result.event).toEqual(expect.objectContaining({
+        name: 'Summer Festival',
+        description: 'Open air event',
+        eventImageUrl: 'https://example.com/desktop.jpg',
+        mobileEventImageUrl: 'https://example.com/mobile.jpg'
+      }));
+    });
+
     test('should validate buyers data correctly', () => {
       const validBuyers = [
         {

@@ -277,123 +277,70 @@ async function checkServerHealth() {
 
 // Test suite
 async function runTests() {
-  console.log('🚀 Starting Webhook Checkout Tests...\n');
 
   // Check if server is running
-  console.log('📡 Checking server status...');
   const serverRunning = await checkServerHealth();
   if (!serverRunning) {
-    console.error('❌ Server is not running. Please start the server first with: yarn start');
     process.exit(1);
   }
-  console.log('✅ Server is running\n');
 
   let testsPassed = 0;
   let testsFailed = 0;
 
   // Test 1: Valid single ticket purchase
   try {
-    console.log('🧪 Test 1: Valid single ticket purchase webhook');
     const response = await makeRequest('POST', `${SERVER_URL}${WEBHOOK_ENDPOINT}`, validSingleTicketPayload);
     
     if (response.statusCode === 200 && response.body.success) {
-      console.log('✅ Test 1 passed: Single ticket webhook processed successfully');
-      console.log(`   Order ID: ${response.body.data.orderId}`);
-      console.log(`   Table: ${response.body.data.tableNumber}`);
-      console.log(`   Tickets: ${response.body.data.ticketIds}`);
-      console.log(`   Buyer assigned: ${response.body.data.buyerAssigned}`);
       testsPassed++;
     } else {
-      console.log('❌ Test 1 failed: Single ticket webhook failed');
-      console.log(`   Status: ${response.statusCode}`);
-      console.log(`   Response:`, JSON.stringify(response.body, null, 2));
       testsFailed++;
     }
   } catch (error) {
-    console.log('❌ Test 1 failed with error:', error.message);
     testsFailed++;
   }
-
-  console.log('');
 
   // Test 2: Valid multi-ticket purchase
   try {
-    console.log('🧪 Test 2: Valid multi-ticket purchase webhook');
     const response = await makeRequest('POST', `${SERVER_URL}${WEBHOOK_ENDPOINT}`, validMultiTicketPayload);
     
     if (response.statusCode === 200 && response.body.success) {
-      console.log('✅ Test 2 passed: Multi-ticket webhook processed successfully');
-      console.log(`   Order ID: ${response.body.data.orderId}`);
-      console.log(`   Table: ${response.body.data.tableNumber}`);
-      console.log(`   Tickets: ${response.body.data.ticketIds}`);
-      console.log(`   Buyer assigned: ${response.body.data.buyerAssigned}`);
       testsPassed++;
     } else {
-      console.log('❌ Test 2 failed: Multi-ticket webhook failed');
-      console.log(`   Status: ${response.statusCode}`);
-      console.log(`   Response:`, JSON.stringify(response.body, null, 2));
       testsFailed++;
     }
   } catch (error) {
-    console.log('❌ Test 2 failed with error:', error.message);
     testsFailed++;
   }
-
-  console.log('');
 
   // Test 3: Single ticket purchase without table number
   try {
-    console.log('🧪 Test 3: Single ticket purchase without table number');
     const response = await makeRequest('POST', `${SERVER_URL}${WEBHOOK_ENDPOINT}`, validSingleTicketNoTablePayload);
     
     if (response.statusCode === 200 && response.body.success) {
-      console.log('✅ Test 3 passed: Single ticket webhook without table processed successfully');
-      console.log(`   Order ID: ${response.body.data.orderId}`);
-      console.log(`   Table: ${response.body.data.tableNumber || 'Not assigned'}`);
-      console.log(`   Tickets: ${response.body.data.ticketIds}`);
-      console.log(`   Buyer assigned: ${response.body.data.buyerAssigned}`);
       testsPassed++;
     } else {
-      console.log('❌ Test 3 failed: Single ticket webhook without table failed');
-      console.log(`   Status: ${response.statusCode}`);
-      console.log(`   Response:`, JSON.stringify(response.body, null, 2));
       testsFailed++;
     }
   } catch (error) {
-    console.log('❌ Test 3 failed with error:', error.message);
     testsFailed++;
   }
-
-  console.log('');
 
   // Test 4: Multi-ticket purchase without table number
   try {
-    console.log('🧪 Test 4: Multi-ticket purchase without table number');
     const response = await makeRequest('POST', `${SERVER_URL}${WEBHOOK_ENDPOINT}`, validMultiTicketNoTablePayload);
     
     if (response.statusCode === 200 && response.body.success) {
-      console.log('✅ Test 4 passed: Multi-ticket webhook without table processed successfully');
-      console.log(`   Order ID: ${response.body.data.orderId}`);
-      console.log(`   Table: ${response.body.data.tableNumber || 'Not assigned'}`);
-      console.log(`   Tickets: ${response.body.data.ticketIds}`);
-      console.log(`   Buyer assigned: ${response.body.data.buyerAssigned}`);
       testsPassed++;
     } else {
-      console.log('❌ Test 4 failed: Multi-ticket webhook without table failed');
-      console.log(`   Status: ${response.statusCode}`);
-      console.log(`   Response:`, JSON.stringify(response.body, null, 2));
       testsFailed++;
     }
   } catch (error) {
-    console.log('❌ Test 4 failed with error:', error.message);
     testsFailed++;
   }
 
-  console.log('');
-
   // Test 5: Invalid payload - missing meta
   try {
-    console.log('🧪 Test 5: Invalid payload (missing meta)');
     const invalidPayload = {
       event: "order.paid",
       payload: {
@@ -405,25 +352,16 @@ async function runTests() {
     const response = await makeRequest('POST', `${SERVER_URL}${WEBHOOK_ENDPOINT}`, invalidPayload);
     
     if (response.statusCode === 400 && !response.body.success) {
-      console.log('✅ Test 5 passed: Invalid payload properly rejected');
-      console.log(`   Error: ${response.body.message}`);
       testsPassed++;
     } else {
-      console.log('❌ Test 5 failed: Invalid payload should have been rejected');
-      console.log(`   Status: ${response.statusCode}`);
-      console.log(`   Response:`, JSON.stringify(response.body, null, 2));
       testsFailed++;
     }
   } catch (error) {
-    console.log('❌ Test 5 failed with error:', error.message);
     testsFailed++;
   }
 
-  console.log('');
-
   // Test 6: Wrong event type
   try {
-    console.log('🧪 Test 6: Wrong event type');
     const wrongEventPayload = {
       ...validSingleTicketPayload,
       event: "order.refunded"
@@ -432,25 +370,16 @@ async function runTests() {
     const response = await makeRequest('POST', `${SERVER_URL}${WEBHOOK_ENDPOINT}`, wrongEventPayload);
     
     if (response.statusCode === 200 && response.body.success && response.body.message.includes('acknowledged but not processed')) {
-      console.log('✅ Test 6 passed: Wrong event type properly acknowledged but not processed');
-      console.log(`   Message: ${response.body.message}`);
       testsPassed++;
     } else {
-      console.log('❌ Test 6 failed: Wrong event type handling incorrect');
-      console.log(`   Status: ${response.statusCode}`);
-      console.log(`   Response:`, JSON.stringify(response.body, null, 2));
       testsFailed++;
     }
   } catch (error) {
-    console.log('❌ Test 6 failed with error:', error.message);
     testsFailed++;
   }
 
-  console.log('');
-
   // Test 7: Missing tickets in meta
   try {
-    console.log('🧪 Test 7: Missing tickets in meta');
     const missingTicketsPayload = {
       ...validSingleTicketPayload,
       payload: {
@@ -467,33 +396,19 @@ async function runTests() {
     const response = await makeRequest('POST', `${SERVER_URL}${WEBHOOK_ENDPOINT}`, missingTicketsPayload);
     
     if (response.statusCode === 400 && !response.body.success) {
-      console.log('✅ Test 7 passed: Missing tickets properly rejected');
-      console.log(`   Error: ${response.body.message}`);
       testsPassed++;
     } else {
-      console.log('❌ Test 7 failed: Missing tickets should have been rejected');
-      console.log(`   Status: ${response.statusCode}`);
-      console.log(`   Response:`, JSON.stringify(response.body, null, 2));
       testsFailed++;
     }
   } catch (error) {
-    console.log('❌ Test 7 failed with error:', error.message);
     testsFailed++;
   }
 
   // Test summary
-  console.log('\n' + '='.repeat(50));
-  console.log('📊 TEST SUMMARY');
-  console.log('='.repeat(50));
-  console.log(`✅ Tests passed: ${testsPassed}`);
-  console.log(`❌ Tests failed: ${testsFailed}`);
-  console.log(`📈 Success rate: ${Math.round((testsPassed / (testsPassed + testsFailed)) * 100)}%`);
   
   if (testsFailed === 0) {
-    console.log('\n🎉 All tests passed! The webhook endpoint is working correctly.');
     process.exit(0);
   } else {
-    console.log('\n⚠️  Some tests failed. Please check the implementation.');
     process.exit(1);
   }
 }
@@ -501,7 +416,6 @@ async function runTests() {
 // Run the tests
 if (require.main === module) {
   runTests().catch((error) => {
-    console.error('❌ Test suite failed:', error);
     process.exit(1);
   });
 }

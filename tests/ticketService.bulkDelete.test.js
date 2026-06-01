@@ -31,11 +31,19 @@ jest.mock('../generated/prisma', () => {
 const ticketService = require('../services/ticketService');
 
 describe('TicketService bulkDeleteTickets', () => {
+  const silenceExpectedConsoleError = () => (
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+  );
+
   let mockPrisma;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma = new PrismaClient();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('deletes all owned tickets with one validation query and one deleteMany', async () => {
@@ -82,6 +90,8 @@ describe('TicketService bulkDeleteTickets', () => {
   });
 
   test('throws when some tickets are missing or not owned by the user', async () => {
+    const consoleErrorSpy = silenceExpectedConsoleError();
+
     mockPrisma.$transaction.mockImplementation(async (callback) => {
       const tx = {
         ticket: {
@@ -96,5 +106,10 @@ describe('TicketService bulkDeleteTickets', () => {
     await expect(ticketService.bulkDeleteTickets([10, 11], 'auth0|testuser123'))
       .rejects
       .toThrow('Failed to bulk delete tickets: Some tickets were not found or access was denied: 11');
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error bulk deleting tickets:',
+      expect.any(Error)
+    );
   });
 });

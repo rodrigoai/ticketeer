@@ -98,103 +98,51 @@ const singleQuantityPayload = {
  * Test 1: Quantity-based selection (2 tickets)
  */
 async function testQuantityBasedSelection() {
-  console.log('🧪 Test 1: Quantity-based selection (2 tickets)...');
-  
-  try {
-    const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(quantityBasedPayload)
-    });
-    
-    const result = await response.json();
-    
-    if (response.status === 200 && result.success) {
-      console.log('✅ Test 1 PASSED: Quantity-based selection successful');
-      console.log('   Selection Method:', result.selectionMethod);
-      console.log('   Tickets Processed:', result.ticketIds.length);
-      console.log('   Order ID:', result.orderId);
-      console.log('   Quantity:', result.quantity);
-    } else {
-      console.log('⚠️  Test 1 CONDITIONAL:', response.status, result);
-      console.log('   This might be expected if not enough available tickets');
-    }
-  } catch (error) {
-    console.error('❌ Test 1 ERROR:', error.message);
-  }
+  const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(quantityBasedPayload)
+  });
+
+  await response.json();
 }
 
 /**
  * Test 2: Table-based selection
  */
 async function testTableBasedSelection() {
-  console.log('\n🧪 Test 2: Table-based selection...');
-  
-  try {
-    const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(tableBasedPayload)
-    });
-    
-    const result = await response.json();
-    
-    if (response.status === 200 && result.success) {
-      console.log('✅ Test 2 PASSED: Table-based selection successful');
-      console.log('   Selection Method:', result.selectionMethod);
-      console.log('   Table Number:', result.tableNumber);
-      console.log('   Tickets Processed:', result.ticketIds.length);
-      console.log('   Order ID:', result.orderId);
-    } else {
-      console.log('⚠️  Test 2 CONDITIONAL:', response.status, result);
-      console.log('   This might be expected if table 5 has no tickets or tickets are already sold');
-    }
-  } catch (error) {
-    console.error('❌ Test 2 ERROR:', error.message);
-  }
+  const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(tableBasedPayload)
+  });
+
+  await response.json();
 }
 
 /**
  * Test 3: Single quantity selection
  */
 async function testSingleQuantitySelection() {
-  console.log('\n🧪 Test 3: Single quantity selection...');
-  
-  try {
-    const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(singleQuantityPayload)
-    });
-    
-    const result = await response.json();
-    
-    if (response.status === 200 && result.success) {
-      console.log('✅ Test 3 PASSED: Single quantity selection successful');
-      console.log('   Selection Method:', result.selectionMethod);
-      console.log('   Tickets Processed:', result.ticketIds.length);
-      console.log('   Quantity:', result.quantity);
-    } else {
-      console.log('⚠️  Test 3 CONDITIONAL:', response.status, result);
-      console.log('   This might be expected if no available tickets');
-    }
-  } catch (error) {
-    console.error('❌ Test 3 ERROR:', error.message);
-  }
+  const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(singleQuantityPayload)
+  });
+
+  await response.json();
 }
 
 /**
  * Test 4: Invalid payload - no items
  */
 async function testInvalidPayload() {
-  console.log('\n🧪 Test 4: Invalid payload (no items)...');
-  
   const invalidPayload = {
     event: 'order.paid',
     payload: {
@@ -207,34 +155,24 @@ async function testInvalidPayload() {
     }
   };
   
-  try {
-    const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(invalidPayload)
-    });
-    
-    const result = await response.json();
-    
-    if (response.status === 400 && !result.success) {
-      console.log('✅ Test 4 PASSED: Invalid payload correctly rejected');
-      console.log('   Error Message:', result.message);
-    } else {
-      console.log('❌ Test 4 FAILED: Expected 400 error, got:', response.status, result);
-    }
-  } catch (error) {
-    console.error('❌ Test 4 ERROR:', error.message);
-  }
+  const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(invalidPayload)
+  });
+
+  const result = await response.json();
+
+  assert.strictEqual(response.status, 400);
+  assert.strictEqual(result.success, false);
 }
 
 /**
  * Test 5: Non-existent table
  */
 async function testNonExistentTable() {
-  console.log('\n🧪 Test 5: Non-existent table...');
-  
   const nonExistentTablePayload = {
     event: 'order.paid',
     payload: {
@@ -247,48 +185,35 @@ async function testNonExistentTable() {
     }
   };
   
-  try {
-    const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(nonExistentTablePayload)
-    });
-    
-    const result = await response.json();
-    
-    if (response.status === 400 && !result.success) {
-      console.log('✅ Test 5 PASSED: Non-existent table correctly handled');
-      console.log('   Error Message:', result.message);
-    } else {
-      console.log('❌ Test 5 FAILED: Expected 400 error, got:', response.status, result);
-    }
-  } catch (error) {
-    console.error('❌ Test 5 ERROR:', error.message);
-  }
+  const response = await fetch(`${baseUrl}/api/webhooks/checkout/${testUserId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(nonExistentTablePayload)
+  });
+
+  const result = await response.json();
+
+  assert.strictEqual(response.status, 400);
+  assert.strictEqual(result.success, false);
 }
 
 /**
  * Health check
  */
 async function testHealthCheck() {
-  console.log('🔍 Health Check: Testing server availability...');
   
   try {
     const response = await fetch(`${baseUrl}/api/health`);
     const result = await response.json();
     
     if (response.status === 200 && result.status === 'OK') {
-      console.log('✅ Health Check PASSED: Server is running');
       return true;
     } else {
-      console.log('❌ Health Check FAILED: Server not responding correctly');
       return false;
     }
   } catch (error) {
-    console.error('❌ Health Check ERROR: Server not reachable -', error.message);
-    console.error('   Make sure the server is running with: yarn start');
     return false;
   }
 }
@@ -297,40 +222,25 @@ async function testHealthCheck() {
  * Run all tests
  */
 async function runTests() {
-  console.log('🚀 Starting Webhook Quantity/Table Tests\n');
   
   // Check if server is running first
   const serverReady = await testHealthCheck();
   if (!serverReady) {
-    console.log('\n❌ Tests aborted: Server is not running');
     process.exit(1);
   }
-  
-  console.log('\n📋 Running webhook tests...\n');
   
   await testQuantityBasedSelection();
   await testTableBasedSelection();
   await testSingleQuantitySelection();
   await testInvalidPayload();
   await testNonExistentTable();
-  
-  console.log('\n🏁 All tests completed!\n');
-  console.log('📖 Example curl commands:');
-  
-  console.log('\n✅ Quantity-based (2 items):');
-  console.log(`curl -X POST "${baseUrl}/api/webhooks/checkout/${testUserId}" \\`);
-  console.log('     -H "Content-Type: application/json" \\');
-  console.log(`     -d '${JSON.stringify(quantityBasedPayload, null, 0)}'`);
-  
-  console.log('\n✅ Table-based:');
-  console.log(`curl -X POST "${baseUrl}/api/webhooks/checkout/${testUserId}" \\`);
-  console.log('     -H "Content-Type: application/json" \\');
-  console.log(`     -d '${JSON.stringify(tableBasedPayload, null, 0)}'`);
 }
 
 // Run tests if called directly
 if (require.main === module) {
-  runTests().catch(console.error);
+  runTests().catch(() => {
+    process.exit(1);
+  });
 }
 
 module.exports = {

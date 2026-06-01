@@ -328,6 +328,7 @@
                 <td class="min-w-0 px-5 py-4">
                   <p class="truncate font-semibold text-slate-900" :title="ticket.buyer || ''">{{ ticket.buyer || '-' }}</p>
                   <p class="truncate text-xs text-slate-500" :title="ticket.buyerEmail || ''">{{ ticket.buyerEmail || '' }}</p>
+                  <p class="truncate text-xs text-slate-500" :title="ticket.buyerPhone || ''">{{ ticket.buyerPhone || '' }}</p>
                 </td>
                 <td class="px-5 py-4">
                   <div class="flex justify-end gap-1.5">
@@ -602,6 +603,15 @@
               >
             </div>
             <div>
+              <label for="ticketBuyerPhone" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Phone</label>
+              <input 
+                type="tel" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="ticketBuyerPhone" 
+                v-model="ticketForm.buyerPhone"
+              >
+            </div>
+            <div>
               <label for="ticketOrder" class="block text-sm font-semibold text-slate-700 mb-2">Order</label>
               <input 
                 type="text" 
@@ -801,6 +811,15 @@
               >
             </div>
             <div>
+              <label for="batchBuyerPhone" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Phone</label>
+              <input 
+                type="tel" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" 
+                id="batchBuyerPhone" 
+                v-model="batchForm.buyerPhone"
+              >
+            </div>
+            <div>
               <label for="batchOrder" class="block text-sm font-semibold text-slate-700 mb-2">Order</label>
               <input 
                 type="text" 
@@ -980,6 +999,28 @@
                 </label>
               </div>
             </div>
+            <div>
+              <label for="bulkBuyerPhone" class="block text-sm font-semibold text-slate-700 mb-2">Buyer Phone</label>
+              <input 
+                type="tel" 
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500 disabled:opacity-50" 
+                id="bulkBuyerPhone" 
+                v-model="bulkEditForm.buyerPhone"
+                :disabled="bulkEditForm.clearBuyerPhone"
+                placeholder="Leave empty to skip"
+              >
+              <div class="flex items-center gap-2 mt-2">
+                <input 
+                  type="checkbox" 
+                  class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" 
+                  id="clearBuyerPhone" 
+                  v-model="bulkEditForm.clearBuyerPhone"
+                >
+                <label class="text-xs text-slate-500 font-medium" for="clearBuyerPhone">
+                  Clear this field
+                </label>
+              </div>
+            </div>
             
             <div class="space-y-4 pt-4 border-t border-slate-100">
               <h6 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Check-in Status</h6>
@@ -1093,12 +1134,17 @@ const filteredTickets = computed(() => {
   if (!searchValue.value) return tickets.value
   
   const search = searchValue.value.toLowerCase()
+  const searchDigits = searchValue.value.replace(/\D/g, '')
   return tickets.value.filter(ticket => {
+    const buyerDocument = ticket.buyerDocument || ''
     return (
       ticket.description?.toLowerCase().includes(search) ||
       ticket.location?.toLowerCase().includes(search) ||
       ticket.buyer?.toLowerCase().includes(search) ||
+      buyerDocument.toLowerCase().includes(search) ||
+      (searchDigits && buyerDocument.replace(/\D/g, '').includes(searchDigits)) ||
       ticket.buyerEmail?.toLowerCase().includes(search) ||
+      ticket.buyerPhone?.toLowerCase().includes(search) ||
       ticket.order?.toLowerCase().includes(search) ||
       ticket.identificationNumber?.toString().includes(search)
     )
@@ -1166,6 +1212,7 @@ const ticketForm = reactive({
   buyer: '',
   buyerDocument: '',
   buyerEmail: '',
+  buyerPhone: '',
   order: '',
   salesEndDateTime: '',
   checkedIn: false,
@@ -1184,6 +1231,7 @@ const batchForm = reactive({
   buyer: '',
   buyerDocument: '',
   buyerEmail: '',
+  buyerPhone: '',
   order: '',
   salesEndDateTime: ''
 })
@@ -1195,6 +1243,7 @@ const bulkEditForm = reactive({
   buyer: '',
   buyerDocument: '',
   buyerEmail: '',
+  buyerPhone: '',
   checkedIn: false,
   checkedInAt: '',
   accessoryCollected: false,
@@ -1205,7 +1254,8 @@ const bulkEditForm = reactive({
   clearOrder: false,
   clearBuyer: false,
   clearBuyerDocument: false,
-  clearBuyerEmail: false
+  clearBuyerEmail: false,
+  clearBuyerPhone: false
 })
 
 const groupForm = reactive({
@@ -1441,6 +1491,7 @@ const editTicket = (ticket) => {
     buyer: ticket.buyer || '',
     buyerDocument: ticket.buyerDocument || '',
     buyerEmail: ticket.buyerEmail || '',
+    buyerPhone: ticket.buyerPhone || '',
     order: ticket.order || '',
     salesEndDateTime: formatDateTimeLocalInput(ticket.salesEndDateTime),
     checkedIn: ticket.checkedIn || false,
@@ -1610,6 +1661,7 @@ const resetTicketForm = () => {
     buyer: '',
     buyerDocument: '',
     buyerEmail: '',
+    buyerPhone: '',
     order: '',
     salesEndDateTime: '',
     checkedIn: false,
@@ -1630,6 +1682,7 @@ const resetBatchForm = () => {
     buyer: '',
     buyerDocument: '',
     buyerEmail: '',
+    buyerPhone: '',
     order: '',
     salesEndDateTime: ''
   })
@@ -1775,6 +1828,12 @@ const saveBulkEdit = async () => {
     } else if (bulkEditForm.buyerEmail) {
       updates.buyerEmail = bulkEditForm.buyerEmail
     }
+
+    if (bulkEditForm.clearBuyerPhone) {
+      updates.buyerPhone = null
+    } else if (bulkEditForm.buyerPhone) {
+      updates.buyerPhone = bulkEditForm.buyerPhone
+    }
     
     // Handle checkedIn
     if (bulkEditForm.checkedIn !== undefined) {
@@ -1864,6 +1923,7 @@ const resetBulkEditForm = () => {
     buyer: '',
     buyerDocument: '',
     buyerEmail: '',
+    buyerPhone: '',
     checkedIn: false,
     checkedInAt: '',
     accessoryCollected: false,
@@ -1874,7 +1934,8 @@ const resetBulkEditForm = () => {
     clearOrder: false,
     clearBuyer: false,
     clearBuyerDocument: false,
-    clearBuyerEmail: false
+    clearBuyerEmail: false,
+    clearBuyerPhone: false
   })
 }
 

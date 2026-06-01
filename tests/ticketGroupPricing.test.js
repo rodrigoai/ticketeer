@@ -25,11 +25,19 @@ jest.mock('../generated/prisma', () => {
 const ticketService = require('../services/ticketService');
 
 describe('Ticket group tiered pricing', () => {
+  const silenceExpectedConsoleError = () => (
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+  );
+
   let mockPrisma;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma = new PrismaClient();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('resolveTicketGroupPricing uses the active tier price for the current datetime', () => {
@@ -82,6 +90,8 @@ describe('Ticket group tiered pricing', () => {
   });
 
   test('updateTicketGroup rejects overlapping pricing tiers', async () => {
+    const consoleErrorSpy = silenceExpectedConsoleError();
+
     mockPrisma.event.findFirst.mockResolvedValue({ id: 26, created_by: 'user-1' });
     mockPrisma.ticketGroup.findFirst.mockResolvedValue({ id: 9, eventId: 26 });
 
@@ -106,6 +116,10 @@ describe('Ticket group tiered pricing', () => {
     }, 'user-1')).rejects.toThrow("cannot overlap");
 
     expect(mockPrisma.ticketGroup.update).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error updating ticket group:',
+      expect.any(Error)
+    );
   });
 
   test('updateTicketGroup accepts adjacent pricing tiers without intersection', async () => {

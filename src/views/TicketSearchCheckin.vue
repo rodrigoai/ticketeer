@@ -38,7 +38,7 @@
               v-model="query"
               type="search"
               class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:border-emerald-500 focus:ring-emerald-500"
-              placeholder="Ticket number, buyer, table, or order"
+              placeholder="Ticket number, buyer, document, table, or order"
             >
           </div>
           <div>
@@ -51,6 +51,7 @@
               <option value="any">Any</option>
               <option value="ticket">Ticket</option>
               <option value="buyer">Buyer name</option>
+              <option value="document">Buyer document</option>
               <option value="email">Buyer email</option>
               <option value="table">Table</option>
               <option value="order">Order</option>
@@ -153,15 +154,25 @@
 
             <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p class="text-sm text-slate-500">{{ selectedCountForGroup(group) }} selected for check-in</p>
-              <button
-                type="button"
-                :disabled="isCheckingIn || selectedCountForGroup(group) === 0"
-                class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-                @click="confirmGroupCheckin(group)"
-              >
-                <span v-if="isCheckingIn" class="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
-                Confirm Check-in
-              </button>
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  :disabled="isCheckingIn || pendingCountForGroup(group) === 0"
+                  class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  @click="toggleAllPendingTickets(group)"
+                >
+                  {{ areAllPendingTicketsSelected(group) ? 'Deselect all' : 'Select all pending' }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="isCheckingIn || selectedCountForGroup(group) === 0"
+                  class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  @click="confirmGroupCheckin(group)"
+                >
+                  <span v-if="isCheckingIn" class="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                  Confirm Check-in
+                </button>
+              </div>
             </div>
           </div>
         </article>
@@ -216,7 +227,7 @@ const searchTickets = async () => {
     event.value = response.event || event.value
     groups.value = response.groups || []
     openGroupKey.value = groups.value[0]?.key || null
-    preselectUncheckedTickets(openGroupKey.value)
+    selectedTicketIds.value = []
     hasSearched.value = true
   } catch (err) {
     console.error('Failed to search tickets for check-in:', err)
@@ -226,18 +237,10 @@ const searchTickets = async () => {
   }
 }
 
-const preselectUncheckedTickets = (groupKey) => {
-  const group = groups.value.find((item) => item.key === groupKey)
-  selectedTicketIds.value = group
-    ? group.tickets.filter((ticket) => !ticket.checkedIn).map((ticket) => ticket.id)
-    : []
-}
-
 const isGroupOpen = (group) => openGroupKey.value === group.key
 
 const toggleGroup = (group) => {
   openGroupKey.value = isGroupOpen(group) ? null : group.key
-  preselectUncheckedTickets(openGroupKey.value)
 }
 
 const isTicketSelected = (ticketId) => selectedTicketIds.value.includes(ticketId)
@@ -253,6 +256,30 @@ const toggleTicket = (ticketId) => {
 const selectedCountForGroup = (group) => {
   const groupTicketIds = new Set(group.tickets.map((ticket) => ticket.id))
   return selectedTicketIds.value.filter((id) => groupTicketIds.has(id)).length
+}
+
+const pendingTicketIdsForGroup = (group) => {
+  return group.tickets.filter((ticket) => !ticket.checkedIn).map((ticket) => ticket.id)
+}
+
+const pendingCountForGroup = (group) => pendingTicketIdsForGroup(group).length
+
+const areAllPendingTicketsSelected = (group) => {
+  const pendingTicketIds = pendingTicketIdsForGroup(group)
+  return pendingTicketIds.length > 0 && pendingTicketIds.every((ticketId) => selectedTicketIds.value.includes(ticketId))
+}
+
+const toggleAllPendingTickets = (group) => {
+  const nextSelection = new Set(selectedTicketIds.value)
+  const pendingTicketIds = pendingTicketIdsForGroup(group)
+
+  if (areAllPendingTicketsSelected(group)) {
+    pendingTicketIds.forEach((ticketId) => nextSelection.delete(ticketId))
+  } else {
+    pendingTicketIds.forEach((ticketId) => nextSelection.add(ticketId))
+  }
+
+  selectedTicketIds.value = [...nextSelection]
 }
 
 const confirmGroupCheckin = async (group) => {

@@ -165,8 +165,6 @@ describe('Public Ticket Search API', () => {
           }
         });
       } catch (error) {
-        console.error('Error in public ticket search:', error);
-        
         // Handle user not found error specifically
         if (error.message.includes('does not exist or has no events')) {
           return res.status(404).json({
@@ -198,6 +196,10 @@ describe('Public Ticket Search API', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('Parameter Validation', () => {

@@ -24,11 +24,19 @@ const ticketService = require('../services/ticketService');
 const emailService = require('../services/emailService');
 
 describe('TicketService resendTicketEmails', () => {
+  const silenceExpectedConsoleError = () => (
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+  );
+
   let mockPrisma;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma = new PrismaClient();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('resends QR emails for selected tickets with buyer information', async () => {
@@ -178,12 +186,18 @@ describe('TicketService resendTicketEmails', () => {
   });
 
   test('rejects when a selected ticket is missing or not owned by the user', async () => {
+    const consoleErrorSpy = silenceExpectedConsoleError();
+
     mockPrisma.ticket.findMany.mockResolvedValue([{ id: 1 }]);
 
     await expect(ticketService.resendTicketEmails([1, 2], 'auth0|organizer'))
       .rejects
       .toThrow('Some tickets were not found or access was denied: 2');
 
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error resending ticket emails:',
+      expect.any(Error)
+    );
     expect(emailService.sendTicketQrCodeEmail).not.toHaveBeenCalled();
   });
 });

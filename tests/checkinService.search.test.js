@@ -13,6 +13,10 @@ jest.mock('../config/prisma', () => mockPrisma);
 const checkinService = require('../services/checkinService');
 
 describe('CheckinService ticket search check-in', () => {
+  const silenceExpectedConsoleError = () => (
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+  );
+
   const userId = 'auth0|organizer';
   const event = {
     id: 10,
@@ -26,6 +30,10 @@ describe('CheckinService ticket search check-in', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma.event.findFirst.mockResolvedValue(event);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('searches by visible ticket number within the current event', async () => {
@@ -230,6 +238,53 @@ describe('CheckinService ticket search check-in', () => {
     expect(result.groups[0].order).toBe('ORDER-EMAIL');
   });
 
+  test('searches by buyer document and accepts formatted CPF input', async () => {
+    const matchedTicket = {
+      id: 5,
+      eventId: event.id,
+      identificationNumber: 31,
+      description: 'Floor',
+      table: null,
+      price: '65',
+      order: 'ORDER-DOCUMENT',
+      buyer: 'Bruna',
+      buyerDocument: '12345678909',
+      buyerEmail: 'bruna@example.com',
+      checkedIn: false,
+      checkedInAt: null
+    };
+
+    mockPrisma.ticket.findMany
+      .mockResolvedValueOnce([matchedTicket])
+      .mockResolvedValueOnce([matchedTicket]);
+
+    const result = await checkinService.searchTicketsForCheckin(event.id, userId, {
+      query: '123.456.789-09',
+      field: 'document'
+    });
+
+    expect(mockPrisma.ticket.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      where: {
+        eventId: event.id,
+        OR: [
+          {
+            buyerDocument: {
+              contains: '123.456.789-09',
+              mode: 'insensitive'
+            }
+          },
+          {
+            buyerDocument: {
+              contains: '12345678909',
+              mode: 'insensitive'
+            }
+          }
+        ]
+      }
+    }));
+    expect(result.groups[0].order).toBe('ORDER-DOCUMENT');
+  });
+
   test('any search combines numeric and text fields', async () => {
     mockPrisma.ticket.findMany.mockResolvedValueOnce([]);
 
@@ -244,6 +299,12 @@ describe('CheckinService ticket search check-in', () => {
         OR: [
           {
             buyer: {
+              contains: '15',
+              mode: 'insensitive'
+            }
+          },
+          {
+            buyerDocument: {
               contains: '15',
               mode: 'insensitive'
             }
@@ -271,7 +332,64 @@ describe('CheckinService ticket search check-in', () => {
     });
   });
 
+  test('any search does not use CPF-sized numeric queries for integer ticket fields', async () => {
+    mockPrisma.ticket.findMany.mockResolvedValueOnce([]);
+
+    await checkinService.searchTicketsForCheckin(event.id, userId, {
+      query: '27219777094',
+      field: 'any'
+    });
+
+    expect(mockPrisma.ticket.findMany).toHaveBeenCalledWith({
+      where: {
+        eventId: event.id,
+        OR: [
+          {
+            buyer: {
+              contains: '27219777094',
+              mode: 'insensitive'
+            }
+          },
+          {
+            buyerDocument: {
+              contains: '27219777094',
+              mode: 'insensitive'
+            }
+          },
+          {
+            buyerEmail: {
+              contains: '27219777094',
+              mode: 'insensitive'
+            }
+          },
+          {
+            order: {
+              contains: '27219777094',
+              mode: 'insensitive'
+            }
+          }
+        ]
+      },
+      orderBy: [
+        { order: 'asc' },
+        { identificationNumber: 'asc' }
+      ]
+    });
+  });
+
+  test('ticket field search skips numbers too large for integer columns', async () => {
+    const result = await checkinService.searchTicketsForCheckin(event.id, userId, {
+      query: '27219777094',
+      field: 'ticket'
+    });
+
+    expect(mockPrisma.ticket.findMany).not.toHaveBeenCalled();
+    expect(result.groups).toEqual([]);
+  });
+
   test('rejects searches for events not owned by the user', async () => {
+    const consoleErrorSpy = silenceExpectedConsoleError();
+
     mockPrisma.event.findFirst.mockResolvedValue(null);
 
     await expect(checkinService.searchTicketsForCheckin(event.id, userId, {
@@ -279,6 +397,10 @@ describe('CheckinService ticket search check-in', () => {
       field: 'ticket'
     })).rejects.toThrow('Event not found or access denied');
 
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error searching tickets for check-in:',
+      expect.any(Error)
+    );
     expect(mockPrisma.ticket.findMany).not.toHaveBeenCalled();
   });
 
@@ -338,12 +460,18 @@ describe('CheckinService ticket search check-in', () => {
   });
 
   test('rejects selected check-in when a ticket is outside the current event', async () => {
+    const consoleErrorSpy = silenceExpectedConsoleError();
+
     mockPrisma.ticket.findMany.mockResolvedValue([{ id: 1, eventId: event.id }]);
 
     await expect(checkinService.processSelectedTicketCheckins(event.id, userId, [1, 2]))
       .rejects
       .toThrow('Some tickets were not found or access denied: 2');
 
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error processing selected ticket check-ins:',
+      expect.any(Error)
+    );
     expect(mockPrisma.ticket.updateMany).not.toHaveBeenCalled();
   });
 });

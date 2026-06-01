@@ -307,6 +307,7 @@ class TicketService {
         buyer,
         buyerDocument,
         buyerEmail,
+        buyerPhone,
         salesEndDateTime
       } = ticketData;
 
@@ -360,6 +361,7 @@ class TicketService {
             buyer: buyer || null,
             buyerDocument: buyerDocument || null,
             buyerEmail: buyerEmail || null,
+            buyerPhone: buyerPhone || null,
             salesEndDateTime: salesEndDateTime ? parseDateTimeInput(salesEndDateTime) : null,
             qrCodeHash: this._generateStoredQrCodeHash()
           }
@@ -391,6 +393,7 @@ class TicketService {
         buyer,
         buyerDocument,
         buyerEmail,
+        buyerPhone,
         salesEndDateTime
       } = ticketData;
 
@@ -445,6 +448,7 @@ class TicketService {
             buyer: buyer || null,
             buyerDocument: buyerDocument || null,
             buyerEmail: buyerEmail || null,
+            buyerPhone: buyerPhone || null,
             salesEndDateTime: salesEndDateTime ? parseDateTimeInput(salesEndDateTime) : null,
             qrCodeHash: this._generateStoredQrCodeHash()
           });
@@ -543,6 +547,7 @@ class TicketService {
         buyer,
         buyerDocument,
         buyerEmail,
+        buyerPhone,
         salesEndDateTime,
         checkedIn,
         checkedInAt,
@@ -572,6 +577,7 @@ class TicketService {
       if (buyer !== undefined) updateData.buyer = buyer || null;
       if (buyerDocument !== undefined) updateData.buyerDocument = buyerDocument || null;
       if (buyerEmail !== undefined) updateData.buyerEmail = buyerEmail || null;
+      if (buyerPhone !== undefined) updateData.buyerPhone = buyerPhone || null;
       if (salesEndDateTime !== undefined) updateData.salesEndDateTime = salesEndDateTime ? parseDateTimeInput(salesEndDateTime) : null;
       if (checkedIn !== undefined) updateData.checkedIn = Boolean(checkedIn);
       if (checkedInAt !== undefined) updateData.checkedInAt = checkedInAt ? parseDateTimeInput(checkedInAt) : null;
@@ -667,6 +673,7 @@ class TicketService {
         buyer,
         buyerDocument,
         buyerEmail,
+        buyerPhone,
         checkedIn,
         checkedInAt,
         accessoryCollected,
@@ -682,6 +689,7 @@ class TicketService {
       if (buyer !== undefined) updates.buyer = buyer || null;
       if (buyerDocument !== undefined) updates.buyerDocument = buyerDocument || null;
       if (buyerEmail !== undefined) updates.buyerEmail = buyerEmail || null;
+      if (buyerPhone !== undefined) updates.buyerPhone = buyerPhone || null;
       if (checkedIn !== undefined) updates.checkedIn = Boolean(checkedIn);
       if (checkedInAt !== undefined) updates.checkedInAt = checkedInAt ? parseDateTimeInput(checkedInAt) : null;
       if (accessoryCollected !== undefined) updates.accessoryCollected = Boolean(accessoryCollected);

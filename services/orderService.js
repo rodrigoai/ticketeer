@@ -48,8 +48,11 @@ class OrderService {
             select: {
               id: true,
               name: true,
+              description: true,
               venue: true,
               opening_datetime: true,
+              event_image_url: true,
+              mobile_event_image_url: true,
               created_by: true
             }
           }
@@ -127,8 +130,11 @@ class OrderService {
         hash,
         event: {
           name: event.name,
+          description: event.description,
           venue: event.venue,
-          date: event.opening_datetime
+          date: event.opening_datetime,
+          eventImageUrl: event.event_image_url,
+          mobileEventImageUrl: event.mobile_event_image_url
         },
         tickets: publicTickets,
         isCompleted: hasAllBuyerInfo,
