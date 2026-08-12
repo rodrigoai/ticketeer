@@ -142,8 +142,11 @@ class TicketService {
     return {
       id: pricingTier.id || null,
       name: pricingTier.name,
-      startDateTime: pricingTier.start_at instanceof Date ? pricingTier.start_at.toISOString() : new Date(pricingTier.start_at).toISOString(),
-      endDateTime: pricingTier.end_at instanceof Date ? pricingTier.end_at.toISOString() : new Date(pricingTier.end_at).toISOString(),
+      type: pricingTier.type || 'period',
+      startDateTime: pricingTier.start_at ? (pricingTier.start_at instanceof Date ? pricingTier.start_at.toISOString() : new Date(pricingTier.start_at).toISOString()) : null,
+      endDateTime: pricingTier.end_at ? (pricingTier.end_at instanceof Date ? pricingTier.end_at.toISOString() : new Date(pricingTier.end_at).toISOString()) : null,
+      quantity: pricingTier.quantity ?? null,
+      position: pricingTier.position ?? 0,
       price: parseFloat(pricingTier.price)
     };
   }
@@ -155,20 +158,26 @@ class TicketService {
 
     const normalizedTiers = pricingTiers.map((tier, index) => {
       const name = String(tier?.name || '').trim();
+      const type = tier?.type === 'quantity' ? 'quantity' : 'period';
       const startAt = tier?.startDateTime ? parseDateTimeInput(tier.startDateTime) : null;
       const endAt = tier?.endDateTime ? parseDateTimeInput(tier.endDateTime) : null;
       const hasValidDates = startAt instanceof Date && !Number.isNaN(startAt.getTime()) && endAt instanceof Date && !Number.isNaN(endAt.getTime());
+      const quantity = Number(tier?.quantity);
 
       if (!name) {
         throw new Error(`Pricing tier #${index + 1} must have a name`);
       }
 
-      if (!hasValidDates) {
+      if (type === 'period' && !hasValidDates) {
         throw new Error(`Pricing tier '${name}' must have valid start and end datetimes`);
       }
 
-      if (startAt.getTime() >= endAt.getTime()) {
+      if (type === 'period' && startAt.getTime() >= endAt.getTime()) {
         throw new Error(`Pricing tier '${name}' must end after it starts`);
+      }
+
+      if (type === 'quantity' && (!Number.isInteger(quantity) || quantity < 1)) {
+        throw new Error(`Pricing tier '${name}' quantity must be a whole number greater than zero`);
       }
 
       const priceDecimal = new Decimal(tier?.price);
@@ -178,17 +187,24 @@ class TicketService {
 
       return {
         name,
-        startAt,
-        endAt,
+        type,
+        startAt: type === 'period' ? startAt : null,
+        endAt: type === 'period' ? endAt : null,
+        quantity: type === 'quantity' ? quantity : null,
+        position: index,
         priceDecimal
       };
     });
 
-    normalizedTiers.sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+    const tierTypes = new Set(normalizedTiers.map((tier) => tier.type));
+    if (tierTypes.size > 1) {
+      throw new Error('All pricing tiers in a ticket group must use the same control type');
+    }
 
-    for (let index = 1; index < normalizedTiers.length; index += 1) {
-      const previousTier = normalizedTiers[index - 1];
-      const currentTier = normalizedTiers[index];
+    const periodTiers = normalizedTiers.slice().sort((a, b) => a.startAt?.getTime() - b.startAt?.getTime());
+    for (let index = 1; index < periodTiers.length && periodTiers[index].type === 'period'; index += 1) {
+      const previousTier = periodTiers[index - 1];
+      const currentTier = periodTiers[index];
 
       if (currentTier.startAt.getTime() < previousTier.endAt.getTime()) {
         throw new Error(`Pricing tiers '${previousTier.name}' and '${currentTier.name}' cannot overlap`);
@@ -198,14 +214,25 @@ class TicketService {
     return normalizedTiers;
   }
 
-  resolveTicketGroupPricing({ defaultPrice, pricingTiers = [], referenceDate = new Date() }) {
+  resolveTicketGroupPricing({ defaultPrice, pricingTiers = [], referenceDate = new Date(), soldCount = 0 }) {
     const parsedDefaultPrice = parseFloat(defaultPrice) || 0;
-    const activeTier = (pricingTiers || []).find((tier) => {
+    const orderedTiers = (pricingTiers || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || (a.id ?? 0) - (b.id ?? 0));
+    const quantityTiers = orderedTiers.filter((tier) => tier.type === 'quantity');
+    let remainingSold = Math.max(0, Number(soldCount) || 0);
+    const activeQuantityTier = quantityTiers.find((tier) => {
+      const quantity = Math.max(0, Number(tier.quantity) || 0);
+      if (remainingSold < quantity) return true;
+      remainingSold -= quantity;
+      return false;
+    }) || null;
+    const activePeriodTier = orderedTiers.find((tier) => {
+      if ((tier.type || 'period') !== 'period') return false;
       const startAt = tier.start_at instanceof Date ? tier.start_at : new Date(tier.start_at);
       const endAt = tier.end_at instanceof Date ? tier.end_at : new Date(tier.end_at);
 
       return startAt.getTime() <= referenceDate.getTime() && referenceDate.getTime() < endAt.getTime();
     }) || null;
+    const activeTier = quantityTiers.length ? activeQuantityTier : activePeriodTier;
 
     const resolvedPrice = activeTier ? parseFloat(activeTier.price) || 0 : parsedDefaultPrice;
 
@@ -213,7 +240,7 @@ class TicketService {
       defaultPrice: parsedDefaultPrice,
       activePrice: resolvedPrice,
       activePricingTier: this._serializePricingTier(activeTier),
-      pricingTiers: (pricingTiers || []).map((tier) => this._serializePricingTier(tier))
+      pricingTiers: orderedTiers.map((tier) => this._serializePricingTier(tier))
     };
   }
 
@@ -1057,7 +1084,7 @@ class TicketService {
           where: { eventId: parseInt(eventId) },
           include: {
             pricingTiers: {
-              orderBy: { start_at: 'asc' }
+              orderBy: [{ position: 'asc' }, { id: 'asc' }]
             }
           }
         })
@@ -1083,6 +1110,7 @@ class TicketService {
             productId: storedGroup?.product_id || null,
             color: storedGroup?.color || null,
             ticketCount: 0,
+            soldCount: 0,
             availableCount: 0,
             firstOrder: ticket.identificationNumber || 0,
             price: ticket.price,
@@ -1095,6 +1123,9 @@ class TicketService {
 
         const group = groups.get(groupKey);
         group.ticketCount += 1;
+        if (this._isTicketSold(ticket)) {
+          group.soldCount += 1;
+        }
         if (this._isTicketAvailable(ticket)) {
           group.availableCount += 1;
         }
@@ -1108,7 +1139,8 @@ class TicketService {
           const storedGroup = storedGroupMap.get(group.groupKey);
           const resolvedPricing = this.resolveTicketGroupPricing({
             defaultPrice: group.price,
-            pricingTiers: storedGroup?.pricingTiers || []
+            pricingTiers: storedGroup?.pricingTiers || [],
+            soldCount: group.soldCount
           });
 
           return {
@@ -1156,10 +1188,31 @@ class TicketService {
       }
 
       const normalizedPricingTiers = this._normalizePricingTiers(groupData.pricingTiers || []);
+      const quantityTiers = normalizedPricingTiers.filter((tier) => tier.type === 'quantity');
+
+      if (quantityTiers.length) {
+        const ticketCount = await prisma.ticket.count({
+          where: {
+            eventId: parseInt(eventId),
+            description: existingGroup.description || existingGroup.groupKey
+          }
+        });
+        const configuredQuantity = quantityTiers.reduce((total, tier) => total + tier.quantity, 0);
+
+        if (configuredQuantity > ticketCount) {
+          throw new Error(
+            `Quantity batches configure ${configuredQuantity} tickets, but this ticket group only has ${ticketCount}`
+          );
+        }
+      }
+
       const pricingTiersData = normalizedPricingTiers.map((tier) => ({
         name: tier.name,
+        type: tier.type,
         start_at: tier.startAt,
         end_at: tier.endAt,
+        quantity: tier.quantity,
+        position: tier.position,
         price: tier.priceDecimal.toString()
       }));
 
@@ -1184,7 +1237,7 @@ class TicketService {
         data: updateData,
         include: {
           pricingTiers: {
-            orderBy: { start_at: 'asc' }
+            orderBy: [{ position: 'asc' }, { id: 'asc' }]
           }
         }
       });
@@ -2053,6 +2106,23 @@ class TicketService {
       console.error('Error fetching landing tickets:', error);
       throw new Error(`Failed to fetch landing tickets: ${error.message}`);
     }
+  }
+
+  async getTicketGroupSoldCounts(eventId) {
+    const soldTickets = await prisma.ticket.findMany({
+      where: {
+        eventId: parseInt(eventId),
+        order: { not: null },
+        NOT: { order: '' }
+      },
+      select: { description: true }
+    });
+
+    return soldTickets.reduce((counts, ticket) => {
+      const groupKey = ticket.description || '';
+      counts.set(groupKey, (counts.get(groupKey) || 0) + 1);
+      return counts;
+    }, new Map());
   }
 
   /**

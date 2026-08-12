@@ -20,7 +20,7 @@
     <div v-else class="space-y-6">
       <!-- Event Header -->
       <header class="rounded-3xl bg-white border border-slate-100 px-6 py-6 shadow-lg flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
+        <div class="min-w-0 flex-1">
           <nav class="text-sm text-slate-500 mb-2">
             <router-link to="/events" class="hover:text-primary-600">Events</router-link>
             <span class="mx-2">/</span>
@@ -29,7 +29,7 @@
           <h1 class="text-3xl font-semibold text-slate-900">{{ event.title }}</h1>
           <div
             v-if="event.description"
-            class="rich-text-content mt-2 text-sm text-slate-500"
+            class="event-detail-description rich-text-content mt-2 text-sm text-slate-500"
             v-html="event.description"
           ></div>
           <div class="flex flex-wrap gap-4 mt-3 text-sm text-slate-600">
@@ -423,18 +423,22 @@
               placeholder="https://..."
             >
             <p class="mt-2 text-xs text-slate-500">Leave empty to use the event checkout URL on the public landing page.</p>
+            <p v-if="groupForm.checkoutUrl && !isValidCheckoutUrl" class="mt-2 text-xs font-semibold text-red-600">Enter a valid HTTP or HTTPS URL.</p>
           </div>
           <div v-else>
-            <label for="groupProductId" class="block text-sm font-semibold text-slate-700 mb-2">Product ID</label>
+            <label for="groupProductId" class="block text-sm font-semibold text-slate-700 mb-2">Product ID *</label>
             <input
               id="groupProductId"
               v-model.number="groupForm.productId"
               type="number"
               min="1"
+              required
+              :aria-invalid="!isValidProductId"
               class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
               placeholder="45"
             >
             <p class="mt-2 text-xs text-slate-500">Nova.Money product ID used in the shopping cart payload for this group.</p>
+            <p v-if="!isValidProductId" class="mt-2 text-xs font-semibold text-red-600">Enter a positive whole-number product ID.</p>
           </div>
           <div>
             <label for="groupColor" class="block text-sm font-semibold text-slate-700 mb-2">Group Color</label>
@@ -448,39 +452,62 @@
               <input
                 v-model="groupForm.color"
                 type="text"
+                required
+                :aria-invalid="!isValidGroupColor"
                 class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
                 placeholder="#EAB308"
               >
             </div>
             <p class="mt-2 text-xs text-slate-500">Shown as the color bar on the public landing page for this ticket group.</p>
+            <p v-if="!isValidGroupColor" class="mt-2 text-xs font-semibold text-red-600">Use a six-digit hexadecimal color such as #EAB308.</p>
           </div>
           <div class="space-y-4 border-t border-slate-100 pt-5">
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h6 class="text-sm font-semibold text-slate-900">Tiered Pricing</h6>
-                <p class="mt-1 text-xs text-slate-500">Tiers are checked by current datetime. If none is active, the group falls back to its default ticket price.</p>
+                <h6 class="text-sm font-semibold text-slate-900">Sales Batches</h6>
+                <p class="mt-1 text-xs text-slate-500">Use either sales periods or sales quantities. Quantity batches are applied in the order registered.</p>
               </div>
-              <button
-                type="button"
-                class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                @click="addPricingTier"
-              >
-                <i class="fas fa-plus text-[0.65rem]"></i> Add Tier
-              </button>
+              <div class="flex items-center gap-2">
+                <select
+                  v-model="groupForm.pricingType"
+                  class="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                  @change="applyPricingType"
+                >
+                  <option value="period">By sales period</option>
+                  <option value="quantity">By sales quantity</option>
+                </select>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  @click="addPricingTier"
+                >
+                  <i class="fas fa-plus text-[0.65rem]"></i> Add Batch
+                </button>
+              </div>
             </div>
 
             <div v-if="groupForm.pricingTiers.length === 0" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
-              No pricing tiers configured.
+              No sales batches configured.
             </div>
 
-            <div v-else class="space-y-4">
+            <p
+              v-if="groupForm.pricingType === 'quantity' && groupForm.pricingTiers.length"
+              class="text-xs font-semibold"
+              :class="batchQuantityIsValid ? 'text-slate-500' : 'text-red-600'"
+            >
+              Configured {{ configuredBatchQuantity }} of {{ groupForm.ticketCount }} ticket(s).
+              <span v-if="!batchQuantitiesArePositiveIntegers">Every batch must contain a whole number of at least 1 ticket.</span>
+              <span v-else-if="batchQuantityExceedsInventory">Reduce the batch quantities to fit this ticket group.</span>
+            </p>
+
+            <div v-if="groupForm.pricingTiers.length" class="space-y-4">
               <div
                 v-for="(tier, index) in groupForm.pricingTiers"
                 :key="`tier-${index}`"
                 class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
               >
                 <div class="flex items-center justify-between gap-3">
-                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Tier {{ index + 1 }}</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Batch {{ index + 1 }}</p>
                   <button
                     type="button"
                     class="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-white"
@@ -491,49 +518,80 @@
                 </div>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                   <div class="md:col-span-2">
-                    <label class="mb-2 block text-sm font-semibold text-slate-700">Tier Name</label>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Batch Name *</label>
                     <input
                       v-model="tier.name"
                       type="text"
+                      required
+                      :aria-invalid="!String(tier.name || '').trim()"
                       class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
                       placeholder="Early Bird"
                     >
+                    <p v-if="!String(tier.name || '').trim()" class="mt-2 text-xs font-semibold text-red-600">Batch name is required.</p>
                   </div>
-                  <div>
-                    <label class="mb-2 block text-sm font-semibold text-slate-700">Start Datetime</label>
+                  <div v-if="tier.type === 'period'">
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Start Datetime *</label>
                     <input
                       v-model="tier.startDateTime"
                       type="datetime-local"
+                      required
                       class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
                     >
+                    <p v-if="!tier.startDateTime" class="mt-2 text-xs font-semibold text-red-600">Start datetime is required.</p>
                   </div>
-                  <div>
-                    <label class="mb-2 block text-sm font-semibold text-slate-700">End Datetime</label>
+                  <div v-if="tier.type === 'period'">
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">End Datetime *</label>
                     <input
                       v-model="tier.endDateTime"
                       type="datetime-local"
+                      required
                       class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                    >
+                    <p v-if="!tier.endDateTime" class="mt-2 text-xs font-semibold text-red-600">End datetime is required.</p>
+                    <p v-else-if="tier.startDateTime && !periodBatchEndsAfterStart(tier)" class="mt-2 text-xs font-semibold text-red-600">End datetime must be after the start.</p>
+                  </div>
+                  <div v-else>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Tickets in Batch *</label>
+                    <input
+                      v-model.number="tier.quantity"
+                      type="number"
+                      min="1"
+                      :max="groupForm.ticketCount"
+                      step="1"
+                      required
+                      :aria-invalid="!batchQuantitiesArePositiveIntegers || batchQuantityExceedsInventory"
+                      class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                      placeholder="25"
                     >
                   </div>
                   <div>
-                    <label class="mb-2 block text-sm font-semibold text-slate-700">Price</label>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Price *</label>
                     <input
                       v-model.number="tier.price"
                       type="number"
                       min="0"
                       step="0.01"
+                      required
+                      :aria-invalid="!batchPriceIsValid(tier)"
                       class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
                       placeholder="50.00"
                     >
+                    <p v-if="!batchPriceIsValid(tier)" class="mt-2 text-xs font-semibold text-red-600">Enter a price of zero or more.</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          <div v-if="periodBatchesOverlap" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            Sales periods cannot overlap. Adjust the start or end datetime of the affected batches.
+          </div>
+          <div v-if="groupValidationErrors.length" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Correct {{ groupValidationErrors.length }} validation issue(s) before saving the ticket group.
+          </div>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/60">
           <button class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition" @click="isGroupModalOpen = false">Cancel</button>
-          <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-500 transition disabled:opacity-60" @click="saveGroup" :disabled="isLoading">
+          <button class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-primary-500 transition disabled:opacity-60" @click="saveGroup" :disabled="isLoading || !isGroupFormValid">
             {{ isLoading ? 'Saving...' : 'Save Group' }}
           </button>
         </div>
@@ -1321,6 +1379,8 @@ const groupForm = reactive({
   checkoutUrl: '',
   productId: null,
   color: '#94a3b8',
+  ticketCount: 0,
+  pricingType: 'period',
   pricingTiers: []
 })
 
@@ -1403,23 +1463,130 @@ const toDateTimeLocalValue = (value) => {
   return formatDateTimeLocalInput(value)
 }
 
-const mapPricingTierForm = (tier = {}) => ({
+const mapPricingTierForm = (tier = {}, defaultType = 'period') => ({
   name: tier.name || '',
+  type: tier.type || defaultType,
   startDateTime: toDateTimeLocalValue(tier.startDateTime),
   endDateTime: toDateTimeLocalValue(tier.endDateTime),
+  quantity: tier.quantity ?? 1,
   price: tier.price ?? 0
 })
 
 const addPricingTier = () => {
-  groupForm.pricingTiers.push(mapPricingTierForm())
+  groupForm.pricingTiers.push(mapPricingTierForm({}, groupForm.pricingType))
+}
+
+const applyPricingType = () => {
+  groupForm.pricingTiers.forEach((tier) => {
+    tier.type = groupForm.pricingType
+  })
 }
 
 const removePricingTier = (index) => {
   groupForm.pricingTiers.splice(index, 1)
 }
 
+const configuredBatchQuantity = computed(() => groupForm.pricingTiers.reduce(
+  (total, tier) => total + (Number.isFinite(Number(tier.quantity)) ? Number(tier.quantity) : 0),
+  0
+))
+
+const batchQuantitiesArePositiveIntegers = computed(() => (
+  groupForm.pricingType !== 'quantity' || groupForm.pricingTiers.every((tier) => (
+    Number.isInteger(Number(tier.quantity)) && Number(tier.quantity) > 0
+  ))
+))
+
+const batchQuantityExceedsInventory = computed(() => (
+  groupForm.pricingType === 'quantity' && configuredBatchQuantity.value > groupForm.ticketCount
+))
+
+const batchQuantityIsValid = computed(() => (
+  batchQuantitiesArePositiveIntegers.value && !batchQuantityExceedsInventory.value
+))
+
+const batchPriceIsValid = (tier) => {
+  if (tier.price === '' || tier.price === null || tier.price === undefined) return false
+  const price = Number(tier.price)
+  return Number.isFinite(price) && price >= 0
+}
+
+const periodBatchEndsAfterStart = (tier) => {
+  if (!tier.startDateTime || !tier.endDateTime) return false
+  const start = new Date(tier.startDateTime).getTime()
+  const end = new Date(tier.endDateTime).getTime()
+  return Number.isFinite(start) && Number.isFinite(end) && end > start
+}
+
+const periodBatchesOverlap = computed(() => {
+  if (groupForm.pricingType !== 'period') return false
+
+  const periods = groupForm.pricingTiers
+    .filter((tier) => periodBatchEndsAfterStart(tier))
+    .map((tier) => ({
+      start: new Date(tier.startDateTime).getTime(),
+      end: new Date(tier.endDateTime).getTime()
+    }))
+    .sort((a, b) => a.start - b.start)
+
+  return periods.some((period, index) => index > 0 && period.start < periods[index - 1].end)
+})
+
+const isValidCheckoutUrl = computed(() => {
+  const value = String(groupForm.checkoutUrl || '').trim()
+  if (!value) return true
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+})
+
+const isValidProductId = computed(() => {
+  if (event.value?.saleMode === 'checkout') return true
+  const productId = Number(groupForm.productId)
+  return Number.isInteger(productId) && productId > 0
+})
+
+const isValidGroupColor = computed(() => /^#[0-9A-Fa-f]{6}$/.test(String(groupForm.color || '').trim()))
+
+const groupValidationErrors = computed(() => {
+  const validationErrors = []
+
+  if (!String(groupForm.description || '').trim()) validationErrors.push('Group name is required')
+  if (String(groupForm.salesDescription || '').length > 500) validationErrors.push('Buyer description is too long')
+  if (!isValidCheckoutUrl.value) validationErrors.push('Checkout URL is invalid')
+  if (!isValidProductId.value) validationErrors.push('Product ID is invalid')
+  if (!isValidGroupColor.value) validationErrors.push('Group color is invalid')
+
+  groupForm.pricingTiers.forEach((tier, index) => {
+    const batchLabel = `Batch ${index + 1}`
+    if (!String(tier.name || '').trim()) validationErrors.push(`${batchLabel} name is required`)
+    if (!batchPriceIsValid(tier)) validationErrors.push(`${batchLabel} price is invalid`)
+
+    if (groupForm.pricingType === 'period') {
+      if (!tier.startDateTime) validationErrors.push(`${batchLabel} start datetime is required`)
+      if (!tier.endDateTime) validationErrors.push(`${batchLabel} end datetime is required`)
+      if (tier.startDateTime && tier.endDateTime && !periodBatchEndsAfterStart(tier)) {
+        validationErrors.push(`${batchLabel} period is invalid`)
+      }
+    }
+  })
+
+  if (!batchQuantitiesArePositiveIntegers.value) validationErrors.push('Batch quantities are invalid')
+  if (batchQuantityExceedsInventory.value) validationErrors.push('Batch quantities exceed ticket inventory')
+  if (periodBatchesOverlap.value) validationErrors.push('Batch periods overlap')
+
+  return validationErrors
+})
+
+const isGroupFormValid = computed(() => groupValidationErrors.value.length === 0)
+
 const editGroup = (group) => {
   currentGroupId.value = group.id
+  const pricingType = group.pricingTiers?.[0]?.type || 'period'
   Object.assign(groupForm, {
     description: group.description || '',
     salesDescription: group.salesDescription || '',
@@ -1427,7 +1594,9 @@ const editGroup = (group) => {
     checkoutUrl: group.checkoutUrl || '',
     productId: group.productId || null,
     color: group.color || '#94a3b8',
-    pricingTiers: (group.pricingTiers || []).map((tier) => mapPricingTierForm(tier))
+    ticketCount: group.ticketCount || 0,
+    pricingType,
+    pricingTiers: (group.pricingTiers || []).map((tier) => mapPricingTierForm(tier, pricingType))
   })
   isGroupModalOpen.value = true
 }
@@ -1435,6 +1604,11 @@ const editGroup = (group) => {
 const saveGroup = async () => {
   if (!currentGroupId.value) {
     error.value = 'Ticket group not found'
+    return
+  }
+
+  if (!isGroupFormValid.value) {
+    error.value = 'Correct the validation issues in the ticket group before saving'
     return
   }
 
@@ -1446,15 +1620,17 @@ const saveGroup = async () => {
       color: groupForm.color.trim(),
       pricingTiers: groupForm.pricingTiers.map((tier) => ({
         name: tier.name.trim(),
-        startDateTime: serializeDateTimeLocalInput(tier.startDateTime),
-        endDateTime: serializeDateTimeLocalInput(tier.endDateTime),
+        type: groupForm.pricingType,
+        startDateTime: groupForm.pricingType === 'period' ? serializeDateTimeLocalInput(tier.startDateTime) : null,
+        endDateTime: groupForm.pricingType === 'period' ? serializeDateTimeLocalInput(tier.endDateTime) : null,
+        quantity: groupForm.pricingType === 'quantity' ? tier.quantity : null,
         price: tier.price
       }))
     })
 
     isGroupModalOpen.value = false
     currentGroupId.value = null
-    Object.assign(groupForm, { description: '', salesDescription: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8', pricingTiers: [] })
+    Object.assign(groupForm, { description: '', salesDescription: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8', ticketCount: 0, pricingType: 'period', pricingTiers: [] })
     await loadGroups()
     error.value = null
   } catch (err) {
@@ -2049,5 +2225,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Custom animations or specific tweaks can go here */
+.event-detail-description {
+  display: -webkit-box;
+  line-clamp: 3;
+  max-height: 5.25rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
 </style>

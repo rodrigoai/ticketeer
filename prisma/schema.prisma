@@ -59,14 +59,17 @@ model TicketGroupPricingTier {
   id            Int        @id @default(autoincrement())
   ticketGroupId Int
   name          String
-  start_at      DateTime
-  end_at        DateTime
+  type          String     @default("period")
+  start_at      DateTime?
+  end_at        DateTime?
+  quantity      Int?
+  position      Int        @default(0)
   price         Decimal
   created_at    DateTime   @default(now())
   updated_at    DateTime   @updatedAt
   ticketGroup   TicketGroup @relation(fields: [ticketGroupId], references: [id], onDelete: Cascade)
 
-  @@index([ticketGroupId, start_at, end_at])
+  @@index([ticketGroupId, position])
   @@map("ticket_group_pricing_tiers")
 }
 

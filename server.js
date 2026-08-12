@@ -665,10 +665,11 @@ app.get('/api/public/events/:hash', async (req, res) => {
       where: { eventId: event.id },
       include: {
         pricingTiers: {
-          orderBy: { start_at: 'asc' }
+          orderBy: [{ position: 'asc' }, { id: 'asc' }]
         }
       }
     });
+    const soldCounts = await ticketService.getTicketGroupSoldCounts(event.id);
     const storedGroupMap = new Map(storedGroups.map((group) => [group.groupKey, group]));
     const tickets = landingTickets.map((ticket) => ({
       id: ticket.id,
@@ -704,6 +705,7 @@ app.get('/api/public/events/:hash', async (req, res) => {
           activePricingTier: null,
           pricingTiers: [],
           totalCount: 0,
+          soldCount: soldCounts.get(groupKey) || 0,
           availableCount: 0,
           checkoutUrl: storedGroup?.checkout_url || '',
           productId: storedGroup?.product_id || null,
@@ -728,7 +730,8 @@ app.get('/api/public/events/:hash', async (req, res) => {
         const storedGroup = storedGroupMap.get(group.key);
         const resolvedPricing = ticketService.resolveTicketGroupPricing({
           defaultPrice: group.price,
-          pricingTiers: storedGroup?.pricingTiers || []
+          pricingTiers: storedGroup?.pricingTiers || [],
+          soldCount: group.soldCount
         });
 
         return {
@@ -847,7 +850,7 @@ app.post('/api/public/events/:id/cart-checkout', async (req, res) => {
       where: { eventId: event.id },
       include: {
         pricingTiers: {
-          orderBy: { start_at: 'asc' }
+          orderBy: [{ position: 'asc' }, { id: 'asc' }]
         }
       }
     });
@@ -864,15 +867,20 @@ app.post('/api/public/events/:id/cart-checkout', async (req, res) => {
       const itemsMap = new Map();
       let total = 0;
 
+      const soldCounts = await ticketService.getTicketGroupSoldCounts(event.id);
+      const cartGroupOffsets = new Map();
+
       for (const ticket of reservation.tickets) {
         const groupKey = ticket.description || '';
         const group = storedGroupMap.get(groupKey);
         const productId = group?.product_id;
         const resolvedPricing = ticketService.resolveTicketGroupPricing({
           defaultPrice: ticket.price,
-          pricingTiers: group?.pricingTiers || []
+          pricingTiers: group?.pricingTiers || [],
+          soldCount: (soldCounts.get(groupKey) || 0) + (cartGroupOffsets.get(groupKey) || 0)
         });
         const activePrice = resolvedPricing.activePrice;
+        cartGroupOffsets.set(groupKey, (cartGroupOffsets.get(groupKey) || 0) + 1);
 
         if (!productId) {
           throw new Error(`Ticket group '${ticket.description}' is missing a product ID`);
@@ -880,8 +888,9 @@ app.post('/api/public/events/:id/cart-checkout', async (req, res) => {
 
         total += activePrice;
 
-        if (!itemsMap.has(productId)) {
-          itemsMap.set(productId, {
+        const itemKey = `${productId}:${activePrice}`;
+        if (!itemsMap.has(itemKey)) {
+          itemsMap.set(itemKey, {
             id: productId,
             name: ticket.description || 'Ingresso',
             quantity: 0,
@@ -889,7 +898,7 @@ app.post('/api/public/events/:id/cart-checkout', async (req, res) => {
           });
         }
 
-        itemsMap.get(productId).quantity += 1;
+        itemsMap.get(itemKey).quantity += 1;
       }
 
       const payload = {
@@ -1053,6 +1062,7 @@ app.get('/api/events/:eventId/groups', requiresAuth, async (req, res) => {
         productId: group.productId,
         color: group.color || null,
         ticketCount: group.ticketCount,
+        soldCount: group.soldCount,
         availableCount: group.availableCount,
         price: parseFloat(group.price) || 0,
         activePrice: parseFloat(group.activePrice) || 0,
