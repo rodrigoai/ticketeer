@@ -84,4 +84,25 @@ describe('EmailService', () => {
     expect(html).toContain('color: #ffffff !important');
     expect(html).toContain('Confirmar informações');
   });
+
+  test('renders QR code ticket email with prominent ticket details and high contrast QR panel', () => {
+    const emailService = require('../services/emailService');
+
+    const html = emailService.generateQrCodeEmailTemplate({
+      eventName: 'Festival',
+      eventVenue: 'Arena',
+      eventDate: new Date('2026-05-08T23:00:00.000Z'),
+      ticketNumber: 42,
+      buyerName: 'Joao Silva',
+      qrCodeDataUrl: 'data:image/png;base64,cXItY29kZQ==',
+      qrCodeHash: 'qr-hash'
+    });
+
+    expect(html).toContain('class="ticket-info"');
+    expect(html).toContain('class="summary-title">📅 Festival</h3>');
+    expect(html).toContain('Número:</span> <span class="ticket-number">#42</span>');
+    expect(html).toContain('Portador:</span> <span class="summary-value">Joao Silva</span>');
+    expect(html).toContain('border: 3px solid #111827');
+    expect(html).toContain('Código QR de Acesso');
+  });
 });

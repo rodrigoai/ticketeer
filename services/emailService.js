@@ -510,17 +510,25 @@ Equipe Nova Money
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seu Ingresso QR Code</title>
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: white; padding: 30px; border: 1px solid #ddd; }
-        .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px; }
-        .ticket-info { background: #e9ecef; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .qr-section { background: #fff; border: 2px solid #007bff; padding: 25px; border-radius: 10px; text-align: center; margin: 25px 0; }
-        .qr-code { max-width: 280px; width: 100%; height: auto; margin: 15px 0; }
-        .important { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .hash-code { font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 5px; word-break: break-all; }
-        .ticket-number { font-size: 24px; font-weight: bold; color: #007bff; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; background: #f3f4f6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+        .header { background: #047857; color: #ffffff; padding: 34px 30px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { margin: 0; font-size: 28px; line-height: 1.2; }
+        .header p { margin: 10px 0 0; color: #d1fae5; font-size: 16px; }
+        .content { background: #ffffff; padding: 30px; border: 1px solid #d1d5db; border-top: 0; }
+        .footer { background: #111827; padding: 20px; text-align: center; border-radius: 0 0 12px 12px; color: #d1d5db; font-size: 14px; }
+        .ticket-info { background: #ecfdf5; border: 2px solid #047857; padding: 22px; border-radius: 10px; margin: 24px 0; }
+        .summary-label { margin: 0 0 4px; color: #047857; font-size: 12px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; }
+        .summary-title { margin: 0 0 16px; color: #111827; font-size: 24px; line-height: 1.25; }
+        .summary-row { margin: 8px 0; color: #374151; font-size: 16px; }
+        .summary-value { color: #111827; font-weight: bold; }
+        .qr-section { background: #ffffff; border: 3px solid #111827; padding: 26px; border-radius: 12px; text-align: center; margin: 28px 0; }
+        .qr-section h3 { margin: 0; color: #111827; font-size: 22px; }
+        .qr-section p { color: #374151; }
+        .qr-code { max-width: 280px; width: 100%; height: auto; margin: 18px 0; border: 1px solid #e5e7eb; border-radius: 8px; }
+        .important { background: #fffbeb; border: 1px solid #f59e0b; color: #78350f; padding: 16px; border-radius: 8px; margin: 24px 0; }
+        .hash-code { font-family: monospace; background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; padding: 12px; border-radius: 8px; word-break: break-all; }
+        .ticket-number { font-size: 26px; font-weight: bold; color: #047857; }
     </style>
 </head>
 <body>
@@ -533,14 +541,15 @@ Equipe Nova Money
         <div class="content">
             <h2>Olá, ${buyerName}!</h2>
             
-            <p>Seu ingresso foi confirmado com sucesso! Apresente o QR Code abaixo na entrada do evento.</p>
+            <p>Seu ingresso foi confirmado com sucesso. Apresente o QR Code abaixo na entrada do evento.</p>
             
             <div class="ticket-info">
-                <h3>📅 ${eventName}</h3>
-                <p><strong>Número do Ingresso:</strong> <span class="ticket-number">#${ticketNumber}</span></p>
-                <p><strong>Portador:</strong> ${buyerName}</p>
-                <p><strong>Local:</strong> ${eventVenue || 'A definir'}</p>
-                <p><strong>Data:</strong> ${formattedDate}</p>
+                <p class="summary-label">Ingresso</p>
+                <h3 class="summary-title">📅 ${eventName}</h3>
+                <p class="summary-row"><span>Número:</span> <span class="ticket-number">#${ticketNumber}</span></p>
+                <p class="summary-row"><span>Portador:</span> <span class="summary-value">${buyerName}</span></p>
+                <p class="summary-row"><span>Local:</span> <span class="summary-value">${eventVenue || 'A definir'}</span></p>
+                <p class="summary-row"><span>Data:</span> <span class="summary-value">${formattedDate}</span></p>
             </div>
             
             <div class="qr-section">
