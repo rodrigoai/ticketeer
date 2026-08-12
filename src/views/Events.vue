@@ -88,7 +88,12 @@
             </div>
             <div>
               <h3 class="text-2xl font-semibold text-slate-900">{{ event.title }}</h3>
-              <p class="text-sm text-slate-500 mt-1 max-h-16 overflow-hidden">{{ event.description || 'No description yet.' }}</p>
+              <div
+                v-if="event.description"
+                class="rich-text-content event-card-description mt-2 max-h-28 overflow-hidden text-sm text-slate-500"
+                v-html="event.description"
+              ></div>
+              <p v-else class="mt-1 text-sm text-slate-500">No description yet.</p>
             </div>
             <div class="text-sm text-slate-600 flex flex-wrap gap-3 mt-3">
               <span class="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-slate-500">
@@ -139,8 +144,12 @@
                 <input type="text" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventTitle" v-model="eventForm.title" required>
               </div>
               <div>
-                <label for="eventDescription" class="block text-sm font-semibold text-slate-700 mb-2">Description</label>
-                <textarea class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDescription" rows="3" v-model="eventForm.description"></textarea>
+                <label class="mb-2 block text-sm font-semibold text-slate-700">Description</label>
+                <RichTextEditor
+                  v-model="eventForm.description"
+                  placeholder="Write the event description and format it using the toolbar..."
+                />
+                <p class="mt-2 text-xs leading-5 text-slate-500">The public event page and event cards use this formatting.</p>
               </div>
               <div>
                 <label for="eventDate" class="block text-sm font-semibold text-slate-700 mb-2">Date</label>
@@ -248,6 +257,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
 import { formatDateTimeLocalInput, serializeDateTimeLocalInput } from '@/utils/dateTime'
+import RichTextEditor from '@/components/RichTextEditor.vue'
 
 const SALE_MODES = {
   CHECKOUT: 'checkout',
@@ -511,6 +521,21 @@ onMounted(loadEvents)
 </script>
 
 <style scoped>
+.event-card-description {
+  position: relative;
+}
+
+.event-card-description::after {
+  background: linear-gradient(to bottom, transparent, white);
+  bottom: 0;
+  content: '';
+  height: 2rem;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
 .card {
   transition: transform 0.2s ease-in-out;
 }

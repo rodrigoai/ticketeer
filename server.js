@@ -10,6 +10,7 @@ const createDashboardRoutes = require('./routes/dashboardRoutes');
 const createCheckinRoutes = require('./routes/checkinRoutes');
 const createWebhookRoutes = require('./routes/webhookRoutes');
 const novaMoneyService = require('./services/novaMoneyService');
+const { sanitizeEventDescription } = require('./utils/sanitizeEventDescription');
 require('dotenv').config();
 
 const app = express();
@@ -302,7 +303,7 @@ app.get('/api/events', requiresAuth, async (req, res) => {
       publicHash: event.public_hash,
       title: event.name,
       name: event.name,
-      description: event.description,
+      description: sanitizeEventDescription(event.description),
       date: event.opening_datetime,
       opening_datetime: event.opening_datetime,
       closing_datetime: event.closing_datetime,
@@ -397,7 +398,7 @@ app.post('/api/events', requiresAuth, async (req, res) => {
     // Create event data for database
     const eventData = {
       name: title,
-      description: description || '',
+      description: sanitizeEventDescription(description),
       event_image_url: eventImageUrl || null,
       mobile_event_image_url: mobileEventImageUrl || null,
       map_image: eventMapUrl || null,
@@ -472,7 +473,7 @@ app.get('/api/events/:id', requiresAuth, async (req, res) => {
       publicHash: event.public_hash,
       title: event.name,
       name: event.name,
-      description: event.description,
+      description: sanitizeEventDescription(event.description),
       date: event.opening_datetime,
       opening_datetime: event.opening_datetime,
       closing_datetime: event.closing_datetime,
@@ -549,7 +550,7 @@ app.put('/api/events/:id', requiresAuth, async (req, res) => {
     // Update event data
     const eventData = {
       name: title,
-      description: description || '',
+      description: sanitizeEventDescription(description),
       event_image_url: eventImageUrl || null,
       mobile_event_image_url: mobileEventImageUrl || null,
       map_image: eventMapUrl || null,
@@ -697,6 +698,7 @@ app.get('/api/public/events/:hash', async (req, res) => {
           id: storedGroup?.id || null,
           key: groupKey,
           description: ticket.description || 'Ticket',
+          salesDescription: storedGroup?.sales_description || '',
           price: ticket.price ?? null,
           activePrice: parseFloat(ticket.price) || 0,
           activePricingTier: null,
@@ -746,7 +748,7 @@ app.get('/api/public/events/:hash', async (req, res) => {
         publicHash: event.public_hash,
         title: event.name,
         name: event.name,
-        description: event.description,
+        description: sanitizeEventDescription(event.description),
         date: event.opening_datetime,
         opening_datetime: event.opening_datetime,
         closing_datetime: event.closing_datetime,
@@ -1046,6 +1048,7 @@ app.get('/api/events/:eventId/groups', requiresAuth, async (req, res) => {
         eventId: group.eventId,
         groupKey: group.groupKey,
         description: group.description,
+        salesDescription: group.salesDescription || '',
         checkoutUrl: group.checkoutUrl || '',
         productId: group.productId,
         color: group.color || null,
@@ -1074,10 +1077,10 @@ app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) =
   try {
     const { eventId, groupId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    const { checkoutUrl, productId, color, pricingTiers } = req.body;
+    const { salesDescription, checkoutUrl, productId, color, pricingTiers } = req.body;
     const ticketService = require('./services/ticketService');
 
-    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { checkoutUrl, productId, color, pricingTiers }, userId);
+    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { salesDescription, checkoutUrl, productId, color, pricingTiers }, userId);
     const resolvedPricing = ticketService.resolveTicketGroupPricing({
       defaultPrice: 0,
       pricingTiers: updatedGroup.pricingTiers || []
@@ -1090,6 +1093,7 @@ app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) =
         eventId: updatedGroup.eventId,
         groupKey: updatedGroup.groupKey,
         description: updatedGroup.description,
+        salesDescription: updatedGroup.sales_description || '',
         checkoutUrl: updatedGroup.checkout_url || '',
         productId: updatedGroup.product_id || null,
         color: updatedGroup.color || null,

@@ -1078,6 +1078,7 @@ class TicketService {
             eventId: parseInt(eventId),
             groupKey,
             description: ticket.description,
+            salesDescription: storedGroup?.sales_description || '',
             checkoutUrl: storedGroup?.checkout_url || '',
             productId: storedGroup?.product_id || null,
             color: storedGroup?.color || null,
@@ -1149,6 +1150,11 @@ class TicketService {
         throw new Error('Ticket group not found');
       }
 
+      const salesDescription = String(groupData.salesDescription || '').trim();
+      if (salesDescription.length > 500) {
+        throw new Error('Buyer description cannot exceed 500 characters');
+      }
+
       const normalizedPricingTiers = this._normalizePricingTiers(groupData.pricingTiers || []);
       const pricingTiersData = normalizedPricingTiers.map((tier) => ({
         name: tier.name,
@@ -1158,6 +1164,7 @@ class TicketService {
       }));
 
       const updateData = {
+        sales_description: salesDescription || null,
         checkout_url: groupData.checkoutUrl || null,
         product_id: Number.isInteger(Number(groupData.productId))
           ? parseInt(groupData.productId)

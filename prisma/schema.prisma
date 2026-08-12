@@ -41,6 +41,7 @@ model TicketGroup {
   eventId       Int
   groupKey      String
   description   String
+  sales_description String?
   table         Int?
   checkout_url  String?
   product_id    Int?

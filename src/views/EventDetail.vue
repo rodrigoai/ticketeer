@@ -27,7 +27,11 @@
             <span class="text-slate-900">{{ event.title }}</span>
           </nav>
           <h1 class="text-3xl font-semibold text-slate-900">{{ event.title }}</h1>
-          <p class="text-sm text-slate-500 mt-1" v-if="event.description">{{ event.description }}</p>
+          <div
+            v-if="event.description"
+            class="rich-text-content mt-2 text-sm text-slate-500"
+            v-html="event.description"
+          ></div>
           <div class="flex flex-wrap gap-4 mt-3 text-sm text-slate-600">
             <span class="inline-flex items-center gap-2"><i class="fas fa-calendar"></i> {{ formatDate(event.date) }}</span>
             <span v-if="event.venue" class="inline-flex items-center gap-2"><i class="fas fa-map-marker-alt"></i> {{ event.venue }}</span>
@@ -112,6 +116,9 @@
               </div>
               <p class="text-sm text-slate-500">
                 {{ group.ticketCount }} ticket(s), {{ group.availableCount }} available
+              </p>
+              <p v-if="group.salesDescription" class="max-w-2xl text-sm text-slate-600">
+                {{ group.salesDescription }}
               </p>
               <p class="text-xs text-slate-500">
                 Current price: {{ formatCurrency(group.activePrice ?? group.price) }}
@@ -383,12 +390,27 @@
         <div class="max-h-[75vh] space-y-5 overflow-y-auto p-6">
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Description</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Group name</p>
               <p class="mt-1 text-sm font-semibold text-slate-900">{{ groupForm.description || '-' }}</p>
             </div>
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Tables</p>
               <p class="mt-1 text-sm font-semibold text-slate-900">{{ groupForm.tables || '-' }}</p>
+            </div>
+          </div>
+          <div>
+            <label for="groupSalesDescription" class="block text-sm font-semibold text-slate-700 mb-2">Buyer description</label>
+            <textarea
+              id="groupSalesDescription"
+              v-model="groupForm.salesDescription"
+              rows="3"
+              maxlength="500"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+              placeholder="Explain what this ticket group includes and how it works."
+            ></textarea>
+            <div class="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+              <p>Shown below the group name on the public sales page.</p>
+              <span>{{ groupForm.salesDescription.length }}/500</span>
             </div>
           </div>
           <div v-if="event?.saleMode === 'checkout'">
@@ -1294,6 +1316,7 @@ const bulkEditForm = reactive({
 
 const groupForm = reactive({
   description: '',
+  salesDescription: '',
   tables: '',
   checkoutUrl: '',
   productId: null,
@@ -1399,6 +1422,7 @@ const editGroup = (group) => {
   currentGroupId.value = group.id
   Object.assign(groupForm, {
     description: group.description || '',
+    salesDescription: group.salesDescription || '',
     tables: group.tables?.length ? group.tables.join(', ') : '',
     checkoutUrl: group.checkoutUrl || '',
     productId: group.productId || null,
@@ -1416,6 +1440,7 @@ const saveGroup = async () => {
 
   try {
     await put(`/api/events/${eventId.value}/groups/${currentGroupId.value}`, {
+      salesDescription: groupForm.salesDescription.trim(),
       checkoutUrl: groupForm.checkoutUrl.trim(),
       productId: groupForm.productId,
       color: groupForm.color.trim(),
@@ -1429,7 +1454,7 @@ const saveGroup = async () => {
 
     isGroupModalOpen.value = false
     currentGroupId.value = null
-    Object.assign(groupForm, { description: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8', pricingTiers: [] })
+    Object.assign(groupForm, { description: '', salesDescription: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8', pricingTiers: [] })
     await loadGroups()
     error.value = null
   } catch (err) {

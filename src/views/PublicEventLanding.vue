@@ -40,7 +40,11 @@
               </div>
               <div>
                 <h1 class="text-3xl font-semibold text-slate-900">{{ event.title }}</h1>
-                <p v-if="event.description" class="mt-2 text-slate-500">{{ event.description }}</p>
+                <div
+                  v-if="event.description"
+                  class="rich-text-content mt-4 text-slate-600"
+                  v-html="event.description"
+                ></div>
               </div>
               <div class="flex flex-wrap gap-4 text-sm text-slate-600">
                 <span class="inline-flex items-center gap-2"><i class="fas fa-calendar"></i> {{ formattedDate }}</span>
@@ -123,6 +127,9 @@
                         {{ group.activePricingTier.name }}
                       </span>
                     </div>
+                    <p v-if="group.salesDescription" class="mt-1 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-slate-600">
+                      {{ group.salesDescription }}
+                    </p>
                     <p v-if="group.tables?.length" class="text-sm text-slate-500">Mesas {{ group.tables.join(', ') }}</p>
                     <p v-if="group.activePrice !== null" class="text-sm text-slate-500">Valor: {{ formatCurrency(group.activePrice) }}</p>
                   </div>
@@ -183,6 +190,9 @@
                         {{ group.activePricingTier.name }}
                       </span>
                     </div>
+                    <p v-if="group.salesDescription" class="mt-1 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-slate-600">
+                      {{ group.salesDescription }}
+                    </p>
                     <p class="text-sm text-slate-500">
                       <span class="block sm:inline">{{ group.tabled ? 'Venda por mesa' : 'Venda por ingresso' }}</span>
                       <span class="hidden sm:inline mx-2">•</span>
@@ -595,6 +605,7 @@ const shoppingCartGroups = computed(() => {
       groups.set(key, {
         key,
         description: ticket.description || 'Ticket',
+        salesDescription: storedGroup?.salesDescription || '',
         price: storedGroup?.activePrice ?? ticket.price ?? 0,
         activePricingTier: storedGroup?.activePricingTier || null,
         color: storedGroup?.color || null,

@@ -152,6 +152,7 @@ describe('Ticket group tiered pricing', () => {
     });
 
     const updatedGroup = await ticketService.updateTicketGroup(26, 9, {
+      salesDescription: '  Includes dinner and access to the premium area.  ',
       checkoutUrl: '',
       productId: null,
       color: '#94a3b8',
@@ -174,6 +175,7 @@ describe('Ticket group tiered pricing', () => {
     expect(mockPrisma.ticketGroup.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 9 },
       data: expect.objectContaining({
+        sales_description: 'Includes dinner and access to the premium area.',
         pricingTiers: expect.objectContaining({
           deleteMany: {},
           create: expect.arrayContaining([
@@ -184,6 +186,24 @@ describe('Ticket group tiered pricing', () => {
       })
     }));
     expect(updatedGroup.pricingTiers).toHaveLength(2);
+  });
+
+  test('updateTicketGroup rejects buyer descriptions longer than 500 characters', async () => {
+    const consoleErrorSpy = silenceExpectedConsoleError();
+
+    mockPrisma.event.findFirst.mockResolvedValue({ id: 26, created_by: 'user-1' });
+    mockPrisma.ticketGroup.findFirst.mockResolvedValue({ id: 9, eventId: 26 });
+
+    await expect(ticketService.updateTicketGroup(26, 9, {
+      salesDescription: 'a'.repeat(501),
+      pricingTiers: []
+    }, 'user-1')).rejects.toThrow('cannot exceed 500 characters');
+
+    expect(mockPrisma.ticketGroup.update).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error updating ticket group:',
+      expect.any(Error)
+    );
   });
 
   test('updateTicketGroup stores timezone-less pricing tier datetimes using the app timezone', async () => {
