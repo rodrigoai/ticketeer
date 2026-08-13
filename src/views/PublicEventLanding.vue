@@ -194,14 +194,14 @@
                       {{ group.salesDescription }}
                     </p>
                     <p class="text-sm text-slate-500">
-                      <span class="block sm:inline">{{ group.tabled ? 'Venda por mesa' : 'Venda por ingresso' }}</span>
+                      <span class="block sm:inline">{{ group.tabled ? 'Venda por unidade' : 'Venda por ingresso' }}</span>
                       <span class="hidden sm:inline mx-2">•</span>
                       <span class="block sm:inline">{{ group.availableCount }} disponível(is)</span>
                     </p>
                   </div>
                   <div class="flex items-center gap-3">
                     <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                      {{ group.tabled ? `${group.totalCount} mesa(s)` : `${group.seatCount} ingresso(s)` }}
+                      {{ group.tabled ? `${group.totalCount} no total` : `${group.seatCount} ingresso(s)` }}
                     </div>
                     <span class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50">
                       <i :class="expandedGroupKeys.includes(group.key) ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
@@ -639,7 +639,7 @@ const shoppingCartGroups = computed(() => {
           unitsMap.set(unitKey, {
             key: unitKey,
             description: group.description,
-            label: ticket.table !== null && ticket.table !== undefined ? `Mesa ${ticket.table}` : 'Ingresso',
+            label: ticket.table !== null && ticket.table !== undefined ? `${ticket.table}` : 'Ingresso',
             subtitle: ticket.table !== null && ticket.table !== undefined
               ? `${sortedTickets.filter((item) => item.table === ticket.table).length} lugares`
               : `#${ticket.identificationNumber}`,
