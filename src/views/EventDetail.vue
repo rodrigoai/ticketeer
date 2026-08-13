@@ -110,6 +110,12 @@
             <div class="space-y-1">
               <div class="flex flex-wrap items-center gap-3">
                 <h4 class="text-base font-semibold text-slate-900">{{ group.description }}</h4>
+                <span
+                  class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                  :class="group.active !== false ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'"
+                >
+                  {{ group.active !== false ? 'Active' : 'Inactive' }}
+                </span>
                 <span v-if="group.tables?.length" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
                   Tables {{ group.tables.join(', ') }}
                 </span>
@@ -398,6 +404,17 @@
               <p class="mt-1 text-sm font-semibold text-slate-900">{{ groupForm.tables || '-' }}</p>
             </div>
           </div>
+          <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <span>
+              <span class="block text-sm font-semibold text-slate-700">Active on public page</span>
+              <span class="mt-1 block text-xs text-slate-500">Inactive groups are hidden from the public event landing page.</span>
+            </span>
+            <input
+              v-model="groupForm.active"
+              type="checkbox"
+              class="h-5 w-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+            >
+          </label>
           <div>
             <label for="groupSalesDescription" class="block text-sm font-semibold text-slate-700 mb-2">Buyer description</label>
             <textarea
@@ -1379,6 +1396,7 @@ const groupForm = reactive({
   checkoutUrl: '',
   productId: null,
   color: '#94a3b8',
+  active: true,
   ticketCount: 0,
   pricingType: 'period',
   pricingTiers: []
@@ -1594,6 +1612,7 @@ const editGroup = (group) => {
     checkoutUrl: group.checkoutUrl || '',
     productId: group.productId || null,
     color: group.color || '#94a3b8',
+    active: group.active !== false,
     ticketCount: group.ticketCount || 0,
     pricingType,
     pricingTiers: (group.pricingTiers || []).map((tier) => mapPricingTierForm(tier, pricingType))
@@ -1618,6 +1637,7 @@ const saveGroup = async () => {
       checkoutUrl: groupForm.checkoutUrl.trim(),
       productId: groupForm.productId,
       color: groupForm.color.trim(),
+      active: groupForm.active,
       pricingTiers: groupForm.pricingTiers.map((tier) => ({
         name: tier.name.trim(),
         type: groupForm.pricingType,
@@ -1630,7 +1650,7 @@ const saveGroup = async () => {
 
     isGroupModalOpen.value = false
     currentGroupId.value = null
-    Object.assign(groupForm, { description: '', salesDescription: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8', ticketCount: 0, pricingType: 'period', pricingTiers: [] })
+    Object.assign(groupForm, { description: '', salesDescription: '', tables: '', checkoutUrl: '', productId: null, color: '#94a3b8', active: true, ticketCount: 0, pricingType: 'period', pricingTiers: [] })
     await loadGroups()
     error.value = null
   } catch (err) {

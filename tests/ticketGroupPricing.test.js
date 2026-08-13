@@ -247,6 +247,22 @@ describe('Ticket group tiered pricing', () => {
     );
   });
 
+  test('updateTicketGroup persists the active state', async () => {
+    mockPrisma.event.findFirst.mockResolvedValue({ id: 26 });
+    mockPrisma.ticketGroup.findFirst.mockResolvedValue({ id: 9, eventId: 26 });
+    mockPrisma.ticketGroup.update.mockResolvedValue({ id: 9, active: false, pricingTiers: [] });
+
+    const updatedGroup = await ticketService.updateTicketGroup(26, 9, {
+      active: false,
+      pricingTiers: []
+    }, 'user-1');
+
+    expect(mockPrisma.ticketGroup.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ active: false })
+    }));
+    expect(updatedGroup.active).toBe(false);
+  });
+
   test.each(['', '   '])('updateTicketGroup rejects a missing batch name (%p)', async (name) => {
     const consoleErrorSpy = silenceExpectedConsoleError();
     mockPrisma.event.findFirst.mockResolvedValue({ id: 26, created_by: 'user-1' });

@@ -28,7 +28,8 @@ class TicketService {
         eventId: parseInt(eventId),
         groupKey,
         description,
-        table: null
+        table: null,
+        active: true
       }
     });
   }
@@ -1109,6 +1110,7 @@ class TicketService {
             checkoutUrl: storedGroup?.checkout_url || '',
             productId: storedGroup?.product_id || null,
             color: storedGroup?.color || null,
+            active: storedGroup?.active !== false,
             ticketCount: 0,
             soldCount: 0,
             availableCount: 0,
@@ -1227,6 +1229,10 @@ class TicketService {
           deleteMany: {}
         }
       };
+
+      if (typeof groupData.active === 'boolean') {
+        updateData.active = groupData.active;
+      }
 
       if (pricingTiersData.length) {
         updateData.pricingTiers.create = pricingTiersData;
@@ -2064,10 +2070,19 @@ class TicketService {
   async getLandingTicketsByEvent(eventId) {
     try {
       const currentDateTime = new Date();
+      const parsedEventId = parseInt(eventId);
+      const activeGroups = await prisma.ticketGroup.findMany({
+        where: {
+          eventId: parsedEventId,
+          active: true
+        },
+        select: { groupKey: true }
+      });
 
       const tickets = await prisma.ticket.findMany({
         where: {
-          eventId: parseInt(eventId),
+          eventId: parsedEventId,
+          description: { in: activeGroups.map((group) => group.groupKey) },
           AND: [
             {
               OR: [

@@ -1,0 +1,2 @@
+ALTER TABLE "ticket_groups"
+ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT true;

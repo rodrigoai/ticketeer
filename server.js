@@ -662,7 +662,7 @@ app.get('/api/public/events/:hash', async (req, res) => {
       : null;
     const landingTickets = await ticketService.getLandingTicketsByEvent(event.id);
     const storedGroups = await prisma.ticketGroup.findMany({
-      where: { eventId: event.id },
+      where: { eventId: event.id, active: true },
       include: {
         pricingTiers: {
           orderBy: [{ position: 'asc' }, { id: 'asc' }]
@@ -710,6 +710,7 @@ app.get('/api/public/events/:hash', async (req, res) => {
           checkoutUrl: storedGroup?.checkout_url || '',
           productId: storedGroup?.product_id || null,
           color: storedGroup?.color || null,
+          active: storedGroup?.active !== false,
           firstOrder: ticket.identificationNumber || 0,
           tables: []
         });
@@ -1061,6 +1062,7 @@ app.get('/api/events/:eventId/groups', requiresAuth, async (req, res) => {
         checkoutUrl: group.checkoutUrl || '',
         productId: group.productId,
         color: group.color || null,
+        active: group.active !== false,
         ticketCount: group.ticketCount,
         soldCount: group.soldCount,
         availableCount: group.availableCount,
@@ -1087,10 +1089,10 @@ app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) =
   try {
     const { eventId, groupId } = req.params;
     const userId = req.auth.payload?.sub || req.auth.sub;
-    const { salesDescription, checkoutUrl, productId, color, pricingTiers } = req.body;
+    const { salesDescription, checkoutUrl, productId, color, active, pricingTiers } = req.body;
     const ticketService = require('./services/ticketService');
 
-    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { salesDescription, checkoutUrl, productId, color, pricingTiers }, userId);
+    const updatedGroup = await ticketService.updateTicketGroup(eventId, groupId, { salesDescription, checkoutUrl, productId, color, active, pricingTiers }, userId);
     const resolvedPricing = ticketService.resolveTicketGroupPricing({
       defaultPrice: 0,
       pricingTiers: updatedGroup.pricingTiers || []
@@ -1107,6 +1109,7 @@ app.put('/api/events/:eventId/groups/:groupId', requiresAuth, async (req, res) =
         checkoutUrl: updatedGroup.checkout_url || '',
         productId: updatedGroup.product_id || null,
         color: updatedGroup.color || null,
+        active: updatedGroup.active !== false,
         activePricingTier: resolvedPricing.activePricingTier || null,
         pricingTiers: resolvedPricing.pricingTiers || []
       },
