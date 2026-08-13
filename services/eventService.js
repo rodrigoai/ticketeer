@@ -30,14 +30,15 @@ class EventService {
         opening_datetime,
         closing_datetime,
         map_image,
-      description,
-      venue,
-      sale_mode,
-      checkout_page_id,
-      checkout_page_title,
-      cart_payment_service_id,
-      reservation_expires_in_minutes,
-      created_by
+        description,
+        additional_information,
+        venue,
+        sale_mode,
+        checkout_page_id,
+        checkout_page_title,
+        cart_payment_service_id,
+        reservation_expires_in_minutes,
+        created_by
       } = eventData;
 
       const event = await prisma.event.create({
@@ -51,6 +52,7 @@ class EventService {
           closing_datetime: parseDateTimeInput(closing_datetime),
           map_image,
           description,
+          additional_information,
           venue,
           sale_mode,
           checkout_page_id,
@@ -165,6 +167,7 @@ class EventService {
         closing_datetime,
         map_image,
         description,
+        additional_information,
         venue,
         status,
         sale_mode,
@@ -202,6 +205,7 @@ class EventService {
           closing_datetime: closing_datetime ? parseDateTimeInput(closing_datetime) : undefined,
           map_image,
           description,
+          additional_information,
           venue,
           status,
           sale_mode,

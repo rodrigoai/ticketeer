@@ -19,6 +19,7 @@ model Event {
   closing_datetime  DateTime
   map_image         String?
   description       String?
+  additional_information String?
   venue             String?
   sale_mode         String   @default("checkout")
   checkout_page_id  String?

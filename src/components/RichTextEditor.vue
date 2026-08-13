@@ -20,6 +20,22 @@
         <option value="pre">Code block</option>
       </select>
 
+      <select
+        :value="currentFontSize"
+        class="mr-1 h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 outline-none hover:bg-slate-50 focus:border-primary-500"
+        aria-label="Font size"
+        @mousedown="rememberSelection"
+        @change="applyFontSize($event.target.value)"
+      >
+        <option
+          v-for="size in fontSizes"
+          :key="size.value"
+          :value="size.value"
+        >
+          {{ size.label }}
+        </option>
+      </select>
+
       <span class="mx-1 h-6 w-px bg-slate-200" aria-hidden="true"></span>
 
       <button
@@ -105,6 +121,7 @@ const emit = defineEmits(['update:modelValue'])
 const editor = ref(null)
 const savedRange = ref(null)
 const currentBlock = ref('p')
+const currentFontSize = ref('normal')
 const activeCommands = reactive({
   bold: false,
   italic: false,
@@ -117,7 +134,32 @@ const inlineActions = [
   { command: 'underline', label: 'Underline', text: 'U', textClass: 'underline' }
 ]
 
+const fontSizes = [
+  { value: 'small', label: 'Small', commandValue: '2' },
+  { value: 'normal', label: 'Normal', commandValue: '3' },
+  { value: 'large', label: 'Large', commandValue: '4' },
+  { value: 'x-large', label: 'Extra large', commandValue: '5' }
+]
+
+const fontSizeClassByCommand = Object.fromEntries(
+  fontSizes.map((size) => [size.commandValue, `rte-font-size-${size.value}`])
+)
+
+const normalizeFontSizeMarkup = () => {
+  editor.value?.querySelectorAll('font[size]').forEach((font) => {
+    const replacement = document.createElement('span')
+    replacement.className = fontSizeClassByCommand[font.getAttribute('size')] || 'rte-font-size-normal'
+
+    while (font.firstChild) {
+      replacement.appendChild(font.firstChild)
+    }
+
+    font.replaceWith(replacement)
+  })
+}
+
 const normalizedEditorHtml = () => {
+  normalizeFontSizeMarkup()
   const html = editor.value?.innerHTML?.trim() || ''
   return /^(<br\s*\/?\s*>|<p><br\s*\/?\s*><\/p>)$/i.test(html) ? '' : html
 }
@@ -144,6 +186,12 @@ const updateToolbarState = () => {
 
   const block = String(document.queryCommandValue('formatBlock') || '').toLowerCase().replace(/[<>]/g, '')
   currentBlock.value = ['p', 'h1', 'h2', 'h3', 'blockquote', 'pre'].includes(block) ? block : 'p'
+
+  const anchorNode = window.getSelection()?.anchorNode
+  const anchorElement = anchorNode?.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode?.parentElement
+  const sizedAncestor = anchorElement?.closest?.('[class*="rte-font-size-"]')
+  const selectedSize = fontSizes.find((size) => sizedAncestor?.classList.contains(`rte-font-size-${size.value}`))
+  currentFontSize.value = selectedSize?.value || 'normal'
 }
 
 const rememberSelection = () => {
@@ -165,6 +213,12 @@ const runCommand = (command, value = null) => {
 const applyBlock = (block) => {
   runCommand('formatBlock', block)
   currentBlock.value = block
+}
+
+const applyFontSize = (sizeValue) => {
+  const size = fontSizes.find((option) => option.value === sizeValue) || fontSizes[1]
+  runCommand('fontSize', size.commandValue)
+  currentFontSize.value = size.value
 }
 
 const addLink = () => {

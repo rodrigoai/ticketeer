@@ -1,7 +1,9 @@
 jest.mock('../config/prisma', () => ({
   event: {
     findUnique: jest.fn(),
-    create: jest.fn()
+    findFirst: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn()
   }
 }));
 
@@ -51,6 +53,7 @@ describe('EventService public hash', () => {
       closing_datetime: '2026-05-08T23:30',
       map_image: null,
       description: 'Live set',
+      additional_information: '<p>Doors open at 19:00.</p>',
       venue: 'Sao Paulo',
       sale_mode: 'checkout',
       checkout_page_id: null,
@@ -63,10 +66,27 @@ describe('EventService public hash', () => {
     expect(prisma.event.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         opening_datetime: expect.any(Date),
-        closing_datetime: expect.any(Date)
+        closing_datetime: expect.any(Date),
+        additional_information: '<p>Doors open at 19:00.</p>'
       })
     }));
     expect(result.opening_datetime.toISOString()).toBe('2026-05-08T23:00:00.000Z');
     expect(result.closing_datetime.toISOString()).toBe('2026-05-09T02:30:00.000Z');
+  });
+
+  test('updateEvent persists additional information', async () => {
+    prisma.event.findFirst.mockResolvedValue({ id: 26, created_by: 'user-1' });
+    prisma.event.update.mockImplementation(async ({ data }) => data);
+
+    await eventService.updateEvent(26, {
+      additional_information: '<p>Parking is available.</p>'
+    }, 'user-1');
+
+    expect(prisma.event.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 26, created_by: 'user-1' },
+      data: expect.objectContaining({
+        additional_information: '<p>Parking is available.</p>'
+      })
+    }));
   });
 });

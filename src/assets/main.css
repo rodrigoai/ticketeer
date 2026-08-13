@@ -45,6 +45,11 @@
 .rich-text-content h5,
 .rich-text-content h6 { font-size: 1.05rem; }
 
+.rich-text-content .rte-font-size-small { font-size: 0.875rem; }
+.rich-text-content .rte-font-size-normal { font-size: 1rem; }
+.rich-text-content .rte-font-size-large { font-size: 1.25rem; }
+.rich-text-content .rte-font-size-x-large { font-size: 1.5rem; }
+
 .rich-text-content p,
 .rich-text-content ul,
 .rich-text-content ol,

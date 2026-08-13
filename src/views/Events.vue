@@ -152,6 +152,15 @@
                 <p class="mt-2 text-xs leading-5 text-slate-500">The public event page and event cards use this formatting.</p>
               </div>
               <div>
+                <label class="mb-2 block text-sm font-semibold text-slate-700">Additional Information</label>
+                <RichTextEditor
+                  v-model="eventForm.additionalInformation"
+                  aria-label="Additional information"
+                  placeholder="Write additional event information and format it using the toolbar..."
+                />
+                <p class="mt-2 text-xs leading-5 text-slate-500">Shown at the bottom of the public event page.</p>
+              </div>
+              <div>
                 <label for="eventDate" class="block text-sm font-semibold text-slate-700 mb-2">Date</label>
                 <input type="datetime-local" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDate" v-model="eventForm.date" required>
               </div>
@@ -284,6 +293,7 @@ const checkoutPagesError = ref(null)
 const eventForm = reactive({
   title: '',
   description: '',
+  additionalInformation: '',
   date: '',
   venue: '',
   eventImageUrl: '',
@@ -329,6 +339,7 @@ const editEvent = async (event) => {
   Object.assign(eventForm, {
     title: event.title || event.name,
     description: event.description || '',
+    additionalInformation: event.additionalInformation || '',
     date: formatDateTimeLocalInput(event.date),
     venue: event.venue || '',
     eventImageUrl: event.eventImageUrl || '',
@@ -433,6 +444,7 @@ const resetForm = () => {
   Object.assign(eventForm, {
     title: '',
     description: '',
+    additionalInformation: '',
     date: '',
     venue: '',
     eventImageUrl: '',
