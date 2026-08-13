@@ -201,7 +201,7 @@
                   </div>
                   <div class="flex items-center gap-3">
                     <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                      {{ group.tabled ? `${group.totalCount} mesa(s)` : `${group.seatCount} assento(s)` }}
+                      {{ group.tabled ? `${group.totalCount} mesa(s)` : `${group.seatCount} ingresso(s)` }}
                     </div>
                     <span class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50">
                       <i :class="expandedGroupKeys.includes(group.key) ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
@@ -642,7 +642,7 @@ const shoppingCartGroups = computed(() => {
             label: ticket.table !== null && ticket.table !== undefined ? `Mesa ${ticket.table}` : 'Ingresso',
             subtitle: ticket.table !== null && ticket.table !== undefined
               ? `${sortedTickets.filter((item) => item.table === ticket.table).length} lugares`
-              : `Assento #${ticket.identificationNumber}`,
+              : `#${ticket.identificationNumber}`,
             tickets: [],
             totalPrice: 0,
             isAvailable: true,
