@@ -345,7 +345,7 @@
       class="mx-auto max-w-7xl px-4 pb-8"
     >
       <div class="rounded-3xl border border-slate-100 bg-white p-6 shadow-lg">
-        <h2 class="text-xl font-semibold text-slate-900">Additional Information</h2>
+        <h2 class="text-xl font-semibold text-slate-900">Informações adicionais</h2>
         <div
           class="rich-text-content mt-4 text-slate-600"
           v-html="event.additionalInformation"
