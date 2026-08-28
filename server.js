@@ -1690,6 +1690,58 @@ app.post('/api/tickets/:id/resend-email', requiresAuth, async (req, res) => {
   }
 });
 
+// Get a print-ready ticket using the same template sent in the QR code email.
+app.get('/api/tickets/:id/printable', requiresAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.payload?.sub || req.auth.sub;
+    const ticketService = require('./services/ticketService');
+    const emailService = require('./services/emailService');
+    const qrCodeService = require('./services/qrCodeService');
+    const ticket = await ticketService.getTicketById(id, userId);
+
+    // A ticket is considered sold when checkout has assigned it an order.
+    if (!ticket.order) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ticket is not sold',
+        message: 'Only sold tickets can be printed'
+      });
+    }
+
+    const qrCode = await qrCodeService.generateQrCodeDataUrl(ticket, userId);
+    const html = emailService.generateQrCodeEmailTemplate({
+      eventName: ticket.event.name,
+      eventVenue: ticket.event.venue,
+      eventDate: ticket.event.opening_datetime,
+      ticketNumber: ticket.identificationNumber,
+      ticketName: ticket.description,
+      ticketTable: ticket.table,
+      buyerName: ticket.buyer || 'Participante',
+      qrCodeDataUrl: qrCode.dataUrl,
+      qrCodeHash: qrCode.hash
+    });
+
+    res.json({ success: true, html, ticketId: ticket.id });
+  } catch (error) {
+    console.error('Error generating printable ticket:', error);
+
+    if (error.message.includes('Ticket not found') || error.message.includes('Access denied')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket not found',
+        message: 'Ticket not found or you do not have access to it'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate printable ticket',
+      message: error.message
+    });
+  }
+});
+
 // Resend buyer confirmation email for a ticket order (JWT authenticated)
 app.post('/api/tickets/:id/resend-confirmation-email', requiresAuth, async (req, res) => {
   try {

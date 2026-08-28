@@ -361,6 +361,14 @@
                     >
                       <i class="fas fa-envelope"></i>
                     </button>
+                    <button
+                      v-if="isSoldTicket(ticket)"
+                      class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition shadow-sm"
+                      @click="printTicket(ticket)"
+                      title="View printable ticket"
+                    >
+                      <i class="fas fa-print"></i>
+                    </button>
                     <button 
                       class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition shadow-sm" 
                       @click="deleteTicket(ticket.id)" 
@@ -1289,6 +1297,10 @@ const canResendTicketEmail = (ticket) => {
   return isTicketBuyerConfirmed(ticket)
 }
 
+const isSoldTicket = (ticket) => {
+  return Boolean(ticket?.order)
+}
+
 const canShowEmailAction = (ticket) => {
   return canSendConfirmationEmail(ticket) || canResendTicketEmail(ticket)
 }
@@ -1889,6 +1901,47 @@ const sendTicketEmailAction = async (ticket) => {
   }
 
   await resendEmail(ticket)
+}
+
+const printTicket = async (ticket) => {
+  const printWindow = window.open('', '_blank')
+
+  if (!printWindow) {
+    error.value = 'Your browser blocked the print window. Please allow pop-ups and try again.'
+    return
+  }
+
+  printWindow.document.write('<title>Preparing ticket...</title>')
+
+  try {
+    const result = await get(`/api/tickets/${ticket.id}/printable`)
+    const previewControls = `
+      <style>
+        .ticket-preview-actions { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 16px; background: rgba(255, 255, 255, 0.96); border-bottom: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); font-family: Arial, sans-serif; }
+        .ticket-preview-actions button { border: 0; border-radius: 999px; padding: 10px 16px; color: #ffffff; background: #047857; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .ticket-preview-actions button:hover { background: #065f46; }
+        .ticket-preview-actions .ticket-preview-download { background: #111827; }
+        .ticket-preview-actions .ticket-preview-download:hover { background: #374151; }
+        .ticket-preview-actions span { color: #64748b; font-size: 12px; }
+        @media print { .ticket-preview-actions { display: none !important; } }
+      </style>
+      <div class="ticket-preview-actions" role="toolbar" aria-label="Ticket actions">
+        <button type="button" onclick="window.print()">Print</button>
+        <button type="button" class="ticket-preview-download" onclick="window.print()">Download PDF</button>
+        <span>Choose “Save as PDF” in the print dialog.</span>
+      </div>`
+    const previewHtml = result.html.replace('<body>', `<body>${previewControls}`)
+
+    printWindow.document.open()
+    printWindow.document.write(previewHtml)
+    printWindow.document.close()
+    printWindow.focus()
+    error.value = null
+  } catch (err) {
+    printWindow.close()
+    console.error('Failed to prepare printable ticket:', err)
+    error.value = err.message || 'Failed to prepare printable ticket'
+  }
 }
 
 // Resend email for selected tickets

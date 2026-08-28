@@ -125,6 +125,7 @@ class TicketService {
         buyer: ticket.buyer,
         buyerEmail: ticket.buyerEmail,
         description: ticket.description,
+        table: ticket.table,
         eventId: ticket.eventId,
         qrCodeHash: ticket.qrCodeHash
       },
@@ -273,6 +274,8 @@ class TicketService {
               eventId: ticketsToUpdate[0].eventId,
               qrCodeHash: ticketWithBuyerInfo.qrCodeHash,
               identificationNumber: ticketWithBuyerInfo.identificationNumber,
+              description: ticketsToUpdate[0].description,
+              table: ticketsToUpdate[0].table,
               buyer: ticketWithBuyerInfo.buyer,
               buyerEmail: ticketWithBuyerInfo.buyerEmail
             },
@@ -540,7 +543,12 @@ class TicketService {
         },
         include: {
           event: {
-            select: { created_by: true }
+            select: {
+              created_by: true,
+              name: true,
+              venue: true,
+              opening_datetime: true
+            }
           }
         }
       });

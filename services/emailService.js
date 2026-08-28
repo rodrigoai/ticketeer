@@ -356,6 +356,9 @@ Equipe Nova Money
       const qrCodeDataUrl = await qrCodeService.generateQrCodeDataUrl(ticketData, userId);
       
       const subject = `Seu ingresso QR Code - ${eventData.name}`;
+      const reservationLocationText = ticketData.table === null || ticketData.table === undefined || ticketData.table === ''
+        ? ''
+        : `Local Reserva: ${ticketData.table}`;
       
       // Create multipart email with embedded QR code and attachment
       const boundary = 'ticketeer_qr_boundary_' + Date.now();
@@ -365,6 +368,8 @@ Equipe Nova Money
         eventVenue: eventData.venue,
         eventDate: eventData.date,
         ticketNumber: ticketData.identificationNumber,
+        ticketName: ticketData.description,
+        ticketTable: ticketData.table,
         buyerName: ticketData.buyer,
         qrCodeDataUrl: qrCodeDataUrl.dataUrl,
         qrCodeHash: qrCodeData.hash
@@ -374,6 +379,8 @@ Equipe Nova Money
 Seu ingresso para ${eventData.name}
 
 Ingresso #${ticketData.identificationNumber}
+Descrição do ingresso: ${ticketData.description || 'Ingresso'}
+${reservationLocationText}
 Portador: ${ticketData.buyer}
 Evento: ${eventData.name}
 Local: ${eventData.venue || 'A definir'}
@@ -495,12 +502,15 @@ Equipe Nova Money
    * @param {Object} data - Template data
    * @returns {string} - HTML email content
    */
-  generateQrCodeEmailTemplate({ eventName, eventVenue, eventDate, ticketNumber, buyerName, qrCodeDataUrl, qrCodeHash }) {
+  generateQrCodeEmailTemplate({ eventName, eventVenue, eventDate, ticketNumber, ticketName, ticketTable, buyerName, qrCodeDataUrl, qrCodeHash }) {
     const formattedDate = formatEventDateTimeForEmail(eventDate, {
       fallback: 'Data a definir',
       weekday: 'long',
       month: 'long'
     });
+    const reservationLocationRow = ticketTable === null || ticketTable === undefined || ticketTable === ''
+      ? ''
+      : `<p class="summary-row"><span>Local Reserva:</span> <span class="summary-value">${ticketTable}</span></p>`;
 
     return `
 <!DOCTYPE html>
@@ -529,6 +539,30 @@ Equipe Nova Money
         .important { background: #fffbeb; border: 1px solid #f59e0b; color: #78350f; padding: 16px; border-radius: 8px; margin: 24px 0; }
         .hash-code { font-family: monospace; background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; padding: 12px; border-radius: 8px; word-break: break-all; }
         .ticket-number { font-size: 26px; font-weight: bold; color: #047857; }
+        @page { size: A4 portrait; margin: 8mm; }
+        @media print {
+            body { background: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .container { max-width: none; padding: 0; }
+            .header { padding: 18px 24px; }
+            .header h1 { font-size: 24px; }
+            .header p { margin-top: 6px; font-size: 14px; }
+            .content { padding: 18px 24px; }
+            .content h2 { margin: 0; font-size: 21px; }
+            .content > p { margin: 8px 0; font-size: 14px; }
+            .ticket-info { padding: 14px; margin: 14px 0; }
+            .summary-title { margin-bottom: 8px; font-size: 20px; }
+            .summary-row { margin: 4px 0; font-size: 14px; }
+            .ticket-number { font-size: 22px; }
+            .qr-section { padding: 14px; margin: 16px 0; }
+            .qr-section h3 { font-size: 18px; }
+            .qr-section p { margin: 6px 0; font-size: 14px; }
+            .qr-code { max-width: 180px; margin: 10px 0; }
+            .hash-code { padding: 7px; font-size: 11px; }
+            .important { padding: 10px; margin: 14px 0; font-size: 12px; }
+            .important ul { margin: 6px 0 0; padding-left: 20px; }
+            .footer { padding: 10px; font-size: 11px; }
+            .footer p { margin: 3px 0; }
+        }
     </style>
 </head>
 <body>
@@ -547,6 +581,8 @@ Equipe Nova Money
                 <p class="summary-label">Ingresso</p>
                 <h3 class="summary-title">📅 ${eventName}</h3>
                 <p class="summary-row"><span>Número:</span> <span class="ticket-number">#${ticketNumber}</span></p>
+                <p class="summary-row"><span>Descrição do ingresso:</span> <span class="summary-value">${ticketName || 'Ingresso'}</span></p>
+                ${reservationLocationRow}
                 <p class="summary-row"><span>Portador:</span> <span class="summary-value">${buyerName}</span></p>
                 <p class="summary-row"><span>Local:</span> <span class="summary-value">${eventVenue || 'A definir'}</span></p>
                 <p class="summary-row"><span>Data:</span> <span class="summary-value">${formattedDate}</span></p>

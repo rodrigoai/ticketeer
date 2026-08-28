@@ -44,6 +44,7 @@ describe('EmailService', () => {
 
     expect(html).toContain('20:00');
     expect(html).not.toContain('23:00');
+    expect(html).not.toContain('Local Reserva:');
 
     await emailService.sendTicketQrCodeEmail(
       'buyer@example.com',
@@ -93,6 +94,8 @@ describe('EmailService', () => {
       eventVenue: 'Arena',
       eventDate: new Date('2026-05-08T23:00:00.000Z'),
       ticketNumber: 42,
+      ticketName: 'VIP',
+      ticketTable: 12,
       buyerName: 'Joao Silva',
       qrCodeDataUrl: 'data:image/png;base64,cXItY29kZQ==',
       qrCodeHash: 'qr-hash'
@@ -101,8 +104,13 @@ describe('EmailService', () => {
     expect(html).toContain('class="ticket-info"');
     expect(html).toContain('class="summary-title">📅 Festival</h3>');
     expect(html).toContain('Número:</span> <span class="ticket-number">#42</span>');
+    expect(html).toContain('Descrição do ingresso:</span> <span class="summary-value">VIP</span>');
+    expect(html).toContain('Local Reserva:</span> <span class="summary-value">12</span>');
     expect(html).toContain('Portador:</span> <span class="summary-value">Joao Silva</span>');
     expect(html).toContain('border: 3px solid #111827');
     expect(html).toContain('Código QR de Acesso');
+    expect(html).toContain('@page { size: A4 portrait; margin: 8mm; }');
+    expect(html).toContain('@media print');
+    expect(html).toContain('.qr-code { max-width: 180px; margin: 10px 0; }');
   });
 });
