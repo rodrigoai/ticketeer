@@ -20,6 +20,9 @@ model Event {
   map_image         String?
   description       String?
   additional_information String?
+  custom_html       String?
+  custom_css        String?
+  custom_javascript String?
   venue             String?
   sale_mode         String   @default("checkout")
   checkout_page_id  String?

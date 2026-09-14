@@ -54,6 +54,9 @@ describe('EventService public hash', () => {
       map_image: null,
       description: 'Live set',
       additional_information: '<p>Doors open at 19:00.</p>',
+      custom_html: '<div class="sponsor">Presented by Acme</div>',
+      custom_css: '.sponsor { color: red; }',
+      custom_javascript: 'document.body.dataset.customized = "true";',
       venue: 'Sao Paulo',
       sale_mode: 'checkout',
       checkout_page_id: null,
@@ -67,25 +70,34 @@ describe('EventService public hash', () => {
       data: expect.objectContaining({
         opening_datetime: expect.any(Date),
         closing_datetime: expect.any(Date),
-        additional_information: '<p>Doors open at 19:00.</p>'
+        additional_information: '<p>Doors open at 19:00.</p>',
+        custom_html: '<div class="sponsor">Presented by Acme</div>',
+        custom_css: '.sponsor { color: red; }',
+        custom_javascript: 'document.body.dataset.customized = "true";'
       })
     }));
     expect(result.opening_datetime.toISOString()).toBe('2026-05-08T23:00:00.000Z');
     expect(result.closing_datetime.toISOString()).toBe('2026-05-09T02:30:00.000Z');
   });
 
-  test('updateEvent persists additional information', async () => {
+  test('updateEvent persists additional information and custom public page code', async () => {
     prisma.event.findFirst.mockResolvedValue({ id: 26, created_by: 'user-1' });
     prisma.event.update.mockImplementation(async ({ data }) => data);
 
     await eventService.updateEvent(26, {
-      additional_information: '<p>Parking is available.</p>'
+      additional_information: '<p>Parking is available.</p>',
+      custom_html: '<aside>After party</aside>',
+      custom_css: 'aside { font-weight: bold; }',
+      custom_javascript: 'window.afterParty = true;'
     }, 'user-1');
 
     expect(prisma.event.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 26, created_by: 'user-1' },
       data: expect.objectContaining({
-        additional_information: '<p>Parking is available.</p>'
+        additional_information: '<p>Parking is available.</p>',
+        custom_html: '<aside>After party</aside>',
+        custom_css: 'aside { font-weight: bold; }',
+        custom_javascript: 'window.afterParty = true;'
       })
     }));
   });

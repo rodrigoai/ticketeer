@@ -160,6 +160,47 @@
                 />
                 <p class="mt-2 text-xs leading-5 text-slate-500">Shown at the bottom of the public event page.</p>
               </div>
+              <details class="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                <summary class="cursor-pointer text-sm font-semibold text-slate-800">Custom public page code</summary>
+                <p class="mt-2 text-xs leading-5 text-amber-800">Advanced: this code runs on the public event page. Only paste code you trust.</p>
+                <div class="mt-4 space-y-4">
+                  <div>
+                    <label for="customHtml" class="mb-2 block text-sm font-semibold text-slate-700">HTML</label>
+                    <textarea
+                      id="customHtml"
+                      v-model="eventForm.customHtml"
+                      rows="7"
+                      spellcheck="false"
+                      class="w-full rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                      placeholder="<section class=&quot;event-announcement&quot;>...</section>"
+                    ></textarea>
+                    <p class="mt-2 text-xs text-slate-500">Rendered after the standard event content.</p>
+                  </div>
+                  <div>
+                    <label for="customCss" class="mb-2 block text-sm font-semibold text-slate-700">CSS</label>
+                    <textarea
+                      id="customCss"
+                      v-model="eventForm.customCss"
+                      rows="7"
+                      spellcheck="false"
+                      class="w-full rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                      placeholder=".event-public-page { background: #fff7ed; }"
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label for="customJavascript" class="mb-2 block text-sm font-semibold text-slate-700">JavaScript</label>
+                    <textarea
+                      id="customJavascript"
+                      v-model="eventForm.customJavascript"
+                      rows="7"
+                      spellcheck="false"
+                      class="w-full rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
+                      placeholder="document.querySelector('.event-public-page')..."
+                    ></textarea>
+                    <p class="mt-2 text-xs text-slate-500">Enter JavaScript without &lt;script&gt; tags. It runs once after the page is rendered.</p>
+                  </div>
+                </div>
+              </details>
               <div>
                 <label for="eventDate" class="block text-sm font-semibold text-slate-700 mb-2">Date</label>
                 <input type="datetime-local" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-primary-500 focus:ring-primary-500" id="eventDate" v-model="eventForm.date" required>
@@ -294,6 +335,9 @@ const eventForm = reactive({
   title: '',
   description: '',
   additionalInformation: '',
+  customHtml: '',
+  customCss: '',
+  customJavascript: '',
   date: '',
   venue: '',
   eventImageUrl: '',
@@ -340,6 +384,9 @@ const editEvent = async (event) => {
     title: event.title || event.name,
     description: event.description || '',
     additionalInformation: event.additionalInformation || '',
+    customHtml: event.customHtml || '',
+    customCss: event.customCss || '',
+    customJavascript: event.customJavascript || '',
     date: formatDateTimeLocalInput(event.date),
     venue: event.venue || '',
     eventImageUrl: event.eventImageUrl || '',
@@ -445,6 +492,9 @@ const resetForm = () => {
     title: '',
     description: '',
     additionalInformation: '',
+    customHtml: '',
+    customCss: '',
+    customJavascript: '',
     date: '',
     venue: '',
     eventImageUrl: '',

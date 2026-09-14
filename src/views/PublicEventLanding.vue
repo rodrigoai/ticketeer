@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-50 pb-24 lg:pb-0">
+  <div class="event-public-page min-h-screen bg-slate-50 pb-24 lg:pb-0">
     <div class="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 lg:flex-row lg:items-start">
       <div class="min-w-0 flex-1 space-y-8">
         <div v-if="isLoading" class="rounded-3xl border border-slate-100 bg-white px-6 py-10 text-center shadow-md">
@@ -39,9 +39,10 @@
                 </span>
               </div>
               <div>
-                <h1 class="text-3xl font-semibold text-slate-900">{{ event.title }}</h1>
+                <h1 id="event-title" class="text-3xl font-semibold text-slate-900">{{ event.title }}</h1>
                 <div
                   v-if="event.description"
+                  id="event-description"
                   class="rich-text-content mt-4 text-slate-600"
                   v-html="event.description"
                 ></div>
@@ -108,7 +109,7 @@
 
             <div v-else class="grid gap-4">
               <div
-                v-for="group in ticketGroups"
+                v-for="(group, groupIndex) in ticketGroups"
                 :key="group.key"
                 class="relative overflow-hidden rounded-2xl border border-slate-100 bg-white px-6 py-5 shadow-sm"
               >
@@ -134,7 +135,11 @@
                     <p v-if="group.activePrice !== null" class="text-sm text-slate-500">Valor: {{ formatCurrency(group.activePrice) }}</p>
                   </div>
                   <div class="flex flex-wrap items-center gap-4">
-                    <div class="text-sm text-slate-500" v-if="group.availableCount !== null">
+                    <div
+                      v-if="group.availableCount !== null"
+                      :id="numberedElementId('available-ticket-count', groupIndex)"
+                      class="text-sm text-slate-500"
+                    >
                       {{ group.availableCount }} disponível(is)
                     </div>
                     <a
@@ -167,7 +172,7 @@
 
             <div v-else class="space-y-5">
               <div
-                v-for="group in shoppingCartGroups"
+                v-for="(group, groupIndex) in shoppingCartGroups"
                 :key="group.key"
                 class="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
               >
@@ -196,11 +201,17 @@
                     <p class="text-sm text-slate-500">
                       <span class="block sm:inline">{{ group.tabled ? 'Venda por unidade' : 'Venda por ingresso' }}</span>
                       <span class="hidden sm:inline mx-2">•</span>
-                      <span class="block sm:inline">{{ group.availableCount }} disponível(is)</span>
+                      <span
+                        :id="numberedElementId('available-ticket-count', groupIndex)"
+                        class="block sm:inline"
+                      >{{ group.availableCount }} disponível(is)</span>
                     </p>
                   </div>
                   <div class="flex items-center gap-3">
-                    <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <div
+                      :id="numberedElementId('ticket-count', groupIndex)"
+                      class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+                    >
                       {{ group.tabled ? `${group.totalCount} no total` : `${group.seatCount} ingresso(s)` }}
                     </div>
                     <span class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50">
@@ -340,18 +351,26 @@
       </aside>
     </div>
 
-    <section
-      v-if="event?.additionalInformation"
-      class="mx-auto max-w-7xl px-4 pb-8"
-    >
-      <div class="rounded-3xl border border-slate-100 bg-white p-6 shadow-lg">
-        <h2 class="text-xl font-semibold text-slate-900">Informações adicionais</h2>
-        <div
-          class="rich-text-content mt-4 text-slate-600"
-          v-html="event.additionalInformation"
-        ></div>
-      </div>
-    </section>
+    <footer id="event-footer">
+      <section
+        v-if="event?.additionalInformation"
+        class="mx-auto max-w-7xl px-4 pb-8"
+      >
+        <div class="rounded-3xl border border-slate-100 bg-white p-6 shadow-lg">
+          <h2 class="text-xl font-semibold text-slate-900">Informações adicionais</h2>
+          <div
+            class="rich-text-content mt-4 text-slate-600"
+            v-html="event.additionalInformation"
+          ></div>
+        </div>
+      </section>
+
+      <div
+        v-if="event?.customHtml"
+        class="event-custom-html"
+        v-html="event.customHtml"
+      ></div>
+    </footer>
 
     <Teleport to="body">
       <div
@@ -517,7 +536,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { formatPhoneMask, isCustomerInfoValid, sumCartTickets } from '@/utils/cart'
@@ -549,6 +568,34 @@ const customer = ref({
   phone: ''
 })
 
+const CUSTOM_STYLE_ID = 'event-custom-style'
+const CUSTOM_SCRIPT_ID = 'event-custom-script'
+
+const removeCustomPageCode = () => {
+  document.getElementById(CUSTOM_STYLE_ID)?.remove()
+  document.getElementById(CUSTOM_SCRIPT_ID)?.remove()
+}
+
+const applyCustomPageCode = async (currentEvent) => {
+  removeCustomPageCode()
+  if (!currentEvent) return
+
+  if (currentEvent.customCss) {
+    const style = document.createElement('style')
+    style.id = CUSTOM_STYLE_ID
+    style.textContent = currentEvent.customCss
+    document.head.appendChild(style)
+  }
+
+  if (currentEvent.customJavascript) {
+    await nextTick()
+    const script = document.createElement('script')
+    script.id = CUSTOM_SCRIPT_ID
+    script.textContent = currentEvent.customJavascript
+    document.body.appendChild(script)
+  }
+}
+
 const formattedDate = computed(() => {
   if (!event.value?.date) return ''
   try {
@@ -575,6 +622,8 @@ const resolveGroupColor = (value) => {
   const normalized = String(value || '').trim()
   return /^#[0-9A-Fa-f]{6}$/.test(normalized) ? normalized : '#cbd5e1'
 }
+
+const numberedElementId = (baseId, index) => index === 0 ? baseId : `${baseId}-${index + 1}`
 
 const encodeMetaValue = (value) => {
   if (value === null || value === undefined) return ''
@@ -834,7 +883,10 @@ watch([isMobileCartOpen, isMapPreviewOpen], ([isCartOpen, isPreviewOpen]) => {
   document.body.style.overflow = isCartOpen || isPreviewOpen ? 'hidden' : ''
 })
 
+watch(event, applyCustomPageCode)
+
 onBeforeUnmount(() => {
   document.body.style.overflow = ''
+  removeCustomPageCode()
 })
 </script>
