@@ -1,5 +1,9 @@
 <template>
   <div class="event-public-page min-h-screen bg-slate-50 pb-24 lg:pb-0">
+    <Teleport v-if="customCssContent" to="head">
+      <component :is="'style'" id="event-custom-style" type="text/css">{{ customCssContent }}</component>
+    </Teleport>
+
     <div class="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 lg:flex-row lg:items-start">
       <div class="min-w-0 flex-1 space-y-8">
         <div v-if="isLoading" class="rounded-3xl border border-slate-100 bg-white px-6 py-10 text-center shadow-md">
@@ -568,30 +572,31 @@ const customer = ref({
   phone: ''
 })
 
-const CUSTOM_STYLE_ID = 'event-custom-style'
 const CUSTOM_SCRIPT_ID = 'event-custom-script'
 
-const removeCustomPageCode = () => {
-  document.getElementById(CUSTOM_STYLE_ID)?.remove()
+const removeCustomJavascript = () => {
   document.getElementById(CUSTOM_SCRIPT_ID)?.remove()
 }
 
-const applyCustomPageCode = async (currentEvent) => {
-  removeCustomPageCode()
-  if (!currentEvent) return
+const unwrapCustomCode = (value, tagName) => {
+  let code = String(value || '').trim()
+  code = code.replace(/^```(?:css|javascript|js)?\s*/i, '').replace(/\s*```$/, '')
 
-  if (currentEvent.customCss) {
-    const style = document.createElement('style')
-    style.id = CUSTOM_STYLE_ID
-    style.textContent = currentEvent.customCss
-    document.head.appendChild(style)
-  }
+  const wrappedCode = code.match(new RegExp(`^<${tagName}(?:\\s[^>]*)?>([\\s\\S]*)<\\/${tagName}>$`, 'i'))
+  return wrappedCode ? wrappedCode[1].trim() : code
+}
+
+const customCssContent = computed(() => unwrapCustomCode(event.value?.customCss, 'style'))
+
+const applyCustomPageCode = async (currentEvent) => {
+  removeCustomJavascript()
+  if (!currentEvent) return
 
   if (currentEvent.customJavascript) {
     await nextTick()
     const script = document.createElement('script')
     script.id = CUSTOM_SCRIPT_ID
-    script.textContent = currentEvent.customJavascript
+    script.textContent = unwrapCustomCode(currentEvent.customJavascript, 'script')
     document.body.appendChild(script)
   }
 }
@@ -887,6 +892,6 @@ watch(event, applyCustomPageCode)
 
 onBeforeUnmount(() => {
   document.body.style.overflow = ''
-  removeCustomPageCode()
+  removeCustomJavascript()
 })
 </script>

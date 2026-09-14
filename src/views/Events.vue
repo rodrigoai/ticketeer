@@ -186,6 +186,7 @@
                       class="w-full rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
                       placeholder=".event-public-page { background: #fff7ed; }"
                     ></textarea>
+                    <p class="mt-2 text-xs text-slate-500">Raw CSS, &lt;style&gt; blocks, and CSS code fences are accepted.</p>
                   </div>
                   <div>
                     <label for="customJavascript" class="mb-2 block text-sm font-semibold text-slate-700">JavaScript</label>
@@ -197,7 +198,7 @@
                       class="w-full rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 font-mono text-xs text-slate-100 shadow-sm transition focus:border-primary-500 focus:ring-primary-500"
                       placeholder="document.querySelector('.event-public-page')..."
                     ></textarea>
-                    <p class="mt-2 text-xs text-slate-500">Enter JavaScript without &lt;script&gt; tags. It runs once after the page is rendered.</p>
+                    <p class="mt-2 text-xs text-slate-500">Raw JavaScript and &lt;script&gt; blocks are accepted. It runs once after the page is rendered.</p>
                   </div>
                 </div>
               </details>
