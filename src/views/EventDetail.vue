@@ -320,7 +320,9 @@
                 </td>
                 <td class="px-5 py-4">
                   <p class="font-semibold text-slate-900">{{ ticket.description }}</p>
-                  <p v-if="ticket.location" class="text-xs text-slate-500 mt-0.5">{{ ticket.location }}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    ID: {{ ticket.id }}<span v-if="ticket.location"> • {{ ticket.location }}</span>
+                  </p>
                 </td>
                 <td class="px-5 py-4 text-slate-600">
                   {{ ticket.table || '-' }}
@@ -1251,6 +1253,7 @@ const filteredTickets = computed(() => {
       ticket.buyerEmail?.toLowerCase().includes(search) ||
       ticket.buyerPhone?.toLowerCase().includes(search) ||
       ticket.order?.toLowerCase().includes(search) ||
+      ticket.id?.toString().includes(search) ||
       ticket.identificationNumber?.toString().includes(search)
     )
   })
