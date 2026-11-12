@@ -170,6 +170,16 @@
                 <i class="fas fa-times text-xs"></i>
               </button>
             </div>
+            <select
+              v-model="selectedTable"
+              aria-label="Filter tickets by table"
+              class="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option :value="null">All tables</option>
+              <option v-for="table in registeredTables" :key="table" :value="table">
+                Table {{ table }}
+              </option>
+            </select>
           </div>
           <div class="flex gap-3 flex-wrap">
             <button class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition" @click="showCreateModal">
@@ -254,6 +264,9 @@
                 <th @click="sortBy('identificationNumber')" class="w-24 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
                   # <i v-if="sortKey === 'identificationNumber'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
                 </th>
+                <th @click="sortBy('buyer')" class="w-56 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
+                  Buyer <i v-if="sortKey === 'buyer'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
+                </th>
                 <th @click="sortBy('description')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
                   Description <i v-if="sortKey === 'description'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
                 </th>
@@ -262,9 +275,6 @@
                 </th>
                 <th @click="sortBy('order')" class="w-36 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
                   Order <i v-if="sortKey === 'order'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                </th>
-                <th @click="sortBy('buyer')" class="w-56 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
-                  Buyer <i v-if="sortKey === 'buyer'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
                 </th>
                 <th class="w-32 px-5 py-3 font-semibold text-right">Actions</th>
               </tr>
@@ -280,7 +290,7 @@
               </tr>
               <tr v-else-if="sortedTickets.length === 0">
                 <td colspan="8" class="px-5 py-12 text-center text-slate-500">
-                  {{ tickets.length === 0 ? 'No tickets yet. Create your first ticket for this event!' : 'No tickets found matching your search.' }}
+                  {{ tickets.length === 0 ? 'No tickets yet. Create your first ticket for this event!' : 'No tickets match the current filters.' }}
                 </td>
               </tr>
               <tr 
@@ -318,6 +328,11 @@
                     #{{ ticket.identificationNumber }}
                   </span>
                 </td>
+                <td class="min-w-0 px-5 py-4">
+                  <p class="truncate font-semibold text-slate-900" :title="ticket.buyer || ''">{{ ticket.buyer || '-' }}</p>
+                  <p class="truncate text-xs text-slate-500" :title="ticket.buyerEmail || ''">{{ ticket.buyerEmail || '' }}</p>
+                  <p class="truncate text-xs text-slate-500" :title="ticket.buyerPhone || ''">{{ ticket.buyerPhone || '' }}</p>
+                </td>
                 <td class="px-5 py-4">
                   <p class="font-semibold text-slate-900">{{ ticket.description }}</p>
                   <p class="text-xs text-slate-500 mt-0.5">
@@ -339,11 +354,6 @@
                     {{ ticket.order }}
                   </button>
                   <span v-else class="text-slate-400">-</span>
-                </td>
-                <td class="min-w-0 px-5 py-4">
-                  <p class="truncate font-semibold text-slate-900" :title="ticket.buyer || ''">{{ ticket.buyer || '-' }}</p>
-                  <p class="truncate text-xs text-slate-500" :title="ticket.buyerEmail || ''">{{ ticket.buyerEmail || '' }}</p>
-                  <p class="truncate text-xs text-slate-500" :title="ticket.buyerPhone || ''">{{ ticket.buyerPhone || '' }}</p>
                 </td>
                 <td class="px-5 py-4">
                   <div class="flex justify-end gap-1.5">
@@ -1228,6 +1238,7 @@ const isEditingTicket = ref(false)
 const currentTicketId = ref(null)
 const isResending = ref(false)
 const searchValue = ref('')
+const selectedTable = ref(null)
 const selectedTicketIds = ref([])
 const ticketGroups = ref([])
 const currentGroupId = ref(null)
@@ -1237,12 +1248,30 @@ const sortKey = ref('identificationNumber')
 const sortOrder = ref('asc')
 
 // Filtering and Sorting Logic
+const registeredTables = computed(() => {
+  const tables = tickets.value.map(ticket => ticket.table).filter(table => Number.isInteger(table))
+  return [...new Set(tables)].sort((a, b) => a - b)
+})
+
+watch(registeredTables, tables => {
+  if (selectedTable.value !== null && !tables.includes(selectedTable.value)) {
+    selectedTable.value = null
+  }
+})
+
+watch(selectedTable, () => {
+  selectedTicketIds.value = []
+})
+
 const filteredTickets = computed(() => {
-  if (!searchValue.value) return tickets.value
+  const tableTickets = selectedTable.value === null
+    ? tickets.value
+    : tickets.value.filter(ticket => ticket.table === selectedTable.value)
+  if (!searchValue.value) return tableTickets
   
   const search = searchValue.value.toLowerCase()
   const searchDigits = searchValue.value.replace(/\D/g, '')
-  return tickets.value.filter(ticket => {
+  return tableTickets.filter(ticket => {
     const buyerDocument = ticket.buyerDocument || ''
     return (
       ticket.description?.toLowerCase().includes(search) ||
