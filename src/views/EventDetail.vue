@@ -149,10 +149,10 @@
 
       <!-- Ticket Management -->
       <section class="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div class="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-4 flex-1">
             <h3 class="text-xl font-semibold text-slate-900">Tickets</h3>
-            <div class="relative flex-1 max-w-sm">
+            <div class="relative flex-1 max-w-sm sm:min-w-40">
               <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
                 <i class="fas fa-search text-xs"></i>
               </span>
@@ -180,6 +180,13 @@
                 Table {{ table }}
               </option>
             </select>
+            <input
+              v-model="orderFilter"
+              type="search"
+              aria-label="Filter tickets by order"
+              placeholder="Filter by order..."
+              class="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:w-40"
+            >
           </div>
           <div class="flex gap-3 flex-wrap">
             <button class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition" @click="showCreateModal">
@@ -1239,6 +1246,7 @@ const currentTicketId = ref(null)
 const isResending = ref(false)
 const searchValue = ref('')
 const selectedTable = ref(null)
+const orderFilter = ref('')
 const selectedTicketIds = ref([])
 const ticketGroups = ref([])
 const currentGroupId = ref(null)
@@ -1259,19 +1267,23 @@ watch(registeredTables, tables => {
   }
 })
 
-watch(selectedTable, () => {
+watch([selectedTable, orderFilter], () => {
   selectedTicketIds.value = []
 })
 
 const filteredTickets = computed(() => {
-  const tableTickets = selectedTable.value === null
+  const order = orderFilter.value.trim().toLowerCase()
+  const matchingTickets = selectedTable.value === null && !order
     ? tickets.value
-    : tickets.value.filter(ticket => ticket.table === selectedTable.value)
-  if (!searchValue.value) return tableTickets
+    : tickets.value.filter(ticket =>
+        (selectedTable.value === null || ticket.table === selectedTable.value) &&
+        (!order || ticket.order?.toLowerCase().includes(order))
+      )
+  if (!searchValue.value) return matchingTickets
   
   const search = searchValue.value.toLowerCase()
   const searchDigits = searchValue.value.replace(/\D/g, '')
-  return tableTickets.filter(ticket => {
+  return matchingTickets.filter(ticket => {
     const buyerDocument = ticket.buyerDocument || ''
     return (
       ticket.description?.toLowerCase().includes(search) ||
