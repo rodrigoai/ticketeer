@@ -181,7 +181,7 @@ describe('TicketService shopping cart flow', () => {
     );
   });
 
-  test('processShoppingCartWebhook still sends confirmation email for already-processed multi-ticket orders', async () => {
+  test('processShoppingCartWebhook ignores already-confirmed orders without sending duplicate emails', async () => {
     const routeUserId = 'auth0|69f9e72b42cf21933aca64f7';
     const eventId = 26;
     const ticketIds = [1124, 2123];
@@ -234,15 +234,9 @@ describe('TicketService shopping cart flow', () => {
     }, routeUserId);
 
     expect(result.processedTickets).toBe(2);
-    expect(result.emailSent).toBe(true);
-    expect(result.confirmationUrl).toMatch(/\/confirmation\//);
-    expect(emailService.sendConfirmationEmail).toHaveBeenCalledWith(
-      'joao@email.com',
-      expect.objectContaining({
-        orderId,
-        totalTickets: 2
-      })
-    );
+    expect(result.alreadyProcessed).toBe(true);
+    expect(emailService.sendConfirmationEmail).not.toHaveBeenCalled();
+    expect(emailService.sendTicketQrCodeEmail).not.toHaveBeenCalled();
   });
 
   test('processShoppingCartWebhook releases reservations on payment.failed', async () => {

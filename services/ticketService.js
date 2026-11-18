@@ -252,9 +252,10 @@ class TicketService {
     ticketsToUpdate,
     updateResult,
     tableNumber,
-    orderId
+    orderId,
+    singleTicketByCount = false
   }) {
-    const isSingleTicket = ticketsToUpdate.length === 1 && !tableNumber;
+    const isSingleTicket = ticketsToUpdate.length === 1 && (singleTicketByCount || !tableNumber);
     let emailSent = false;
     let qrEmailSent = false;
     let confirmationUrl = null;
@@ -1438,6 +1439,7 @@ class TicketService {
 
   async processShoppingCartWebhook(webhookPayload, routeUserId) {
     const { eventType, payload, userId, eventId, ticketIds } = this._extractCartWebhookMeta(webhookPayload);
+    const purchaseId = payload.meta?.purchaseId;
 
     if (!userId || !eventId || !ticketIds.length) {
       throw new Error('Invalid cart webhook payload: missing meta.userId, meta.eventId, or meta.ticketIds');
@@ -1451,6 +1453,19 @@ class TicketService {
     const customer = payload.customer || {};
 
     const result = await prisma.$transaction(async (tx) => {
+      let purchase = null;
+      if (purchaseId) {
+        // Lock the purchase for both entry points. Recheck after waiting for the other transaction.
+        await tx.$queryRaw`SELECT id FROM cart_purchases WHERE id = ${purchaseId} FOR UPDATE`;
+        purchase = await tx.cartPurchase.findUnique({ where: { id: purchaseId } });
+        if (!purchase || purchase.eventId !== eventId ||
+            JSON.stringify([...purchase.ticketIds].sort((a, b) => a - b)) !== JSON.stringify([...ticketIds].sort((a, b) => a - b))) {
+          throw new Error('Cart metadata does not match purchase');
+        }
+        if (purchase.orderId && eventType === 'order.paid' && purchase.orderId !== orderId) {
+          throw new Error('Purchase is already associated with another order');
+        }
+      }
       const tickets = await tx.ticket.findMany({
         where: {
           id: { in: ticketIds },
@@ -1480,10 +1495,14 @@ class TicketService {
       }
 
       if (eventType === 'payment.failed') {
+        if (purchase?.orderId) {
+          return { success: true, alreadyProcessed: true, orderId: purchase.orderId, processedTickets: 0, updatedTickets: [], ticketIds, eventType };
+        }
         const result = await tx.ticket.updateMany({
           where: {
             id: { in: ticketIds },
             eventId,
+            ...(purchase ? { reservationKey: purchase.reservationKey } : {}),
             OR: [
               { order: null },
               { order: '' }
@@ -1498,6 +1517,7 @@ class TicketService {
           orderId,
           ticketIds,
           processedTickets: result.count,
+          updatedTickets: [],
           eventType
         };
       }
@@ -1509,6 +1529,7 @@ class TicketService {
           orderId,
           ticketIds,
           processedTickets: 0,
+          updatedTickets: [],
           eventType
         };
       }
@@ -1526,6 +1547,7 @@ class TicketService {
       if (allAlreadyProcessed) {
         return {
           success: true,
+          alreadyProcessed: true,
           message: `Cart webhook already processed for order ${orderId}.`,
           orderId,
           ticketIds,
@@ -1543,6 +1565,19 @@ class TicketService {
             : null,
           eventType
         };
+      }
+
+      if (purchase) {
+        // Claim only the original reservation. This also locks the tickets against another purchase.
+        const claimed = await tx.ticket.updateMany({
+          where: {
+            id: { in: ticketIds }, eventId,
+            reservationKey: purchase.reservationKey,
+            OR: [{ order: null }, { order: '' }]
+          },
+          data: { order: orderId }
+        });
+        if (claimed.count !== ticketIds.length) throw new Error('The original ticket reservation is no longer available');
       }
 
       const updateResult = await this._updateTicketsWithSelectiveBuyerInfo(
@@ -1564,6 +1599,8 @@ class TicketService {
         });
       }
 
+      if (purchase) await tx.cartPurchase.update({ where: { id: purchaseId }, data: { orderId } });
+
       return {
         success: true,
         message: `Shopping cart webhook processed successfully for order ${orderId}.`,
@@ -1581,7 +1618,7 @@ class TicketService {
       };
     });
 
-    if (eventType !== 'order.paid' || !result.ticketsToUpdate?.length) {
+    if (eventType !== 'order.paid' || result.alreadyProcessed || !result.ticketsToUpdate?.length) {
       const { ticketsToUpdate: _ticketsToUpdate, buyerInfo: _buyerInfo, ...publicResult } = result;
       return publicResult;
     }
@@ -1595,7 +1632,13 @@ class TicketService {
         buyerInfo: result.buyerInfo
       },
       tableNumber: result.ticketsToUpdate[0]?.table ?? null,
-      orderId: result.orderId
+      orderId: result.orderId,
+      singleTicketByCount: true
+    });
+
+    if (purchaseId) await prisma.cartPurchase.update({
+      where: { id: purchaseId },
+      data: { emailSent: postCheckoutEmailResult.emailSent, qrEmailSent: postCheckoutEmailResult.qrEmailSent }
     });
 
     const { ticketsToUpdate: _ticketsToUpdate, buyerInfo: _buyerInfo, ...publicResult } = result;

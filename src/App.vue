@@ -18,7 +18,7 @@ import NavBar from "./components/NavBar.vue"
 
 const route = useRoute()
 const showNav = computed(() => {
-  return !["PublicEventLanding", "LandingPage", "BuyerConfirmation"].includes(String(route.name));
+  return !["PublicEventLanding", "LandingPage", "BuyerConfirmation", "PurchaseSuccess"].includes(String(route.name));
 })
 </script>
 

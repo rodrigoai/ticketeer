@@ -299,6 +299,9 @@ import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { formatPhoneMask } from '@/utils/cart'
 
+const props = defineProps({ orderHash: { type: String, default: '' } })
+const emit = defineEmits(['completed'])
+
 // Route and API setup
 const route = useRoute()
 const { get, post } = useApi()
@@ -360,7 +363,7 @@ const canSubmitConfirmation = computed(() => {
 })
 
 // Get confirmation hash from route
-const confirmationHash = route.params.hash
+const confirmationHash = props.orderHash || route.params.hash
 
 // Load order data
 const loadOrderData = async () => {
@@ -431,10 +434,11 @@ const submitConfirmation = async () => {
       }))
     }
     
-    await post(`/api/public/orders/${confirmationHash}/buyers`, submissionData)
+    const result = await post(`/api/public/orders/${confirmationHash}/buyers`, submissionData)
     
     // Show success state
     isSuccess.value = true
+    emit('completed', result)
     
   } catch (err) {
     console.error('Confirmation submission failed:', err)

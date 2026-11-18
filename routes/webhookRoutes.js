@@ -77,7 +77,7 @@ function createWebhookRoutes({ prisma }) {
           tableNumber: result.tableNumber,
           ticketIds: result.ticketIds,
           buyerAssigned: result.buyerAssigned,
-          processedTickets: result.updatedTickets.length
+          processedTickets: result.processedTickets ?? result.updatedTickets?.length ?? 0
         }
       });
     } catch (error) {

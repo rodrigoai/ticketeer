@@ -4,6 +4,7 @@ import Events from '@/views/Events.vue'
 import EventDetail from '@/views/EventDetail.vue'
 import Newpro from '@/views/Newpro.vue'
 import BuyerConfirmation from '@/views/BuyerConfirmation.vue'
+import PurchaseSuccess from '@/views/PurchaseSuccess.vue'
 import TicketCheckin from '@/views/TicketCheckin.vue'
 import TicketAccessoryPickup from '@/views/TicketAccessoryPickup.vue'
 import QRCodeCheckin from '@/views/QRCodeCheckin.vue'
@@ -81,6 +82,11 @@ export const createRoutes = (app) => {
       component: BuyerConfirmation,
       props: true
       // Note: No authGuard - confirmation pages should be public
+    },
+    {
+      path: '/event/:hash/success/:purchaseId',
+      name: 'PurchaseSuccess',
+      component: PurchaseSuccess
     },
     {
       path: '/event/:hash',

@@ -938,6 +938,11 @@ app.post('/api/public/events/:id/cart-checkout', async (req, res) => {
         itemsMap.get(itemKey).quantity += 1;
       }
 
+      const purchaseMeta = await require('./services/cartPurchaseService').create({
+        event,
+        reservation,
+        customer: { name, email, phone: phoneDigits }
+      });
       const payload = {
         payment_method: 'credit_card',
         total: Number(total.toFixed(2)),
@@ -948,6 +953,7 @@ app.post('/api/public/events/:id/cart-checkout', async (req, res) => {
         },
         items: Array.from(itemsMap.values()),
         meta: {
+          ...purchaseMeta,
           userId: event.created_by,
           eventId: event.id,
           ticketIds: reservation.tickets.map((ticket) => ticket.id)
@@ -984,6 +990,20 @@ app.post('/api/public/events/:id/cart-checkout', async (req, res) => {
       error: 'Failed to create shopping cart checkout',
       message: error.message,
       details: error.data
+    });
+  }
+});
+
+// The payment return confirms directly with NovaPay; the webhook remains a fallback.
+app.post('/api/public/events/:hash/purchases/:purchaseId/confirm', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const purchase = await require('./services/cartPurchaseService').confirm(req.params.hash, req.params.purchaseId);
+    res.json({ success: true, purchase });
+  } catch (error) {
+    res.status(error.message === 'Purchase not found' ? 404 : 400).json({
+      success: false,
+      message: error.message
     });
   }
 });
@@ -2147,7 +2167,8 @@ app.post('/api/public/orders/:hash/buyers', async (req, res) => {
       success: true,
       message: result.message,
       orderId: result.orderId,
-      updatedTickets: result.updatedTickets
+      updatedTickets: result.updatedTickets,
+      qrCodeEmails: result.qrCodeEmails
     });
   } catch (error) {
     console.error('Error saving buyers for order:', error);

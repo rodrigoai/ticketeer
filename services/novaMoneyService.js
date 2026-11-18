@@ -15,6 +15,30 @@ class NovaMoneyService {
     return normalizeNovaTenant(tenant);
   }
 
+  async findPaidCartOrder({ tenant, apiKey, cartPageId, purchaseId }) {
+    const normalizedTenant = normalizeNovaTenant(tenant);
+    if (!normalizedTenant || !apiKey || !cartPageId || !purchaseId) {
+      throw new Error('Nova.Money cart configuration is incomplete');
+    }
+    const url = new URL(`https://${normalizedTenant}.pay.nova.money/api/v1/orders`);
+    url.searchParams.append('cart_page_uuids[]', cartPageId);
+    url.searchParams.append('meta[]', `purchaseId.${purchaseId}`);
+    url.searchParams.append('status[]', 'paid');
+    url.searchParams.set('limit', '2');
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${apiKey}`, 'X-Api-Key': apiKey },
+      timeout: 15000
+    });
+    if (!response.ok) throw new Error('Unable to verify payment with NovaPay. Please try again.');
+    const data = await response.json();
+    const orders = data?.data;
+    if (!Array.isArray(orders)) throw new Error('Invalid NovaPay order response');
+    if (orders.length !== 1 || orders[0].status !== 'paid' || orders[0].meta?.purchaseId !== purchaseId) {
+      throw new Error('A confirmed payment was not found for this purchase. Please try again.');
+    }
+    return orders[0];
+  }
+
   async createCart({ tenant, apiKey, cartPaymentServiceId, payload }) {
     const normalizedTenant = normalizeNovaTenant(tenant);
 
