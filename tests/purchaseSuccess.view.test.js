@@ -8,12 +8,21 @@ const Vue = require('vue');
 const source = fs.readFileSync(path.join(__dirname, '../src/views/PurchaseSuccess.vue'), 'utf8');
 const compiled = compileScript(parse(source).descriptor, { id: 'purchase-success-test', inlineTemplate: true });
 const code = transformSync(compiled.content, { format: 'cjs' }).code;
+const walletModule = { exports: {} };
+new Function('module', 'exports', transformSync(fs.readFileSync(path.join(__dirname, '../src/utils/wallet.js'), 'utf8'), { format: 'cjs' }).code)(walletModule, walletModule.exports);
 const node = (type, text = '') => ({ type, text, children: [], props: {}, parent: null });
 const renderer = Vue.createRenderer({
   createElement: type => node(type), createText: text => node('text', text), createComment: () => node('comment'),
   setText: (el, text) => { el.text = text; },
   setElementText: (el, text) => { el.text = text; el.children = []; },
   patchProp: (el, key, prev, value) => { el.props[key] = value; },
+  insertStaticContent(content, parent, anchor) {
+    const el = node('static', content.replace(/<[^>]*>/g, ''));
+    const index = anchor ? parent.children.indexOf(anchor) : -1;
+    parent.children.splice(index < 0 ? parent.children.length : index, 0, el);
+    el.parent = parent;
+    return [el, el];
+  },
   insert(el, parent, anchor) {
     if (el.parent) el.parent.children.splice(el.parent.children.indexOf(el), 1);
     const index = anchor ? parent.children.indexOf(anchor) : -1;
@@ -38,7 +47,8 @@ beforeEach(() => {
   receipt = {
     event: { name: 'Festival', venue: 'Arena' }, confirmationHash: 'secure-order-hash',
     totalTickets: 1, isCompleted: true, qrEmailSent: true,
-    tickets: [{ identificationNumber: 1, description: 'Admission', qrCode: 'data:image/png;base64,qr' }]
+    wallet: { apple: false, google: false },
+    tickets: [{ id: 10, identificationNumber: 1, description: 'Admission', buyer: 'Maria Oliveira', buyerEmail: 'maria@example.com', qrCode: 'data:image/png;base64,qr' }]
   };
   post = jest.fn().mockImplementation(async () => ({ purchase: receipt }));
   completeOwners = null;
@@ -56,6 +66,7 @@ async function mount() {
       RouterLink: { props: ['to'], setup: (props, { slots }) => () => Vue.h('a', { href: props.to }, slots.default?.()) }
     },
     '@/composables/useApi': { useApi: () => ({ post }) },
+    '@/utils/wallet': walletModule.exports,
     './BuyerConfirmation.vue': { __esModule: true, default: {
       props: ['orderHash'], emits: ['completed'],
       setup(props, { emit }) {
@@ -78,6 +89,22 @@ test('return page confirms immediately and displays a single ticket and email de
   expect(text(root)).toContain('Seu ingresso foi enviado por email');
   expect(all(root).find(n => n.type === 'img').props.src).toBe('data:image/png;base64,qr');
   expect(completeOwners).toBeNull();
+  expect(text(root)).toContain('Maria Oliveira');
+  expect(text(root)).toContain('maria@example.com');
+  const download = all(root).find(n => n.type === 'a' && n.props.href?.endsWith('/pdf'));
+  expect(download.props.href).toBe('/api/public/events/public-event/purchases/purchase-token/tickets/10/pdf');
+  expect(text(root)).not.toContain('Adicionar à');
+});
+
+test('shows configured wallet choices with per-ticket links', async () => {
+  receipt.wallet = { apple: true, google: true };
+  await mount();
+  const walletLinks = all(root).filter(n => n.type === 'a' && /\/(apple|google)$/.test(n.props.href));
+  expect(walletLinks).toHaveLength(2);
+  expect(walletLinks.map(n => n.props.href)).toEqual([
+    '/api/public/events/public-event/purchases/purchase-token/tickets/10/apple',
+    '/api/public/events/public-event/purchases/purchase-token/tickets/10/google'
+  ]);
 });
 
 test('multiple tickets open the existing form and show tickets after owner confirmation', async () => {

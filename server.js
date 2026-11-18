@@ -143,6 +143,7 @@ app.use('/api', createHealthRoutes({
 app.use('/api/dashboard', createDashboardRoutes({ prisma, requiresAuth }));
 app.use('/api', createCheckinRoutes({ requiresAuth }));
 app.use('/api/webhooks', createWebhookRoutes({ prisma }));
+app.use('/api/public', require('./routes/purchaseTicketRoutes')());
 
 // ==========================================
 // USER PROFILE - NOVA.MONEY SETTINGS

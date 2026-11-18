@@ -22,7 +22,7 @@ class CartPurchaseService {
     return { purchaseId: purchase.id, redirect_url: redirectUrl.toString() };
   }
 
-  async confirm(eventHash, purchaseId) {
+  async confirm(eventHash, purchaseId, { allowConfirmation = true } = {}) {
     if (!/^[0-9a-f-]{36}$/i.test(purchaseId || '')) throw new Error('Invalid purchase link');
     let purchase = await prisma.cartPurchase.findFirst({
       where: { id: purchaseId, event: { public_hash: eventHash } },
@@ -32,6 +32,7 @@ class CartPurchaseService {
 
     // The redirect is the primary path. Read NovaPay directly, without waiting for a webhook.
     if (!purchase.orderId) {
+      if (!allowConfirmation) throw new Error('Purchase has not been confirmed');
       const profile = await userProfileService.getProfileByUserId(purchase.event.created_by);
       const order = await novaMoneyService.findPaidCartOrder({
         tenant: profile?.nova_money_tenant,
@@ -58,11 +59,14 @@ class CartPurchaseService {
     if (tickets.length !== purchase.ticketIds.length) throw new Error('Purchase tickets could not be found');
     const showTickets = tickets.length === 1 || order.isCompleted;
     const receiptTickets = showTickets ? await Promise.all(tickets.map(async ticket => ({
+      id: ticket.id,
       identificationNumber: ticket.identificationNumber,
       description: ticket.description,
       location: ticket.location,
       table: ticket.table,
-      qrCode: (await qrCodeService.generateQrCodeDataUrl(ticket, purchase.event.created_by)).dataUrl
+      buyer: ticket.buyer || '',
+      buyerEmail: ticket.buyerEmail || '',
+      ...await this.ticketQrCode(ticket, purchase.event.created_by)
     }))) : [];
     return {
       event: order.event,
@@ -71,8 +75,14 @@ class CartPurchaseService {
       isCompleted: order.isCompleted,
       emailSent: purchase.emailSent,
       qrEmailSent: purchase.qrEmailSent,
+      wallet: require('./ticketWalletService').getCapabilities(),
       tickets: receiptTickets
     };
+  }
+
+  async ticketQrCode(ticket, userId) {
+    const qr = await qrCodeService.generateQrCodeDataUrl(ticket, userId);
+    return { qrCode: qr.dataUrl, qrCodeValue: qr.hash };
   }
 }
 

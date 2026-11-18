@@ -26,12 +26,12 @@ beforeEach(() => {
   providerOrder = { id: 123, status: 'paid', meta: { purchaseId: id, userId: 'organizer', eventId: 7, ticketIds: [10] }, customer: { name: 'Buyer' } };
   mockPrisma.cartPurchase.findFirst.mockImplementation(async ({ where }) => where.event.public_hash === event.public_hash ? purchase : null);
   mockPrisma.cartPurchase.findUnique.mockImplementation(async () => purchase);
-  mockPrisma.ticket.findMany.mockResolvedValue([{ id: 10, identificationNumber: 1, description: 'Admission' }]);
+  mockPrisma.ticket.findMany.mockResolvedValue([{ id: 10, identificationNumber: 1, description: 'Admission', buyer: 'Maria Oliveira', buyerEmail: 'maria@example.com' }]);
   profiles.getProfileByUserId.mockResolvedValue({ nova_money_tenant: 'tenant', nova_money_api_key: 'secret' });
   nova.findPaidCartOrder.mockResolvedValue(providerOrder);
   tickets.processShoppingCartWebhook.mockImplementation(async () => { purchase.orderId = '123'; });
   orders.getOrderByHash.mockResolvedValue({ event: { name: 'Festival' }, isCompleted: true });
-  qr.generateQrCodeDataUrl.mockResolvedValue({ dataUrl: 'data:image/png;base64,qr' });
+  qr.generateQrCodeDataUrl.mockResolvedValue({ dataUrl: 'data:image/png;base64,qr', hash: 'admission-token' });
 });
 
 test('creates a durable purchase and an event-specific redirect URL', async () => {
@@ -46,6 +46,13 @@ test('redirect confirms immediately through NovaPay without a preceding webhook,
   expect(nova.findPaidCartOrder).toHaveBeenCalledWith({ tenant: 'tenant', apiKey: 'secret', cartPageId: 'cart-page', purchaseId: id });
   expect(tickets.processShoppingCartWebhook).toHaveBeenCalledWith({ event: 'order.paid', payload: providerOrder }, 'organizer');
   expect(result).toEqual(expect.objectContaining({ totalTickets: 1, qrEmailSent: true, confirmationHash: expect.any(String), tickets: [expect.objectContaining({ qrCode: 'data:image/png;base64,qr' })] }));
+  expect(result.tickets[0]).toEqual(expect.objectContaining({ id: 10, buyer: 'Maria Oliveira', buyerEmail: 'maria@example.com', qrCodeValue: 'admission-token' }));
+});
+
+test('export requests cannot confirm an unpaid purchase', async () => {
+  await expect(service.confirm('event-public', id, { allowConfirmation: false })).rejects.toThrow('Purchase has not been confirmed');
+  expect(nova.findPaidCartOrder).not.toHaveBeenCalled();
+  expect(tickets.processShoppingCartWebhook).not.toHaveBeenCalled();
 });
 
 test('webhook-first and refreshed success pages do not reconfirm or require NovaPay availability', async () => {
