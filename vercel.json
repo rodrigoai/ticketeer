@@ -4,7 +4,13 @@
     {
       "src": "server.js",
       "use": "@vercel/node",
-      "config": { "includeFiles": ["assets/wallet/**"] }
+      "config": {
+        "includeFiles": [
+          "assets/wallet/**",
+          "node_modules/pdfkit/js/standard-fonts/**",
+          "node_modules/pdfkit/js/data/**"
+        ]
+      }
     }
   ],
   "routes": [
