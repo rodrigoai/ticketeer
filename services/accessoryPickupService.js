@@ -115,75 +115,60 @@ class AccessoryPickupService {
      */
     async processPickup(hash, notes = '') {
         try {
-            const ticket = await this.findTicketByHash(hash);
+            let ticket = await this.findTicketByHash(hash);
+            let updatedTicket;
 
-            // Check if accessory already collected
-            if (ticket.accessoryCollected) {
-                return {
-                    success: false,
-                    alreadyCollected: true,
-                    message: 'This accessory has already been collected',
-                    ticket: {
-                        id: ticket.id,
-                        identificationNumber: ticket.identificationNumber,
-                        description: ticket.description,
-                        location: ticket.location,
-                        table: ticket.table,
-                        buyer: ticket.buyer,
-                        buyerDocument: ticket.buyerDocument,
-                        accessoryCollected: ticket.accessoryCollected,
-                        accessoryCollectedAt: ticket.accessoryCollectedAt,
-                        accessoryCollectedNotes: ticket.accessoryCollectedNotes
-                    },
-                    event: {
-                        name: ticket.event.name,
-                        venue: ticket.event.venue
-                    }
-                };
+            if (!ticket.accessoryCollected) {
+                try {
+                    updatedTicket = await prisma.ticket.update({
+                        where: { id: ticket.id, accessoryCollected: false },
+                        data: {
+                            accessoryCollected: true,
+                            accessoryCollectedAt: new Date(),
+                            accessoryCollectedNotes: notes || null
+                        },
+                        include: {
+                            event: {
+                                select: {
+                                    name: true,
+                                    venue: true,
+                                    opening_datetime: true,
+                                    closing_datetime: true
+                                }
+                            }
+                        }
+                    });
+                } catch (error) {
+                    if (error.code !== 'P2025') throw error;
+                    ticket = await this.findTicketByHash(hash);
+                    if (!ticket.accessoryCollected) throw error;
+                }
             }
 
-            // Process the pickup
-            const collectedAt = new Date();
-            const updatedTicket = await prisma.ticket.update({
-                where: { id: ticket.id },
-                data: {
-                    accessoryCollected: true,
-                    accessoryCollectedAt: collectedAt,
-                    accessoryCollectedNotes: notes || null
-                },
-                include: {
-                    event: {
-                        select: {
-                            id: true,
-                            name: true,
-                            venue: true,
-                            opening_datetime: true,
-                            closing_datetime: true
-                        }
-                    }
-                }
-            });
-
+            const result = updatedTicket || ticket;
             return {
-                success: true,
-                message: 'Accessory pickup completed successfully',
+                success: Boolean(updatedTicket),
+                ...(updatedTicket ? {} : { alreadyCollected: true }),
+                message: updatedTicket ? 'Accessory pickup completed successfully' : 'This accessory has already been collected',
                 ticket: {
-                    id: updatedTicket.id,
-                    identificationNumber: updatedTicket.identificationNumber,
-                    description: updatedTicket.description,
-                    location: updatedTicket.location,
-                    table: updatedTicket.table,
-                    buyer: updatedTicket.buyer,
-                    buyerDocument: updatedTicket.buyerDocument,
-                    accessoryCollected: updatedTicket.accessoryCollected,
-                    accessoryCollectedAt: updatedTicket.accessoryCollectedAt,
-                    accessoryCollectedNotes: updatedTicket.accessoryCollectedNotes
+                    id: result.id,
+                    identificationNumber: result.identificationNumber,
+                    description: result.description,
+                    location: result.location,
+                    table: result.table,
+                    buyer: result.buyer,
+                    buyerDocument: result.buyerDocument,
+                    accessoryCollected: result.accessoryCollected,
+                    accessoryCollectedAt: result.accessoryCollectedAt,
+                    accessoryCollectedNotes: result.accessoryCollectedNotes
                 },
                 event: {
-                    name: updatedTicket.event.name,
-                    venue: updatedTicket.event.venue,
-                    opening_datetime: updatedTicket.event.opening_datetime,
-                    closing_datetime: updatedTicket.event.closing_datetime
+                    name: result.event.name,
+                    venue: result.event.venue,
+                    ...(updatedTicket ? {
+                        opening_datetime: result.event.opening_datetime,
+                        closing_datetime: result.event.closing_datetime
+                    } : {})
                 }
             };
         } catch (error) {

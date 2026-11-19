@@ -131,7 +131,7 @@ function createCheckinRoutes({ requiresAuth }) {
     }
   });
 
-  router.get('/events/:eventId/checkin/search', requiresAuth, async (req, res) => {
+  router.get(['/events/:eventId/checkin/search', '/events/:eventId/accessory-pickup/search'], requiresAuth, async (req, res) => {
     try {
       const { eventId } = req.params;
       const { query = '', field = 'any' } = req.query;
@@ -165,7 +165,7 @@ function createCheckinRoutes({ requiresAuth }) {
     }
   });
 
-  router.post('/events/:eventId/checkin/tickets', requiresAuth, async (req, res) => {
+  const selectedTicketsHandler = (operation, processTickets) => async (req, res) => {
     try {
       const { eventId } = req.params;
       const { ticketIds } = req.body;
@@ -179,14 +179,14 @@ function createCheckinRoutes({ requiresAuth }) {
         });
       }
 
-      const result = await checkinService.processSelectedTicketCheckins(eventId, userId, ticketIds);
+      const result = await processTickets(eventId, userId, ticketIds);
 
       res.json({
         ...result,
         user: getAuthenticatedUserLabel(req)
       });
     } catch (error) {
-      console.error('Error processing selected ticket check-ins:', error);
+      console.error(`Error processing ${operation}:`, error);
 
       if (isAccessDeniedError(error) || isTicketAccessDeniedError(error)) {
         return res.status(404).json({
@@ -198,11 +198,18 @@ function createCheckinRoutes({ requiresAuth }) {
 
       res.status(500).json({
         success: false,
-        error: 'Failed to process selected ticket check-ins',
+        error: `Failed to process ${operation}`,
         message: error.message
       });
     }
-  });
+  };
+
+  router.post('/events/:eventId/checkin/tickets', requiresAuth, selectedTicketsHandler(
+    'selected ticket check-ins', checkinService.processSelectedTicketCheckins.bind(checkinService)
+  ));
+  router.post('/events/:eventId/accessory-pickup/tickets', requiresAuth, selectedTicketsHandler(
+    'selected kit pickups', checkinService.processSelectedTicketPickups.bind(checkinService)
+  ));
 
   router.get('/tickets/:ticketId/checkin-hash', requiresAuth, async (req, res) => {
     try {

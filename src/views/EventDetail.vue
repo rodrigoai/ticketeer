@@ -62,11 +62,17 @@
           >
             <i class="fas fa-qrcode text-xs"></i> Scan QR
           </router-link>
+          <router-link
+            :to="`/events/${event.id}/kit-pickup-search`"
+            class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-50 transition"
+          >
+            <i class="fas fa-box text-xs" aria-hidden="true"></i> Manual kit pickup
+          </router-link>
         </div>
       </header>
 
       <!-- Ticket Statistics -->
-      <section v-if="stats" class="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <section v-if="stats" class="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <div class="rounded-2xl bg-primary-600 text-white p-5 shadow-sm">
           <p class="text-3xl font-semibold">{{ stats.totalTickets }}</p>
           <p class="text-sm text-white/80 mt-1">Total Tickets</p>
@@ -86,6 +92,10 @@
         <div class="rounded-2xl bg-amber-500 text-white p-5 shadow-sm">
           <p class="text-3xl font-semibold">{{ stats.checkedInTickets || 0 }}</p>
           <p class="text-sm text-white/80 mt-1">Checked-In</p>
+        </div>
+        <div class="rounded-2xl bg-sky-700 text-white p-5 shadow-sm">
+          <p class="text-3xl font-semibold" role="status">{{ isLoadingTickets ? '—' : collectedTicketCount }}</p>
+          <p class="text-sm text-white/80 mt-1">Kits picked up</p>
         </div>
       </section>
 
@@ -228,15 +238,18 @@
             <strong>{{ selectedTicketIds.length }}</strong> ticket(s) selected
           </span>
           <div class="flex gap-2 flex-wrap">
-            <button
-              v-if="selectedPendingTicketIds.length"
-              type="button"
-              class="rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
-              :disabled="checkingInTicketIds.length > 0"
-              @click="checkInSelectedTickets"
-            >
-              Check in selected ({{ selectedPendingTicketIds.length }})
-            </button>
+            <template v-for="mode in ticketActionModes" :key="mode">
+              <button
+                v-if="selectedPendingTicketIds[mode].length"
+                type="button"
+                class="rounded-full px-4 py-2 text-xs font-semibold disabled:opacity-60"
+                :class="mode === 'pickup' ? 'border border-sky-300 bg-white text-sky-800 hover:bg-sky-50' : 'bg-emerald-700 text-white hover:bg-emerald-800'"
+                :disabled="Boolean(pendingTicketAction)"
+                @click="runSelectedTicketAction(mode)"
+              >
+                {{ mode === 'pickup' ? 'Pick up selected kits' : 'Check in selected' }} ({{ selectedPendingTicketIds[mode].length }})
+              </button>
+            </template>
             <button class="inline-flex items-center gap-1.5 rounded-full bg-primary-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 transition shadow-sm" @click="showBulkEditModal">
               <i class="fas fa-edit"></i> Edit
             </button>
@@ -255,7 +268,9 @@
               <i class="fas fa-times"></i> Clear
             </button>
           </div>
-          <p v-if="bulkCheckinError" class="text-sm text-rose-700" role="alert">{{ bulkCheckinError }}</p>
+          <template v-for="mode in ticketActionModes" :key="mode">
+            <p v-if="groupErrors[mode].selection" class="text-sm text-rose-700" role="alert">{{ groupErrors[mode].selection }}</p>
+          </template>
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-xs lg:hidden">
@@ -337,6 +352,7 @@
                   <tr v-if="group.order" class="bg-slate-50" role="row">
                     <th colspan="8" class="block px-4 py-2 text-sm font-semibold text-slate-700 lg:table-cell">
                       Order {{ group.order }} · {{ group.tickets.filter(ticket => ticket.checkedIn).length }} of {{ group.tickets.length }} checked in
+                      · {{ group.tickets.filter(ticket => ticket.accessoryCollected).length }} of {{ group.tickets.length }} kits picked up
                     </th>
                   </tr>
                   <tr
@@ -383,17 +399,20 @@
                       <p v-if="ticket.location" class="break-words">{{ ticket.location }}</p>
                       <span v-if="ticket.table == null && !ticket.location" class="hidden text-slate-400 lg:inline">—</span>
                     </td>
-                    <td class="ticket-checkin lg:w-36" role="cell">
-                      <TicketCheckinAction
+                    <td
+                      v-for="mode in ticketActionModes"
+                      :key="mode"
+                      :class="mode === 'pickup' ? 'ticket-kit lg:w-36' : 'ticket-checkin lg:w-36'"
+                      role="cell"
+                    >
+                      <TicketStatusAction
                         :ticket="ticket"
-                        :pending="checkingInTicketIds.includes(ticket.id)"
-                        :disabled="checkingInTicketIds.length > 0"
-                        :error="ticketCheckinErrors[ticket.id]"
-                        @check-in="checkInTickets([ticket.id])"
+                        :mode="mode"
+                        :pending="isTicketActionPending(mode, ticket.id)"
+                        :disabled="Boolean(pendingTicketAction)"
+                        :error="rowErrors[mode][ticket.id]"
+                        @submit="applyTicketAction(mode, [ticket.id])"
                       />
-                    </td>
-                    <td class="ticket-kit text-xs lg:text-sm" role="cell">
-                      <span class="lg:hidden">Kit pickup · </span>{{ ticket.accessoryCollected ? 'Picked up' : 'Not picked up' }}
                     </td>
                     <td class="ticket-order min-w-0 text-xs lg:text-sm" role="cell">
                       <button
@@ -1253,7 +1272,8 @@ import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
 import { formatDateTimeLocalInput, serializeDateTimeLocalInput } from '@/utils/dateTime'
-import TicketCheckinAction from '@/components/TicketCheckinAction.vue'
+import TicketStatusAction from '@/components/TicketStatusAction.vue'
+import { ticketStatusActions, useTicketStatusActions } from '@/composables/useTicketStatusActions'
 
 // Props and route
 const route = useRoute()
@@ -1262,7 +1282,8 @@ const publicLandingUrl = computed(() => (event.value?.publicHash ? `/event/${eve
 
 // Composables
 const { isLoading, error, get, post, put, delete: deleteApi } = useApi()
-const { post: postCheckin } = useApi()
+const { runAction, pending: pendingTicketAction, isPending: isTicketActionPending, rowErrors, groupErrors } =
+  useTicketStatusActions(eventId)
 const { get: getPrintableTicket } = useApi()
 const { isAuthenticated } = useUser()
 
@@ -1279,9 +1300,8 @@ const searchValue = ref('')
 const selectedTable = ref(null)
 const orderFilter = ref('')
 const selectedTicketIds = ref([])
-const checkingInTicketIds = ref([])
-const ticketCheckinErrors = ref({})
-const bulkCheckinError = ref('')
+const ticketActionModes = Object.keys(ticketStatusActions)
+const collectedTicketCount = computed(() => tickets.value.filter(ticket => ticket.accessoryCollected).length)
 const printingTicketIds = ref(new Set())
 const ticketPrintErrors = ref({})
 const ticketGroups = ref([])
@@ -1316,7 +1336,7 @@ watch(registeredTables, tables => {
 
 watch([selectedTable, orderFilter, search], () => {
   selectedTicketIds.value = []
-  bulkCheckinError.value = ''
+  ticketActionModes.forEach(mode => delete groupErrors[mode].selection)
 })
 
 const matchedTickets = computed(() => {
@@ -1397,38 +1417,31 @@ const isPartialOrderMatch = (group, ticket) => group.hasUnmatchedTickets && matc
 
 const selectedPendingTicketIds = computed(() => {
   const selectedIds = new Set(selectedTicketIds.value)
-  return sortedTickets.value.filter(ticket => !ticket.checkedIn && selectedIds.has(ticket.id)).map(ticket => ticket.id)
+  const selectedTickets = sortedTickets.value.filter(ticket => selectedIds.has(ticket.id))
+  return Object.fromEntries(ticketActionModes.map(mode => [
+    mode,
+    selectedTickets.filter(ticket => !ticket[ticketStatusActions[mode].status]).map(ticket => ticket.id)
+  ]))
 })
 
-const checkInTickets = async (ticketIds, bulk = false) => {
-  if (!ticketIds.length || checkingInTicketIds.value.length) return
+const applyTicketAction = async (mode, ticketIds, groupKey) => {
+  const updatedTickets = await runAction(mode, ticketIds, groupKey)
+  if (!updatedTickets) return
 
-  checkingInTicketIds.value = ticketIds
-  bulkCheckinError.value = ''
-  ticketIds.forEach(id => delete ticketCheckinErrors.value[id])
-
-  try {
-    const response = await postCheckin(`/api/events/${eventId.value}/checkin/tickets`, { ticketIds })
-    const updates = new Map(response.tickets.map(ticket => [ticket.id, ticket]))
-    tickets.value = tickets.value.map(ticket => {
-      const update = updates.get(ticket.id)
-      return update ? { ...ticket, checkedIn: update.checkedIn, checkedInAt: update.checkedInAt } : ticket
-    })
-    selectedTicketIds.value = selectedTicketIds.value.filter(id => !updates.has(id))
-    await loadStats()
-  } catch (err) {
-    const message = err.message || 'Check-in failed. Try again.'
-    if (bulk) bulkCheckinError.value = message
-    else ticketCheckinErrors.value[ticketIds[0]] = message
-  } finally {
-    checkingInTicketIds.value = []
-  }
+  const { status, timestamp } = ticketStatusActions[mode]
+  const updates = new Map(updatedTickets.map(ticket => [ticket.id, ticket]))
+  tickets.value = tickets.value.map(ticket => {
+    const update = updates.get(ticket.id)
+    return update ? { ...ticket, [status]: update[status], [timestamp]: update[timestamp] } : ticket
+  })
+  selectedTicketIds.value = selectedTicketIds.value.filter(id => !updates.has(id))
+  if (mode === 'checkin') await loadStats()
 }
 
-const checkInSelectedTickets = () => {
-  const ticketIds = selectedPendingTicketIds.value
-  if (ticketIds.length && confirm(`Check in ${ticketIds.length} selected ticket(s)?`)) {
-    return checkInTickets(ticketIds, true)
+const runSelectedTicketAction = (mode) => {
+  const ticketIds = selectedPendingTicketIds.value[mode]
+  if (ticketIds.length && confirm(ticketStatusActions[mode].confirm(ticketIds.length))) {
+    return applyTicketAction(mode, ticketIds, 'selection')
   }
 }
 
@@ -2474,9 +2487,8 @@ onMounted(async () => {
     grid-template-columns: 1.25rem minmax(0, 1fr) minmax(5.5rem, auto);
     grid-template-areas:
       "select buyer checkin"
-      ". number checkin"
+      ". number kit"
       ". location more"
-      ". kit more"
       ". order more";
     gap: 0.25rem 0.625rem;
     padding: 0.75rem;
@@ -2488,7 +2500,7 @@ onMounted(async () => {
   .ticket-number { grid-area: number; }
   .ticket-location { grid-area: location; }
   .ticket-checkin { grid-area: checkin; max-width: 8rem; }
-  .ticket-kit { grid-area: kit; }
+  .ticket-kit { grid-area: kit; max-width: 8rem; }
   .ticket-order { grid-area: order; }
   .ticket-more { grid-area: more; max-width: 8rem; }
 }

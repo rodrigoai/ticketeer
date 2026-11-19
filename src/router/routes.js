@@ -62,7 +62,13 @@ export const createRoutes = (app) => {
       name: 'TicketSearchCheckin',
       component: TicketSearchCheckin,
       beforeEnter: authGuard,
-      props: true
+    },
+    {
+      path: '/events/:id/kit-pickup-search',
+      name: 'TicketSearchKitPickup',
+      component: TicketSearchCheckin,
+      beforeEnter: authGuard,
+      props: { mode: 'pickup' }
     },
     {
       path: '/profile',

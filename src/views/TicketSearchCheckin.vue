@@ -8,14 +8,16 @@
             <span class="mx-2">/</span>
             <router-link :to="`/events/${eventId}`" class="hover:text-emerald-600">{{ event?.name || 'Event' }}</router-link>
             <span class="mx-2">/</span>
-            <span class="text-slate-900">Manual check-in</span>
+            <span class="text-slate-900">{{ heading }}</span>
           </nav>
-          <h1 class="text-2xl font-semibold text-slate-900">Manual check-in</h1>
-          <p class="mt-1 text-sm text-slate-600">Find an order and check in the tickets for people who have arrived.</p>
+          <h1 class="text-2xl font-semibold text-slate-900">{{ heading }}</h1>
+          <p class="mt-1 text-sm text-slate-600">
+            {{ mode === 'pickup' ? 'Find an order and mark the kits you hand out.' : 'Find an order and check in the tickets for people who have arrived.' }}
+          </p>
         </div>
         <div class="flex flex-wrap gap-3">
           <router-link
-            to="/qr-checkin"
+            :to="mode === 'pickup' ? '/qr-accessory-pickup' : '/qr-checkin'"
             class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
           >
             <i class="fas fa-qrcode text-xs"></i> Scan QR
@@ -60,7 +62,7 @@
           <div class="flex items-end">
             <button
               type="submit"
-              :disabled="isSearching || checkingInTicketIds.length > 0 || !query.trim()"
+              :disabled="isSearching || Boolean(pendingTicketAction) || !query.trim()"
               class="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
             >
               <span v-if="isSearching" class="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
@@ -100,7 +102,8 @@
                   Table {{ group.table }}
                 </span>
                 <span class="text-xs font-semibold text-slate-500" role="status">
-                  {{ group.checkedInCount }} of {{ group.ticketCount }} checked in
+                  {{ group.tickets.filter(ticket => ticket[action.status]).length }} of {{ group.ticketCount }}
+                  {{ mode === 'pickup' ? 'kits picked up' : 'checked in' }}
                 </span>
               </div>
               <p v-if="group.buyer" class="mt-2 truncate text-base font-semibold text-slate-900">{{ group.buyer }}</p>
@@ -122,7 +125,7 @@
                   class="mt-2 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
                   :aria-label="`Select ticket #${ticket.identificationNumber}`"
                   :checked="isTicketSelected(ticket.id)"
-                  :disabled="ticket.checkedIn || checkingInTicketIds.length > 0"
+                  :disabled="ticket[action.status] || Boolean(pendingTicketAction)"
                   @change="toggleTicket(ticket.id)"
                 >
                 <div class="min-w-0 text-sm">
@@ -136,23 +139,24 @@
                   </p>
                   <p v-if="isHighlighted(group, ticket)" class="text-xs font-semibold text-emerald-800">Search match</p>
                 </div>
-                <TicketCheckinAction
+                <TicketStatusAction
                   class="max-w-32"
                   :ticket="ticket"
-                  :pending="checkingInTicketIds.includes(ticket.id)"
-                  :disabled="checkingInTicketIds.length > 0 || isSearching"
-                  :error="ticketCheckinErrors[ticket.id]"
-                  @check-in="checkInTickets(group, [ticket.id])"
+                  :mode="mode"
+                  :pending="isTicketActionPending(mode, ticket.id)"
+                  :disabled="Boolean(pendingTicketAction) || isSearching"
+                  :error="rowErrors[mode][ticket.id]"
+                  @submit="applyTicketAction([ticket.id])"
                 />
               </li>
             </ul>
 
             <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p class="text-sm text-slate-500">{{ selectedCountForGroup(group) }} selected for check-in</p>
+              <p class="text-sm text-slate-500">{{ selectedCountForGroup(group) }} selected for {{ mode === 'pickup' ? 'kit pickup' : 'check-in' }}</p>
               <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <button
                   type="button"
-                  :disabled="checkingInTicketIds.length > 0 || isSearching || pendingCountForGroup(group) === 0"
+                  :disabled="Boolean(pendingTicketAction) || isSearching || pendingCountForGroup(group) === 0"
                   class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                   @click="toggleAllPendingTickets(group)"
                 >
@@ -160,16 +164,17 @@
                 </button>
                 <button
                   type="button"
-                  :disabled="checkingInTicketIds.length > 0 || isSearching || selectedCountForGroup(group) === 0"
-                  class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
-                  @click="confirmGroupCheckin(group)"
+                  :disabled="Boolean(pendingTicketAction) || isSearching || selectedCountForGroup(group) === 0"
+                  class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-60"
+                  :class="mode === 'pickup' ? 'bg-sky-700 hover:bg-sky-800' : 'bg-emerald-700 hover:bg-emerald-800'"
+                  @click="confirmGroupAction(group)"
                 >
-                  Check in selected ({{ selectedCountForGroup(group) }})
+                  {{ mode === 'pickup' ? 'Pick up selected kits' : 'Check in selected' }} ({{ selectedCountForGroup(group) }})
                 </button>
               </div>
             </div>
-            <p v-if="groupCheckinErrors[group.key]" class="mt-2 text-sm text-rose-700" role="alert">
-              {{ groupCheckinErrors[group.key] }}
+            <p v-if="groupErrors[mode][group.key]" class="mt-2 text-sm text-rose-700" role="alert">
+              {{ groupErrors[mode][group.key] }}
             </p>
           </div>
         </article>
@@ -179,15 +184,24 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
-import TicketCheckinAction from '@/components/TicketCheckinAction.vue'
+import TicketStatusAction from '@/components/TicketStatusAction.vue'
+import { ticketStatusActions, useTicketStatusActions } from '@/composables/useTicketStatusActions'
+
+const props = defineProps({
+  mode: { type: String, default: 'checkin' }
+})
 
 const route = useRoute()
-const { get, post } = useApi()
+const { get } = useApi()
 
 const eventId = computed(() => route.params.id)
+const action = computed(() => ticketStatusActions[props.mode])
+const heading = computed(() => props.mode === 'pickup' ? 'Manual kit pickup' : 'Manual check-in')
+const { runAction, pending: pendingTicketAction, isPending: isTicketActionPending, rowErrors, groupErrors, clearErrors } =
+  useTicketStatusActions(eventId)
 const query = ref('')
 const field = ref('any')
 const event = ref(null)
@@ -195,9 +209,6 @@ const groups = ref([])
 const openGroupKey = ref(null)
 const selectedTicketIds = ref([])
 const isSearching = ref(false)
-const checkingInTicketIds = ref([])
-const ticketCheckinErrors = ref({})
-const groupCheckinErrors = ref({})
 const hasSearched = ref(false)
 const error = ref(null)
 
@@ -213,7 +224,10 @@ const loadEvent = async () => {
 
 const searchTickets = async () => {
   const trimmedQuery = query.value.trim()
-  if (!trimmedQuery || isSearching.value || checkingInTicketIds.value.length) return
+  if (!trimmedQuery || isSearching.value || pendingTicketAction.value) return
+
+  const currentEventId = eventId.value
+  const currentMode = props.mode
 
   try {
     isSearching.value = true
@@ -221,21 +235,22 @@ const searchTickets = async () => {
     groups.value = []
     hasSearched.value = false
     selectedTicketIds.value = []
-    ticketCheckinErrors.value = {}
-    groupCheckinErrors.value = {}
+    clearErrors(currentMode)
     const params = new URLSearchParams({
       query: trimmedQuery,
       field: field.value
     })
-    const response = await get(`/api/events/${eventId.value}/checkin/search?${params.toString()}`)
+    const response = await get(`/api/events/${currentEventId}/${action.value.endpoint}/search?${params.toString()}`)
+    if (currentEventId !== eventId.value || currentMode !== props.mode) return
 
     event.value = response.event || event.value
     groups.value = response.groups || []
     openGroupKey.value = groups.value[0]?.key || null
     hasSearched.value = true
   } catch (err) {
-    console.error('Failed to search tickets for check-in:', err)
-    error.value = err.message || 'Failed to search tickets'
+    if (currentEventId === eventId.value && currentMode === props.mode) {
+      error.value = err.message || 'Failed to search tickets'
+    }
   } finally {
     isSearching.value = false
   }
@@ -259,15 +274,11 @@ const toggleTicket = (ticketId) => {
   }
 }
 
-const selectedCountForGroup = (group) => {
-  const groupTicketIds = new Set(group.tickets.map((ticket) => ticket.id))
-  return selectedTicketIds.value.filter((id) => groupTicketIds.has(id)).length
-}
-
 const pendingTicketIdsForGroup = (group) => {
-  return group.tickets.filter((ticket) => !ticket.checkedIn).map((ticket) => ticket.id)
+  return group.tickets.filter((ticket) => !ticket[action.value.status]).map((ticket) => ticket.id)
 }
 
+const selectedCountForGroup = (group) => pendingTicketIdsForGroup(group).filter(isTicketSelected).length
 const pendingCountForGroup = (group) => pendingTicketIdsForGroup(group).length
 
 const areAllPendingTicketsSelected = (group) => {
@@ -288,44 +299,38 @@ const toggleAllPendingTickets = (group) => {
   selectedTicketIds.value = [...nextSelection]
 }
 
-const confirmGroupCheckin = (group) => {
+const confirmGroupAction = (group) => {
   const ticketIds = pendingTicketIdsForGroup(group).filter(isTicketSelected)
-  if (ticketIds.length && confirm(`Check in ${ticketIds.length} selected ticket(s)?`)) {
-    return checkInTickets(group, ticketIds, true)
+  if (ticketIds.length && confirm(action.value.confirm(ticketIds.length))) {
+    return applyTicketAction(ticketIds, group.key)
   }
 }
 
-const checkInTickets = async (group, ticketIds, bulk = false) => {
-  if (isSearching.value || checkingInTicketIds.value.length) return
+const applyTicketAction = async (ticketIds, groupKey) => {
+  if (isSearching.value) return
+  const currentEventId = eventId.value
+  const currentMode = props.mode
+  const updatedTickets = await runAction(currentMode, ticketIds, groupKey)
+  if (!updatedTickets || currentEventId !== eventId.value || currentMode !== props.mode) return
 
-  checkingInTicketIds.value = ticketIds
-  delete groupCheckinErrors.value[group.key]
-  ticketIds.forEach(id => delete ticketCheckinErrors.value[id])
-  try {
-    const response = await post(`/api/events/${eventId.value}/checkin/tickets`, { ticketIds })
-    applyUpdatedTickets(response.tickets)
-    const updatedIds = new Set(response.tickets.map(ticket => ticket.id))
-    selectedTicketIds.value = selectedTicketIds.value.filter(id => !updatedIds.has(id))
-  } catch (err) {
-    const message = err.message || 'Check-in failed. Try again.'
-    if (bulk) groupCheckinErrors.value[group.key] = message
-    else ticketCheckinErrors.value[ticketIds[0]] = message
-  } finally {
-    checkingInTicketIds.value = []
+  const updates = new Map(updatedTickets.map(ticket => [ticket.id, ticket]))
+  groups.value = groups.value.map(group => ({
+    ...group,
+    tickets: group.tickets.map(ticket => updates.get(ticket.id) || ticket)
+  }))
+  selectedTicketIds.value = selectedTicketIds.value.filter(id => !updates.has(id))
+}
+
+watch([eventId, () => props.mode], ([id], [previousId] = []) => {
+  groups.value = []
+  openGroupKey.value = null
+  selectedTicketIds.value = []
+  hasSearched.value = false
+  error.value = null
+  clearErrors(props.mode)
+  if (id !== previousId) {
+    event.value = null
+    loadEvent()
   }
-}
-
-const applyUpdatedTickets = (updatedTickets) => {
-  const updatedById = new Map(updatedTickets.map((ticket) => [ticket.id, ticket]))
-  groups.value = groups.value.map((group) => {
-    const tickets = group.tickets.map((ticket) => updatedById.get(ticket.id) || ticket)
-    return {
-      ...group,
-      tickets,
-      checkedInCount: tickets.filter((ticket) => ticket.checkedIn).length
-    }
-  })
-}
-
-onMounted(loadEvent)
+}, { immediate: true })
 </script>

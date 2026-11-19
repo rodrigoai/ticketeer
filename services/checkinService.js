@@ -17,7 +17,9 @@ class CheckinService {
       buyerDocument: ticket.buyerDocument,
       buyerEmail: ticket.buyerEmail,
       checkedIn: ticket.checkedIn,
-      checkedInAt: ticket.checkedInAt
+      checkedInAt: ticket.checkedInAt,
+      accessoryCollected: ticket.accessoryCollected,
+      accessoryCollectedAt: ticket.accessoryCollectedAt
     };
   }
 
@@ -279,75 +281,89 @@ class CheckinService {
 
   async processSelectedTicketCheckins(eventId, userId, ticketIds) {
     try {
-      const event = await this._getOwnedEvent(eventId, userId);
-      const normalizedTicketIds = this._normalizeTicketIds(ticketIds);
-
-      const tickets = await prisma.ticket.findMany({
-        where: {
-          id: { in: normalizedTicketIds },
-          eventId: event.id
-        },
-        orderBy: {
-          identificationNumber: 'asc'
-        }
-      });
-
-      if (tickets.length !== normalizedTicketIds.length) {
-        const foundTicketIds = new Set(tickets.map((ticket) => ticket.id));
-        const missingTicketIds = normalizedTicketIds.filter((id) => !foundTicketIds.has(id));
-        throw new Error(`Some tickets were not found or access denied: ${missingTicketIds.join(', ')}`);
-      }
-
-      const alreadyCheckedIn = tickets.filter((ticket) => ticket.checkedIn);
-      const ticketsToCheckIn = tickets.filter((ticket) => !ticket.checkedIn);
-      const newlyCheckedIn = ticketsToCheckIn.length
-        ? await prisma.ticket.updateManyAndReturn({
-            where: {
-              id: {
-                in: ticketsToCheckIn.map((ticket) => ticket.id)
-              },
-              eventId: event.id,
-              checkedIn: false
-            },
-            data: {
-              checkedIn: true,
-              checkedInAt: new Date()
-            }
-          })
-        : [];
-
-      if (newlyCheckedIn.length < ticketsToCheckIn.length) {
-        const updatedIds = new Set(newlyCheckedIn.map((ticket) => ticket.id));
-        const concurrentIds = ticketsToCheckIn.filter((ticket) => !updatedIds.has(ticket.id)).map((ticket) => ticket.id);
-        const concurrentCheckins = await prisma.ticket.findMany({
-          where: { eventId: event.id, id: { in: concurrentIds }, checkedIn: true }
-        });
-        alreadyCheckedIn.push(...concurrentCheckins);
-      }
-
-      const checkedIn = newlyCheckedIn.map((ticket) => this._mapTicketForCheckin(ticket));
-      const previousCheckins = alreadyCheckedIn.map((ticket) => this._mapTicketForCheckin(ticket));
-      const updatedTickets = [...checkedIn, ...previousCheckins]
-        .sort((a, b) => a.identificationNumber - b.identificationNumber);
-
-      if (updatedTickets.length !== tickets.length) {
-        throw new Error('Some selected tickets changed during check-in. Refresh and try again.');
-      }
-
+      const { event, tickets, updated: checkedIn, previous: alreadyCheckedIn } =
+        await this._processSelectedTicketStatus(eventId, userId, ticketIds, 'checkedIn', 'checkedInAt');
       return {
         success: true,
         message: `${checkedIn.length} ticket(s) checked in successfully`,
-        event: this._mapEventForCheckin(event),
-        tickets: updatedTickets,
+        event,
+        tickets,
         checkedIn,
-        alreadyCheckedIn: previousCheckins,
+        alreadyCheckedIn,
         checkedInCount: checkedIn.length,
-        alreadyCheckedInCount: previousCheckins.length
+        alreadyCheckedInCount: alreadyCheckedIn.length
       };
     } catch (error) {
       console.error('Error processing selected ticket check-ins:', error);
       throw new Error(`Failed to process selected ticket check-ins: ${error.message}`);
     }
+  }
+
+  async processSelectedTicketPickups(eventId, userId, ticketIds) {
+    try {
+      const { event, tickets, updated: pickedUp, previous: alreadyPickedUp } =
+        await this._processSelectedTicketStatus(eventId, userId, ticketIds, 'accessoryCollected', 'accessoryCollectedAt');
+      return {
+        success: true,
+        message: `${pickedUp.length} kit(s) marked picked up`,
+        event,
+        tickets,
+        pickedUp,
+        alreadyPickedUp,
+        pickedUpCount: pickedUp.length,
+        alreadyPickedUpCount: alreadyPickedUp.length
+      };
+    } catch (error) {
+      console.error('Error processing selected kit pickups:', error);
+      throw new Error(`Failed to process selected kit pickups: ${error.message}`);
+    }
+  }
+
+  async _processSelectedTicketStatus(eventId, userId, ticketIds, status, timestamp) {
+    const event = await this._getOwnedEvent(eventId, userId);
+    const normalizedTicketIds = this._normalizeTicketIds(ticketIds);
+
+    const tickets = await prisma.ticket.findMany({
+      where: { eventId: event.id, id: { in: normalizedTicketIds } },
+      orderBy: { identificationNumber: 'asc' }
+    });
+
+    if (tickets.length !== normalizedTicketIds.length) {
+      const foundTicketIds = new Set(tickets.map((ticket) => ticket.id));
+      const missingTicketIds = normalizedTicketIds.filter((id) => !foundTicketIds.has(id));
+      throw new Error(`Some tickets were not found or access denied: ${missingTicketIds.join(', ')}`);
+    }
+
+    const previous = tickets.filter((ticket) => ticket[status]);
+    const pendingIds = tickets.filter((ticket) => !ticket[status]).map((ticket) => ticket.id);
+    const updated = pendingIds.length
+      ? await prisma.ticket.updateManyAndReturn({
+          where: { eventId: event.id, id: { in: pendingIds }, [status]: false },
+          data: { [status]: true, [timestamp]: new Date() }
+        })
+      : [];
+
+    if (updated.length < pendingIds.length) {
+      const updatedIds = new Set(updated.map((ticket) => ticket.id));
+      const concurrentIds = pendingIds.filter((id) => !updatedIds.has(id));
+      const concurrentUpdates = await prisma.ticket.findMany({
+        where: { eventId: event.id, id: { in: concurrentIds }, [status]: true }
+      });
+      previous.push(...concurrentUpdates);
+    }
+
+    if (updated.length + previous.length !== tickets.length) {
+      throw new Error('Some selected tickets changed during the update. Refresh and try again.');
+    }
+
+    const mappedUpdated = updated.map((ticket) => this._mapTicketForCheckin(ticket));
+    const mappedPrevious = previous.map((ticket) => this._mapTicketForCheckin(ticket));
+    return {
+      event: this._mapEventForCheckin(event),
+      tickets: [...mappedUpdated, ...mappedPrevious].sort((a, b) => a.identificationNumber - b.identificationNumber),
+      updated: mappedUpdated,
+      previous: mappedPrevious
+    };
   }
 
   

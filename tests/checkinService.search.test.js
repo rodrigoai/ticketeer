@@ -12,6 +12,8 @@ const mockPrisma = {
 jest.mock('../config/prisma', () => mockPrisma);
 
 const checkinService = require('../services/checkinService');
+const accessoryPickupService = require('../services/accessoryPickupService');
+const createCheckinRoutes = require('../routes/checkinRoutes');
 
 describe('CheckinService ticket search check-in', () => {
   const silenceExpectedConsoleError = () => (
@@ -541,5 +543,81 @@ describe('CheckinService ticket search check-in', () => {
       expect.any(Error)
     );
     expect(mockPrisma.ticket.updateManyAndReturn).not.toHaveBeenCalled();
+  });
+
+  test('marks only selected kits as picked up and keeps check-in and previous pickup times independent', async () => {
+    const originalTime = new Date('2026-05-08T23:30:00.000Z');
+    const unnamedTicket = { id: 2, identificationNumber: 11, buyer: null, checkedIn: false, accessoryCollected: false };
+    const alreadyCollected = {
+      id: 3, identificationNumber: 12, checkedIn: true, accessoryCollected: true, accessoryCollectedAt: originalTime
+    };
+    mockPrisma.ticket.findMany.mockResolvedValueOnce([unnamedTicket, alreadyCollected]);
+    mockPrisma.ticket.updateManyAndReturn.mockImplementationOnce(async ({ data }) => [{ ...unnamedTicket, ...data }]);
+
+    const result = await checkinService.processSelectedTicketPickups(event.id, userId, [2, 3]);
+
+    expect(mockPrisma.ticket.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { eventId: event.id, id: { in: [2, 3] } }
+    }));
+    expect(mockPrisma.ticket.updateManyAndReturn).toHaveBeenCalledWith({
+      where: { eventId: event.id, id: { in: [2] }, accessoryCollected: false },
+      data: { accessoryCollected: true, accessoryCollectedAt: expect.any(Date) }
+    });
+    expect(result).toMatchObject({
+      pickedUpCount: 1,
+      alreadyPickedUpCount: 1,
+      tickets: [
+        { id: 2, buyer: null, checkedIn: false, accessoryCollected: true, accessoryCollectedAt: expect.any(Date) },
+        { id: 3, checkedIn: true, accessoryCollected: true, accessoryCollectedAt: originalTime }
+      ]
+    });
+  });
+
+  test('manual pickup search uses authenticated order lookup and includes existing pickup status', async () => {
+    const requiresAuth = jest.fn();
+    const router = createCheckinRoutes({ requiresAuth });
+    const searchRoute = router.stack.find(layer => layer.route?.path.includes('/events/:eventId/accessory-pickup/search'));
+    const pickupRoute = router.stack.find(layer => layer.route?.path === '/events/:eventId/accessory-pickup/tickets');
+    const buyerTicket = { id: 1, order: 'ORDER-123', buyer: 'Maria', identificationNumber: 10, accessoryCollected: true };
+    const companion = { id: 2, order: buyerTicket.order, buyer: null, identificationNumber: 11, accessoryCollected: false };
+    mockPrisma.ticket.findMany.mockResolvedValueOnce([buyerTicket]).mockResolvedValueOnce([buyerTicket, companion]);
+
+    expect(searchRoute.route.stack[0].handle).toBe(requiresAuth);
+    expect(pickupRoute.route.stack[0].handle).toBe(requiresAuth);
+    const response = { json: jest.fn() };
+    await searchRoute.route.stack[1].handle({
+      params: { eventId: String(event.id) },
+      query: { query: 'Maria', field: 'buyer' },
+      auth: { payload: { sub: userId } }
+    }, response);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      groups: [expect.objectContaining({
+        order: 'ORDER-123',
+        tickets: [
+          expect.objectContaining({ id: 1, accessoryCollected: true }),
+          expect.objectContaining({ id: 2, buyer: null, accessoryCollected: false })
+        ]
+      })]
+    }));
+  });
+
+  test('QR pickup racing a manual pickup reports the original time and notes', async () => {
+    const ticket = { id: 2, event, accessoryCollected: false };
+    const accessoryCollectedAt = new Date('2026-05-08T23:30:00.000Z');
+    jest.spyOn(accessoryPickupService, 'findTicketByHash')
+      .mockResolvedValueOnce(ticket)
+      .mockResolvedValueOnce({ ...ticket, accessoryCollected: true, accessoryCollectedAt, accessoryCollectedNotes: 'Original note' });
+    mockPrisma.ticket.update.mockRejectedValueOnce(Object.assign(new Error('Already updated'), { code: 'P2025' }));
+
+    const result = await accessoryPickupService.processPickup('fixture-hash', 'New note');
+
+    expect(mockPrisma.ticket.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: ticket.id, accessoryCollected: false }
+    }));
+    expect(result).toMatchObject({
+      success: false,
+      alreadyCollected: true,
+      ticket: { id: 2, accessoryCollected: true, accessoryCollectedAt, accessoryCollectedNotes: 'Original note' }
+    });
   });
 });
