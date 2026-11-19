@@ -4,7 +4,8 @@ const mockPrisma = {
   },
   ticket: {
     findMany: jest.fn(),
-    updateMany: jest.fn()
+    update: jest.fn(),
+    updateManyAndReturn: jest.fn()
   }
 };
 
@@ -56,7 +57,7 @@ describe('CheckinService ticket search check-in', () => {
     mockPrisma.ticket.findMany.mockResolvedValueOnce([ticket]);
 
     const result = await checkinService.searchTicketsForCheckin(event.id, userId, {
-      query: '42',
+      query: '#42',
       field: 'ticket'
     });
 
@@ -90,7 +91,8 @@ describe('CheckinService ticket search check-in', () => {
       type: 'ticket',
       label: 'Ticket #42',
       ticketCount: 1,
-      checkedInCount: 0
+      checkedInCount: 0,
+      matchedTicketIds: [1]
     });
   });
 
@@ -110,16 +112,16 @@ describe('CheckinService ticket search check-in', () => {
       checkedInAt: null
     };
     const orderTickets = [
-      matchedTicket,
       {
         ...matchedTicket,
         id: 2,
-        identificationNumber: 11,
+        identificationNumber: 9,
         buyer: null,
         buyerEmail: null,
         checkedIn: true,
         checkedInAt: new Date('2026-05-08T23:30:00.000Z')
-      }
+      },
+      matchedTicket
     ];
 
     mockPrisma.ticket.findMany
@@ -161,10 +163,36 @@ describe('CheckinService ticket search check-in', () => {
       key: 'order:ORDER-123',
       type: 'order',
       order: 'ORDER-123',
+      buyer: 'Maria Souza',
       ticketCount: 2,
-      checkedInCount: 1
+      checkedInCount: 1,
+      matchedTicketIds: [1]
     });
-    expect(result.groups[0].tickets.map((ticket) => ticket.id)).toEqual([1, 2]);
+    expect(result.groups[0].tickets.map(({ id, buyer }) => [id, buyer])).toEqual([[2, null], [1, 'Maria Souza']]);
+  });
+
+  test.each([
+    ['any', '#11', { identificationNumber: 11 }, [2]],
+    ['order', 'ORDER-123', { order: { contains: 'ORDER-123', mode: 'insensitive' } }, [1, 2]]
+  ])('returns the full order for a %s search', async (field, query, matchWhere, matchedIds) => {
+    const orderTickets = [
+      { id: 1, order: 'ORDER-123', identificationNumber: 10, buyer: 'Maria', checkedIn: false },
+      { id: 2, order: 'ORDER-123', identificationNumber: 11, buyer: null, checkedIn: false }
+    ];
+    mockPrisma.ticket.findMany
+      .mockResolvedValueOnce(orderTickets.filter(ticket => matchedIds.includes(ticket.id)))
+      .mockResolvedValueOnce(orderTickets);
+
+    const result = await checkinService.searchTicketsForCheckin(event.id, userId, { query, field });
+
+    expect(mockPrisma.ticket.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      where: { eventId: event.id, ...matchWhere }
+    }));
+    expect(result.groups[0]).toMatchObject({
+      buyer: 'Maria',
+      matchedTicketIds: matchedIds,
+      tickets: [{ id: 1, buyer: 'Maria' }, { id: 2, buyer: null }]
+    });
   });
 
   test('searches by table and returns the full order group', async () => {
@@ -414,9 +442,9 @@ describe('CheckinService ticket search check-in', () => {
         table: null,
         price: '50',
         order: 'ORDER-123',
-        buyer: 'Maria',
+        buyer: null,
         buyerDocument: null,
-        buyerEmail: 'maria@example.com',
+        buyerEmail: null,
         checkedIn: false,
         checkedInAt: null
       },
@@ -436,11 +464,11 @@ describe('CheckinService ticket search check-in', () => {
       }
     ];
     mockPrisma.ticket.findMany.mockResolvedValue(tickets);
-    mockPrisma.ticket.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.ticket.updateManyAndReturn.mockImplementationOnce(async ({ data }) => [{ ...tickets[0], ...data }]);
 
     const result = await checkinService.processSelectedTicketCheckins(event.id, userId, [1, 2]);
 
-    expect(mockPrisma.ticket.updateMany).toHaveBeenCalledWith({
+    expect(mockPrisma.ticket.updateManyAndReturn).toHaveBeenCalledWith({
       where: {
         id: {
           in: [1]
@@ -459,6 +487,46 @@ describe('CheckinService ticket search check-in', () => {
     expect(result.tickets.find((ticket) => ticket.id === 2).checkedIn).toBe(true);
   });
 
+  test('checks in only the chosen unnamed ticket and returns the original time when another station got there first', async () => {
+    const ticket = { id: 2, eventId: event.id, order: 'ORDER-123', buyer: null, checkedIn: false };
+    const checkedInAt = new Date('2026-05-08T23:30:00.000Z');
+    mockPrisma.ticket.findMany
+      .mockResolvedValueOnce([ticket])
+      .mockResolvedValueOnce([{ ...ticket, checkedIn: true, checkedInAt }]);
+    mockPrisma.ticket.updateManyAndReturn.mockResolvedValueOnce([]);
+
+    const result = await checkinService.processSelectedTicketCheckins(event.id, userId, [2]);
+
+    expect(mockPrisma.ticket.updateManyAndReturn).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: { in: [2] }, eventId: event.id, checkedIn: false }
+    }));
+    expect(result).toMatchObject({
+      checkedInCount: 0,
+      alreadyCheckedInCount: 1,
+      tickets: [{ id: 2, buyer: null, checkedIn: true, checkedInAt }]
+    });
+  });
+
+  test('a QR check-in racing manual check-in reports the original time', async () => {
+    const ticket = { id: 2, event, checkedIn: false };
+    const checkedInAt = new Date('2026-05-08T23:30:00.000Z');
+    jest.spyOn(checkinService, 'findTicketByHash')
+      .mockResolvedValueOnce(ticket)
+      .mockResolvedValueOnce({ ...ticket, checkedIn: true, checkedInAt });
+    mockPrisma.ticket.update.mockRejectedValueOnce(Object.assign(new Error('Already updated'), { code: 'P2025' }));
+
+    const result = await checkinService.processCheckin('fixture-hash');
+
+    expect(mockPrisma.ticket.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: ticket.id, checkedIn: false }
+    }));
+    expect(result).toMatchObject({
+      success: false,
+      alreadyCheckedIn: true,
+      ticket: { id: 2, checkedIn: true, checkedInAt }
+    });
+  });
+
   test('rejects selected check-in when a ticket is outside the current event', async () => {
     const consoleErrorSpy = silenceExpectedConsoleError();
 
@@ -472,6 +540,6 @@ describe('CheckinService ticket search check-in', () => {
       'Error processing selected ticket check-ins:',
       expect.any(Error)
     );
-    expect(mockPrisma.ticket.updateMany).not.toHaveBeenCalled();
+    expect(mockPrisma.ticket.updateManyAndReturn).not.toHaveBeenCalled();
   });
 });

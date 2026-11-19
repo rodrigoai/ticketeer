@@ -315,7 +315,7 @@ describe('TicketService Webhook - Selective Buyer Assignment', () => {
       });
 
       mockPrisma.ticket.update.mockImplementation(({ where, data, include }) => {
-        expect(where).toEqual({ id: unsoldTicket.id });
+        expect(where).toEqual({ id: unsoldTicket.id, checkedIn: false });
         expect(data.checkedIn).toBe(true);
         expect(data.checkedInAt).toBeInstanceOf(Date);
         expect(include.event.select.name).toBe(true);

@@ -37,7 +37,7 @@ export function useApi() {
   }
 
   // Generic API request function
-  const request = async (url, options = {}) => {
+  const request = async (url, { responseType = 'json', ...options } = {}) => {
     isLoading.value = true
     error.value = null
 
@@ -66,9 +66,8 @@ export function useApi() {
         ...options
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
+        const data = await response.json()
         // Create an error object with the response data
         const error = new Error(data.message || `HTTP error! status: ${response.status}`)
         error.status = response.status
@@ -76,7 +75,7 @@ export function useApi() {
         throw error
       }
 
-      return data
+      return responseType === 'blob' ? await response.blob() : await response.json()
     } catch (err) {
       error.value = err.message
       throw err

@@ -54,13 +54,13 @@
             :to="`/events/${event.id}/checkin-search`"
             class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-emerald-600 transition"
           >
-            <i class="fas fa-search text-xs"></i> Search Check-in
+            <i class="fas fa-search text-xs"></i> Manual check-in
           </router-link>
           <router-link
             to="/qr-checkin"
             class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition"
           >
-            <i class="fas fa-qrcode text-xs"></i> QR Scanner
+            <i class="fas fa-qrcode text-xs"></i> Scan QR
           </router-link>
         </div>
       </header>
@@ -90,59 +90,72 @@
       </section>
 
       <section class="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div>
-            <h3 class="text-xl font-semibold text-slate-900">Ticket Groups</h3>
-            <p class="text-sm text-slate-500">Manage group-specific checkout links shown on the public landing page.</p>
-          </div>
-        </div>
-
-        <div v-if="ticketGroups.length === 0" class="px-6 py-8 text-sm text-slate-500">
-          Create tickets or batches first to generate editable groups.
-        </div>
-
-        <div v-else class="divide-y divide-slate-100">
-          <div
-            v-for="group in ticketGroups"
-            :key="group.id || group.groupKey"
-            class="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between"
+        <h3>
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-4 px-6 py-4 text-left text-xl font-semibold text-slate-900 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-500"
+            :aria-expanded="ticketGroupsExpanded"
+            aria-controls="event-ticket-groups"
+            @click="ticketGroupsExpanded = !ticketGroupsExpanded"
           >
-            <div class="space-y-1">
-              <div class="flex flex-wrap items-center gap-3">
-                <h4 class="text-base font-semibold text-slate-900">{{ group.description }}</h4>
-                <span
-                  class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                  :class="group.active !== false ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'"
-                >
-                  {{ group.active !== false ? 'Active' : 'Inactive' }}
-                </span>
-                <span v-if="group.tables?.length" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                  Tables {{ group.tables.join(', ') }}
-                </span>
-              </div>
-              <p class="text-sm text-slate-500">
-                {{ group.ticketCount }} ticket(s), {{ group.availableCount }} available
-              </p>
-              <p v-if="group.salesDescription" class="max-w-2xl text-sm text-slate-600">
-                {{ group.salesDescription }}
-              </p>
-              <p class="text-xs text-slate-500">
-                Current price: {{ formatCurrency(group.activePrice ?? group.price) }}
-                <span v-if="group.activePricingTier"> • Active tier: {{ group.activePricingTier.name }}</span>
-              </p>
-              <p class="text-xs text-slate-500 break-all" v-if="event?.saleMode === 'checkout'">
-                {{ group.checkoutUrl || 'Using event checkout URL fallback' }}
-              </p>
-              <p class="text-xs text-slate-500 break-all" v-else>
-                Product ID: {{ group.productId || 'Not configured' }}
-              </p>
-            </div>
-            <button
-              class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-              @click="editGroup(group)"
+            Ticket Groups
+            <i
+              class="fas fa-chevron-down text-xs text-slate-500 motion-safe:transition-transform"
+              :class="{ 'rotate-180': ticketGroupsExpanded }"
+              aria-hidden="true"
+            ></i>
+          </button>
+        </h3>
+        <div v-show="ticketGroupsExpanded" id="event-ticket-groups">
+          <p class="px-6 pb-4 text-sm text-slate-500">Manage group-specific checkout links shown on the public landing page.</p>
+
+          <div v-if="ticketGroups.length === 0" class="border-t border-slate-100 px-6 py-8 text-sm text-slate-500">
+            Create tickets or batches first to generate editable groups.
+          </div>
+
+          <div v-else class="divide-y divide-slate-100 border-t border-slate-100">
+            <div
+              v-for="group in ticketGroups"
+              :key="group.id || group.groupKey"
+              class="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between"
             >
-              <i class="fas fa-link text-xs"></i> Edit Group
-            </button>
+              <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-3">
+                  <h4 class="text-base font-semibold text-slate-900">{{ group.description }}</h4>
+                  <span
+                    class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                    :class="group.active !== false ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'"
+                  >
+                    {{ group.active !== false ? 'Active' : 'Inactive' }}
+                  </span>
+                  <span v-if="group.tables?.length" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                    Tables {{ group.tables.join(', ') }}
+                  </span>
+                </div>
+                <p class="text-sm text-slate-500">
+                  {{ group.ticketCount }} ticket(s), {{ group.availableCount }} available
+                </p>
+                <p v-if="group.salesDescription" class="max-w-2xl text-sm text-slate-600">
+                  {{ group.salesDescription }}
+                </p>
+                <p class="text-xs text-slate-500">
+                  Current price: {{ formatCurrency(group.activePrice ?? group.price) }}
+                  <span v-if="group.activePricingTier"> • Active tier: {{ group.activePricingTier.name }}</span>
+                </p>
+                <p class="text-xs text-slate-500 break-all" v-if="event?.saleMode === 'checkout'">
+                  {{ group.checkoutUrl || 'Using event checkout URL fallback' }}
+                </p>
+                <p class="text-xs text-slate-500 break-all" v-else>
+                  Product ID: {{ group.productId || 'Not configured' }}
+                </p>
+              </div>
+              <button
+                class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                @click="editGroup(group)"
+              >
+                <i class="fas fa-link text-xs"></i> Edit Group
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -159,10 +172,13 @@
               <input 
                 type="text" 
                 class="w-full rounded-full border border-slate-200 pl-10 pr-10 py-2 text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition bg-white"
-                placeholder="Search tickets..."
+                aria-label="Search tickets"
+                placeholder="Search buyer, ticket #, or order"
                 v-model="searchValue"
               >
-              <button 
+              <button
+                type="button"
+                aria-label="Clear ticket search"
                 v-if="searchValue" 
                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                 @click="searchValue = ''"
@@ -212,6 +228,15 @@
             <strong>{{ selectedTicketIds.length }}</strong> ticket(s) selected
           </span>
           <div class="flex gap-2 flex-wrap">
+            <button
+              v-if="selectedPendingTicketIds.length"
+              type="button"
+              class="rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+              :disabled="checkingInTicketIds.length > 0"
+              @click="checkInSelectedTickets"
+            >
+              Check in selected ({{ selectedPendingTicketIds.length }})
+            </button>
             <button class="inline-flex items-center gap-1.5 rounded-full bg-primary-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 transition shadow-sm" @click="showBulkEditModal">
               <i class="fas fa-edit"></i> Edit
             </button>
@@ -230,174 +255,175 @@
               <i class="fas fa-times"></i> Clear
             </button>
           </div>
+          <p v-if="bulkCheckinError" class="text-sm text-rose-700" role="alert">{{ bulkCheckinError }}</p>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[900px] table-fixed caption-bottom text-left text-sm text-slate-600">
-            <thead class="border-b bg-slate-50 text-slate-500 uppercase text-[0.65rem] tracking-[0.4em]">
-              <tr>
-                <th class="px-5 py-3 w-10 text-center">
-                  <input 
-                    type="checkbox" 
-                    :checked="isAllSelected" 
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-xs lg:hidden">
+          <label class="inline-flex items-center gap-2 py-2">
+            <input
+              type="checkbox"
+              :checked="isAllSelected"
+              :disabled="isLoadingTickets || !sortedTickets.length"
+              class="h-4 w-4 rounded border-slate-300 text-primary-600"
+              @change="toggleSelectAll"
+            >
+            Select all
+          </label>
+          <div class="flex items-center gap-1">
+            <select :value="sortKey" aria-label="Sort tickets by" class="rounded-lg border border-slate-200 bg-white px-2 py-2" @change="sortBy($event.target.value)">
+              <option v-for="column in ticketColumns" :key="column.key" :value="column.key">{{ column.label }}</option>
+              <option value="description">Description</option>
+            </select>
+            <button
+              type="button"
+              :aria-label="sortOrder === 'asc' ? 'Sort descending' : 'Sort ascending'"
+              class="rounded-lg border border-slate-200 px-2 py-2"
+              @click="sortBy(sortKey)"
+            >
+              <i :class="['fas', sortOrder === 'asc' ? 'fa-arrow-up' : 'fa-arrow-down']" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <div class="lg:overflow-x-auto">
+          <table class="ticket-table w-full text-left text-sm text-slate-700" role="table" aria-label="Event tickets">
+            <thead class="hidden border-b bg-slate-50 text-xs text-slate-600 lg:table-header-group" role="rowgroup">
+              <tr role="row">
+                <th scope="col" class="px-3 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible tickets"
+                    :checked="isAllSelected"
                     @change="toggleSelectAll"
-                    class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                    class="h-4 w-4 rounded border-slate-300 text-primary-600"
                   >
                 </th>
-                <th class="w-24 px-4 py-3 font-semibold whitespace-nowrap">
-                  <div class="flex items-center justify-center gap-3 tracking-normal">
-                    <button
-                      type="button"
-                      class="text-slate-500 transition hover:text-slate-900"
-                      @click="sortBy('checkedIn')"
-                      title="Sort by check-in status"
-                    >
-                      <span class="sr-only">Sort by check-in status</span>
-                      <i class="fas fa-check-circle"></i>
-                      <i v-if="sortKey === 'checkedIn'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                    </button>
-                    <button
-                      type="button"
-                      class="text-slate-500 transition hover:text-slate-900"
-                      @click="sortBy('accessoryCollected')"
-                      title="Sort by kit status"
-                    >
-                      <span class="sr-only">Sort by kit status</span>
-                      <i class="fas fa-box"></i>
-                      <i v-if="sortKey === 'accessoryCollected'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                    </button>
-                  </div>
+                <th
+                  v-for="column in ticketColumns"
+                  :key="column.key"
+                  scope="col"
+                  class="px-3 py-3"
+                  :aria-sort="sortKey === column.key || (column.key === 'identificationNumber' && sortKey === 'description')
+                    ? (sortOrder === 'asc' ? 'ascending' : 'descending')
+                    : undefined"
+                >
+                  <button type="button" class="text-left font-semibold hover:text-slate-900" @click="sortBy(column.key)">
+                    {{ column.label }}
+                    <i v-if="sortKey === column.key" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']" aria-hidden="true"></i>
+                  </button>
+                  <button
+                    v-if="column.key === 'identificationNumber'"
+                    type="button"
+                    class="block text-xs hover:text-slate-900"
+                    @click="sortBy('description')"
+                  >
+                    Description
+                    <i v-if="sortKey === 'description'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']" aria-hidden="true"></i>
+                  </button>
                 </th>
-                <th @click="sortBy('identificationNumber')" class="w-24 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
-                  # <i v-if="sortKey === 'identificationNumber'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                </th>
-                <th @click="sortBy('buyer')" class="w-56 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
-                  Buyer <i v-if="sortKey === 'buyer'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                </th>
-                <th @click="sortBy('description')" class="px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
-                  Description <i v-if="sortKey === 'description'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                </th>
-                <th @click="sortBy('table')" class="w-24 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
-                  Table <i v-if="sortKey === 'table'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                </th>
-                <th @click="sortBy('order')" class="w-36 px-5 py-3 font-semibold cursor-pointer hover:text-slate-900 transition whitespace-nowrap">
-                  Order <i v-if="sortKey === 'order'" :class="['fas', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down', 'ml-1']"></i>
-                </th>
-                <th class="w-32 px-5 py-3 font-semibold text-right">Actions</th>
+                <th scope="col" class="px-3 py-3">More</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr v-if="isLoadingTickets">
-                <td colspan="8" class="px-5 py-12 text-center text-slate-500">
-                  <div class="inline-flex items-center gap-2">
-                    <span class="w-4 h-4 rounded-full border-2 border-slate-500 border-t-transparent animate-spin"></span>
-                    Loading tickets...
-                  </div>
-                </td>
+            <tbody class="divide-y divide-slate-100" role="rowgroup">
+              <tr v-if="isLoadingTickets" role="row">
+                <td colspan="8" class="block px-5 py-12 text-center text-slate-500 lg:table-cell" role="cell">Loading tickets…</td>
               </tr>
-              <tr v-else-if="sortedTickets.length === 0">
-                <td colspan="8" class="px-5 py-12 text-center text-slate-500">
+              <tr v-else-if="sortedTickets.length === 0" role="row">
+                <td colspan="8" class="block px-5 py-12 text-center text-slate-500 lg:table-cell" role="cell">
                   {{ tickets.length === 0 ? 'No tickets yet. Create your first ticket for this event!' : 'No tickets match the current filters.' }}
                 </td>
               </tr>
-              <tr 
-                v-else 
-                v-for="ticket in sortedTickets" 
-                :key="ticket.id"
-                class="hover:bg-slate-50/50 transition duration-150"
-              >
-                <td class="px-5 py-4 text-center">
-                  <input 
-                    type="checkbox" 
-                    :checked="selectedTicketIds.includes(ticket.id)"
-                    @change="toggleTicketSelection(ticket.id)"
-                    class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+              <template v-else>
+                <template v-for="group in ticketRowGroups" :key="group.key">
+                  <tr v-if="group.order" class="bg-slate-50" role="row">
+                    <th colspan="8" class="block px-4 py-2 text-sm font-semibold text-slate-700 lg:table-cell">
+                      Order {{ group.order }} · {{ group.tickets.filter(ticket => ticket.checkedIn).length }} of {{ group.tickets.length }} checked in
+                    </th>
+                  </tr>
+                  <tr
+                    v-for="ticket in group.tickets"
+                    :key="ticket.id"
+                    class="ticket-row align-top"
+                    :class="{ 'bg-emerald-50/60': group.order && isPartialOrderMatch(group, ticket) }"
+                    role="row"
                   >
-                </td>
-                <td class="px-4 py-4">
-                  <div class="flex items-center justify-center gap-3">
-                    <span v-if="ticket.checkedIn" class="text-emerald-500" title="Checked In">
-                      <i class="fas fa-check-circle text-lg"></i>
-                    </span>
-                    <span v-else class="text-slate-200" title="Not Checked In">
-                      <i class="far fa-circle text-lg"></i>
-                    </span>
-                    <span v-if="ticket.accessoryCollected" class="text-sky-500" title="Kit Picked Up">
-                      <i class="fas fa-box text-lg"></i>
-                    </span>
-                    <span v-else class="text-slate-200" title="Kit Not Picked Up">
-                      <i class="fas fa-box text-lg opacity-30"></i>
-                    </span>
-                  </div>
-                </td>
-                <td class="px-5 py-4">
-                  <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    #{{ ticket.identificationNumber }}
-                  </span>
-                </td>
-                <td class="min-w-0 px-5 py-4">
-                  <p class="truncate font-semibold text-slate-900" :title="ticket.buyer || ''">{{ ticket.buyer || '-' }}</p>
-                  <p class="truncate text-xs text-slate-500" :title="ticket.buyerEmail || ''">{{ ticket.buyerEmail || '' }}</p>
-                  <p class="truncate text-xs text-slate-500" :title="ticket.buyerPhone || ''">{{ ticket.buyerPhone || '' }}</p>
-                </td>
-                <td class="px-5 py-4">
-                  <p class="font-semibold text-slate-900">{{ ticket.description }}</p>
-                  <p class="text-xs text-slate-500 mt-0.5">
-                    ID: {{ ticket.id }}<span v-if="ticket.location"> • {{ ticket.location }}</span>
-                  </p>
-                </td>
-                <td class="px-5 py-4 text-slate-600">
-                  {{ ticket.table || '-' }}
-                </td>
-                <td class="px-5 py-4">
-                  <button
-                    v-if="ticket.order"
-                    type="button"
-                    class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 border border-sky-100 hover:bg-sky-100 transition shadow-sm"
-                    title="Open confirmation page"
-                    @click="openConfirmationPage(ticket.order)"
-                  >
-                    <i class="fas fa-external-link-alt text-[10px]"></i>
-                    {{ ticket.order }}
-                  </button>
-                  <span v-else class="text-slate-400">-</span>
-                </td>
-                <td class="px-5 py-4">
-                  <div class="flex justify-end gap-1.5">
-                    <button 
-                      class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-primary-600 hover:border-primary-200 hover:bg-primary-50 transition shadow-sm" 
-                      @click="editTicket(ticket)" 
-                      title="Edit"
-                    >
-                      <i class="fas fa-edit"></i>
-                    </button>
-                    <button 
-                      v-if="canShowEmailAction(ticket)" 
-                      class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-sky-600 hover:border-sky-200 hover:bg-sky-50 transition shadow-sm"
-                      @click="sendTicketEmailAction(ticket)" 
-                      :title="getEmailActionTitle(ticket)"
-                      :disabled="isResending"
-                    >
-                      <i class="fas fa-envelope"></i>
-                    </button>
-                    <button
-                      v-if="isSoldTicket(ticket)"
-                      class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 transition shadow-sm"
-                      @click="printTicket(ticket)"
-                      title="View printable ticket"
-                    >
-                      <i class="fas fa-print"></i>
-                    </button>
-                    <button 
-                      class="p-2 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition shadow-sm" 
-                      @click="deleteTicket(ticket.id)" 
-                      title="Delete"
-                    >
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </div>
-                </td>
-              </tr>
+                    <td class="ticket-select" role="cell">
+                      <input
+                        type="checkbox"
+                        :aria-label="`Select ticket #${ticket.identificationNumber}`"
+                        :checked="selectedTicketIds.includes(ticket.id)"
+                        @change="toggleTicketSelection(ticket.id)"
+                        class="mt-1 h-4 w-4 rounded border-slate-300 text-primary-600"
+                      >
+                    </td>
+                    <td class="ticket-buyer min-w-0 lg:max-w-56" role="cell">
+                      <p class="break-words font-semibold text-slate-900">{{ ticket.buyer || 'No attendee name' }}</p>
+                      <p v-if="ticket.buyerEmail" class="break-all text-xs text-slate-500">{{ ticket.buyerEmail }}</p>
+                    </td>
+                    <td class="ticket-number min-w-0" role="cell">
+                      <button
+                        v-if="isSoldTicket(ticket)"
+                        type="button"
+                        class="inline-flex min-h-8 items-center gap-1.5 rounded-sm font-semibold text-sky-700 hover:text-sky-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
+                        :aria-label="`Print ticket #${ticket.identificationNumber}`"
+                        :aria-busy="printingTicketIds.has(ticket.id)"
+                        :disabled="printingTicketIds.has(ticket.id)"
+                        title="Open printable ticket PDF"
+                        @click="printTicket(ticket)"
+                      >
+                        <span class="underline underline-offset-2">#{{ ticket.identificationNumber }}</span>
+                        <i class="fas text-xs" :class="printingTicketIds.has(ticket.id) ? 'fa-spinner animate-spin' : 'fa-print'" aria-hidden="true"></i>
+                      </button>
+                      <p v-else class="font-semibold text-slate-900">#{{ ticket.identificationNumber }}</p>
+                      <p class="break-words text-xs text-slate-500">{{ ticket.description }}</p>
+                      <p v-if="ticketPrintErrors[ticket.id]" class="mt-1 text-xs text-rose-700" role="alert">{{ ticketPrintErrors[ticket.id] }}</p>
+                      <p v-if="group.order && isPartialOrderMatch(group, ticket)" class="text-xs font-semibold text-emerald-800">Search match</p>
+                    </td>
+                    <td class="ticket-location text-xs lg:text-sm" role="cell">
+                      <p v-if="ticket.table != null">Table {{ ticket.table }}</p>
+                      <p v-if="ticket.location" class="break-words">{{ ticket.location }}</p>
+                      <span v-if="ticket.table == null && !ticket.location" class="hidden text-slate-400 lg:inline">—</span>
+                    </td>
+                    <td class="ticket-checkin lg:w-36" role="cell">
+                      <TicketCheckinAction
+                        :ticket="ticket"
+                        :pending="checkingInTicketIds.includes(ticket.id)"
+                        :disabled="checkingInTicketIds.length > 0"
+                        :error="ticketCheckinErrors[ticket.id]"
+                        @check-in="checkInTickets([ticket.id])"
+                      />
+                    </td>
+                    <td class="ticket-kit text-xs lg:text-sm" role="cell">
+                      <span class="lg:hidden">Kit pickup · </span>{{ ticket.accessoryCollected ? 'Picked up' : 'Not picked up' }}
+                    </td>
+                    <td class="ticket-order min-w-0 text-xs lg:text-sm" role="cell">
+                      <button
+                        v-if="ticket.order"
+                        type="button"
+                        class="break-all text-left font-semibold text-sky-700 hover:underline"
+                        title="Open confirmation page"
+                        @click="openConfirmationPage(ticket.order)"
+                      >
+                        <span class="lg:hidden">Order </span>{{ ticket.order }}
+                      </button>
+                      <span v-else class="hidden text-slate-400 lg:inline">—</span>
+                    </td>
+                    <td class="ticket-more" role="cell">
+                      <details name="ticket-row-actions">
+                        <summary class="cursor-pointer rounded-lg px-2 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-100">
+                          More<span class="sr-only"> actions for ticket #{{ ticket.identificationNumber }}</span>
+                        </summary>
+                        <div class="mt-1 grid gap-1 text-left text-sm [&>button]:rounded [&>button]:px-2 [&>button]:py-1 [&>button]:text-left [&>button:hover]:bg-slate-100" @click="closeTicketActions">
+                          <button type="button" @click="editTicket(ticket)">Edit details</button>
+                          <button v-if="canShowEmailAction(ticket)" type="button" :disabled="isResending" @click="sendTicketEmailAction(ticket)">
+                            {{ getEmailActionTitle(ticket) }}
+                          </button>
+                          <button type="button" class="text-rose-700" @click="deleteTicket(ticket.id)">Delete</button>
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                </template>
+              </template>
             </tbody>
           </table>
         </div>
@@ -646,7 +672,10 @@
     <div v-if="isTicketModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="isTicketModalOpen = false">
       <div class="w-full max-w-2xl rounded-3xl bg-white shadow-xl border border-slate-100 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <h5 class="text-lg font-semibold text-slate-900">{{ isEditingTicket ? 'Edit Ticket' : 'Create Ticket' }}</h5>
+          <div>
+            <h5 class="text-lg font-semibold text-slate-900">{{ isEditingTicket ? 'Edit Ticket' : 'Create Ticket' }}</h5>
+            <p v-if="isEditingTicket" class="text-xs text-slate-500">Internal ID {{ currentTicketId }}</p>
+          </div>
           <button class="text-slate-400 hover:text-slate-600 transition p-2 rounded-full hover:bg-slate-100" @click="isTicketModalOpen = false">
             <i class="fas fa-times"></i>
           </button>
@@ -1224,7 +1253,7 @@ import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useUser } from '@/composables/useUser'
 import { formatDateTimeLocalInput, serializeDateTimeLocalInput } from '@/utils/dateTime'
-// REMOVED: import EasyDataTable
+import TicketCheckinAction from '@/components/TicketCheckinAction.vue'
 
 // Props and route
 const route = useRoute()
@@ -1233,6 +1262,8 @@ const publicLandingUrl = computed(() => (event.value?.publicHash ? `/event/${eve
 
 // Composables
 const { isLoading, error, get, post, put, delete: deleteApi } = useApi()
+const { post: postCheckin } = useApi()
+const { get: getPrintableTicket } = useApi()
 const { isAuthenticated } = useUser()
 
 // Data
@@ -1248,12 +1279,28 @@ const searchValue = ref('')
 const selectedTable = ref(null)
 const orderFilter = ref('')
 const selectedTicketIds = ref([])
+const checkingInTicketIds = ref([])
+const ticketCheckinErrors = ref({})
+const bulkCheckinError = ref('')
+const printingTicketIds = ref(new Set())
+const ticketPrintErrors = ref({})
 const ticketGroups = ref([])
+const ticketGroupsExpanded = ref(true)
 const currentGroupId = ref(null)
 
 // Sorting state
 const sortKey = ref('identificationNumber')
 const sortOrder = ref('asc')
+const ticketColumns = [
+  { key: 'buyer', label: 'Buyer name' },
+  { key: 'identificationNumber', label: 'Ticket #' },
+  { key: 'table', label: 'Table / Location' },
+  { key: 'checkedIn', label: 'Check-in' },
+  { key: 'accessoryCollected', label: 'Kit pickup' },
+  { key: 'order', label: 'Order #' }
+]
+const search = computed(() => searchValue.value.trim().toLowerCase())
+const isOrderSearch = computed(() => Boolean(search.value || orderFilter.value.trim()))
 
 // Filtering and Sorting Logic
 const registeredTables = computed(() => {
@@ -1267,11 +1314,12 @@ watch(registeredTables, tables => {
   }
 })
 
-watch([selectedTable, orderFilter], () => {
+watch([selectedTable, orderFilter, search], () => {
   selectedTicketIds.value = []
+  bulkCheckinError.value = ''
 })
 
-const filteredTickets = computed(() => {
+const matchedTickets = computed(() => {
   const order = orderFilter.value.trim().toLowerCase()
   const matchingTickets = selectedTable.value === null && !order
     ? tickets.value
@@ -1279,25 +1327,36 @@ const filteredTickets = computed(() => {
         (selectedTable.value === null || ticket.table === selectedTable.value) &&
         (!order || ticket.order?.toLowerCase().includes(order))
       )
-  if (!searchValue.value) return matchingTickets
-  
-  const search = searchValue.value.toLowerCase()
-  const searchDigits = searchValue.value.replace(/\D/g, '')
+  if (!search.value) return matchingTickets
+
+  const term = search.value
+  const searchDigits = term.replace(/\D/g, '')
+  if (/^#\d+$/.test(term)) {
+    return matchingTickets.filter(ticket => ticket.identificationNumber === Number(term.slice(1)))
+  }
   return matchingTickets.filter(ticket => {
     const buyerDocument = ticket.buyerDocument || ''
     return (
-      ticket.description?.toLowerCase().includes(search) ||
-      ticket.location?.toLowerCase().includes(search) ||
-      ticket.buyer?.toLowerCase().includes(search) ||
-      buyerDocument.toLowerCase().includes(search) ||
+      ticket.description?.toLowerCase().includes(term) ||
+      ticket.location?.toLowerCase().includes(term) ||
+      ticket.buyer?.toLowerCase().includes(term) ||
+      buyerDocument.toLowerCase().includes(term) ||
       (searchDigits && buyerDocument.replace(/\D/g, '').includes(searchDigits)) ||
-      ticket.buyerEmail?.toLowerCase().includes(search) ||
-      ticket.buyerPhone?.toLowerCase().includes(search) ||
-      ticket.order?.toLowerCase().includes(search) ||
-      ticket.id?.toString().includes(search) ||
-      ticket.identificationNumber?.toString().includes(search)
+      ticket.buyerEmail?.toLowerCase().includes(term) ||
+      ticket.buyerPhone?.toLowerCase().includes(term) ||
+      ticket.order?.toLowerCase().includes(term) ||
+      ticket.id?.toString().includes(term) ||
+      ticket.identificationNumber?.toString().includes(term)
     )
   })
+})
+
+const matchingTicketIds = computed(() => new Set(matchedTickets.value.map(ticket => ticket.id)))
+const filteredTickets = computed(() => {
+  if (!isOrderSearch.value) return matchedTickets.value
+
+  const matchedOrders = new Set(matchedTickets.value.map(ticket => ticket.order).filter(Boolean))
+  return tickets.value.filter(ticket => matchingTicketIds.value.has(ticket.id) || matchedOrders.has(ticket.order))
 })
 
 const sortedTickets = computed(() => {
@@ -1318,6 +1377,66 @@ const sortedTickets = computed(() => {
   })
   return temp
 })
+
+const ticketRowGroups = computed(() => {
+  if (!isOrderSearch.value) return [{ key: 'all-tickets', tickets: sortedTickets.value }]
+
+  const groups = new Map()
+  for (const ticket of sortedTickets.value) {
+    const key = ticket.order ? `order:${ticket.order}` : `ticket:${ticket.id}`
+    if (!groups.has(key)) groups.set(key, { key, order: ticket.order, tickets: [] })
+    groups.get(key).tickets.push(ticket)
+  }
+  return [...groups.values()].map(group => ({
+    ...group,
+    hasUnmatchedTickets: group.tickets.some(ticket => !matchingTicketIds.value.has(ticket.id))
+  }))
+})
+
+const isPartialOrderMatch = (group, ticket) => group.hasUnmatchedTickets && matchingTicketIds.value.has(ticket.id)
+
+const selectedPendingTicketIds = computed(() => {
+  const selectedIds = new Set(selectedTicketIds.value)
+  return sortedTickets.value.filter(ticket => !ticket.checkedIn && selectedIds.has(ticket.id)).map(ticket => ticket.id)
+})
+
+const checkInTickets = async (ticketIds, bulk = false) => {
+  if (!ticketIds.length || checkingInTicketIds.value.length) return
+
+  checkingInTicketIds.value = ticketIds
+  bulkCheckinError.value = ''
+  ticketIds.forEach(id => delete ticketCheckinErrors.value[id])
+
+  try {
+    const response = await postCheckin(`/api/events/${eventId.value}/checkin/tickets`, { ticketIds })
+    const updates = new Map(response.tickets.map(ticket => [ticket.id, ticket]))
+    tickets.value = tickets.value.map(ticket => {
+      const update = updates.get(ticket.id)
+      return update ? { ...ticket, checkedIn: update.checkedIn, checkedInAt: update.checkedInAt } : ticket
+    })
+    selectedTicketIds.value = selectedTicketIds.value.filter(id => !updates.has(id))
+    await loadStats()
+  } catch (err) {
+    const message = err.message || 'Check-in failed. Try again.'
+    if (bulk) bulkCheckinError.value = message
+    else ticketCheckinErrors.value[ticketIds[0]] = message
+  } finally {
+    checkingInTicketIds.value = []
+  }
+}
+
+const checkInSelectedTickets = () => {
+  const ticketIds = selectedPendingTicketIds.value
+  if (ticketIds.length && confirm(`Check in ${ticketIds.length} selected ticket(s)?`)) {
+    return checkInTickets(ticketIds, true)
+  }
+}
+
+const closeTicketActions = (event) => {
+  const details = event.currentTarget.closest('details')
+  details.open = false
+  details.querySelector('summary').focus()
+}
 
 const isTicketBuyerConfirmed = (ticket) => {
   return Boolean(ticket?.buyer && ticket?.buyerDocument && ticket?.buyerEmail)
@@ -1948,43 +2067,40 @@ const sendTicketEmailAction = async (ticket) => {
 }
 
 const printTicket = async (ticket) => {
-  const printWindow = window.open('', '_blank')
+  if (!isSoldTicket(ticket) || printingTicketIds.value.has(ticket.id)) return
 
+  delete ticketPrintErrors.value[ticket.id]
+  const printWindow = window.open('', '_blank')
   if (!printWindow) {
-    error.value = 'Your browser blocked the print window. Please allow pop-ups and try again.'
+    ticketPrintErrors.value[ticket.id] = 'Allow pop-ups to open the ticket PDF.'
     return
   }
 
-  printWindow.document.write('<title>Preparing ticket...</title>')
+  printWindow.opener = null
+  printWindow.document.title = `Ticket #${ticket.identificationNumber}`
+  printWindow.document.body.textContent = 'Preparing ticket PDF…'
+  printingTicketIds.value.add(ticket.id)
 
+  let previewUrl
   try {
-    const result = await get(`/api/tickets/${ticket.id}/printable`)
-    const previewControls = `
-      <style>
-        .ticket-preview-actions { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 16px; background: rgba(255, 255, 255, 0.96); border-bottom: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); font-family: Arial, sans-serif; }
-        .ticket-preview-actions button { border: 0; border-radius: 999px; padding: 10px 16px; color: #ffffff; background: #047857; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .ticket-preview-actions button:hover { background: #065f46; }
-        .ticket-preview-actions .ticket-preview-download { background: #111827; }
-        .ticket-preview-actions .ticket-preview-download:hover { background: #374151; }
-        .ticket-preview-actions span { color: #64748b; font-size: 12px; }
-        @media print { .ticket-preview-actions { display: none !important; } }
-      </style>
-      <div class="ticket-preview-actions" role="toolbar" aria-label="Ticket actions">
-        <button type="button" onclick="window.print()">Print</button>
-        <button type="button" class="ticket-preview-download" onclick="window.print()">Download PDF</button>
-        <span>Choose “Save as PDF” in the print dialog.</span>
-      </div>`
-    const previewHtml = result.html.replace('<body>', `<body>${previewControls}`)
+    const pdf = await getPrintableTicket(`/api/tickets/${ticket.id}/printable`, { responseType: 'blob' })
+    if (pdf.type !== 'application/pdf') throw new Error('Could not open the ticket PDF. Try again.')
+    if (printWindow.closed) return
 
-    printWindow.document.open()
-    printWindow.document.write(previewHtml)
-    printWindow.document.close()
-    printWindow.focus()
-    error.value = null
+    previewUrl = URL.createObjectURL(pdf)
+    printWindow.location.replace(previewUrl)
+    const checkPreview = window.setInterval(() => {
+      if (printWindow.closed) {
+        window.clearInterval(checkPreview)
+        URL.revokeObjectURL(previewUrl)
+      }
+    }, 1000)
   } catch (err) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
     printWindow.close()
-    console.error('Failed to prepare printable ticket:', err)
-    error.value = err.message || 'Failed to prepare printable ticket'
+    ticketPrintErrors.value[ticket.id] = err.message || 'Could not open the ticket PDF. Try again.'
+  } finally {
+    printingTicketIds.value.delete(ticket.id)
   }
 }
 
@@ -2342,6 +2458,41 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.ticket-row > td {
+  padding: 0.75rem;
+}
+
+@media (max-width: 1023px) {
+  .ticket-table,
+  .ticket-table tbody,
+  .ticket-table tbody > tr {
+    display: block;
+  }
+
+  .ticket-table tbody > .ticket-row {
+    display: grid;
+    grid-template-columns: 1.25rem minmax(0, 1fr) minmax(5.5rem, auto);
+    grid-template-areas:
+      "select buyer checkin"
+      ". number checkin"
+      ". location more"
+      ". kit more"
+      ". order more";
+    gap: 0.25rem 0.625rem;
+    padding: 0.75rem;
+  }
+
+  .ticket-row > td { padding: 0; }
+  .ticket-select { grid-area: select; }
+  .ticket-buyer { grid-area: buyer; }
+  .ticket-number { grid-area: number; }
+  .ticket-location { grid-area: location; }
+  .ticket-checkin { grid-area: checkin; max-width: 8rem; }
+  .ticket-kit { grid-area: kit; }
+  .ticket-order { grid-area: order; }
+  .ticket-more { grid-area: more; max-width: 8rem; }
+}
+
 .event-detail-description {
   display: -webkit-box;
   line-clamp: 3;

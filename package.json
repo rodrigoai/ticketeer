@@ -53,6 +53,7 @@
     "passkit-generator": "^3.7.0",
     "pdfkit": "^0.20.2",
     "pg": "^8.12.0",
+    "pngjs": "^5.0.0",
     "prisma": "^6.15.0",
     "qrcode": "^1.5.4",
     "sanitize-html": "2.17.0",

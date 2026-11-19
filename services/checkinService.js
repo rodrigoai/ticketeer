@@ -74,6 +74,9 @@ class CheckinService {
     const normalizedField = ['any', 'ticket', 'buyer', 'document', 'email', 'table', 'order'].includes(field) ? field : 'any';
     const normalizedQuery = String(query || '').trim();
     const documentDigitsQuery = normalizedQuery.replace(/\D/g, '');
+    const ticketQuery = normalizedQuery.replace(/^#(?=\d+$)/, '');
+    const ticketNumber = parseInt(ticketQuery, 10);
+    const hasTicketNumber = /^\d+$/.test(ticketQuery) && ticketNumber <= 2147483647;
     const numericQuery = parseInt(normalizedQuery, 10);
     const hasNumericQuery = /^\d+$/.test(normalizedQuery) &&
       Number.isInteger(numericQuery) &&
@@ -91,9 +94,9 @@ class CheckinService {
       }
     });
 
-    if (normalizedField === 'ticket') {
-      if (!hasNumericQuery) return null;
-      return { ...baseWhere, identificationNumber: numericQuery };
+    if (normalizedField === 'ticket' || (normalizedField === 'any' && ticketQuery !== normalizedQuery)) {
+      if (!hasTicketNumber) return null;
+      return { ...baseWhere, identificationNumber: ticketNumber };
     }
 
     if (normalizedField === 'table') {
@@ -154,6 +157,7 @@ class CheckinService {
   }
 
   _groupTicketsForSearch(matchedTickets, fullOrderTickets) {
+    const matchedIds = new Set(matchedTickets.map((ticket) => ticket.id));
     const ticketsByOrder = new Map();
     for (const ticket of fullOrderTickets) {
       if (!ticket.order) continue;
@@ -174,7 +178,7 @@ class CheckinService {
 
         const orderTickets = (ticketsByOrder.get(orderKey) || [ticket])
           .sort((a, b) => a.identificationNumber - b.identificationNumber);
-        const primaryTicket = orderTickets[0] || ticket;
+        const primaryTicket = orderTickets.find((item) => item.buyer?.trim()) || orderTickets[0];
 
         groups.push({
           key: `order:${orderKey}`,
@@ -186,6 +190,7 @@ class CheckinService {
           table: primaryTicket.table || null,
           ticketCount: orderTickets.length,
           checkedInCount: orderTickets.filter((item) => item.checkedIn).length,
+          matchedTicketIds: orderTickets.filter((item) => matchedIds.has(item.id)).map((item) => item.id),
           tickets: orderTickets.map((item) => this._mapTicketForCheckin(item))
         });
         includedKeys.add(`order:${orderKey}`);
@@ -203,6 +208,7 @@ class CheckinService {
           table: ticket.table || null,
           ticketCount: 1,
           checkedInCount: ticket.checkedIn ? 1 : 0,
+          matchedTicketIds: [ticket.id],
           tickets: [this._mapTicketForCheckin(ticket)]
         });
         includedKeys.add(standaloneKey);
@@ -292,47 +298,51 @@ class CheckinService {
         throw new Error(`Some tickets were not found or access denied: ${missingTicketIds.join(', ')}`);
       }
 
-      const alreadyCheckedIn = tickets.filter((ticket) => ticket.checkedIn).map((ticket) => this._mapTicketForCheckin(ticket));
+      const alreadyCheckedIn = tickets.filter((ticket) => ticket.checkedIn);
       const ticketsToCheckIn = tickets.filter((ticket) => !ticket.checkedIn);
-      const checkedInAt = new Date();
-
-      if (ticketsToCheckIn.length > 0) {
-        await prisma.ticket.updateMany({
-          where: {
-            id: {
-              in: ticketsToCheckIn.map((ticket) => ticket.id)
+      const newlyCheckedIn = ticketsToCheckIn.length
+        ? await prisma.ticket.updateManyAndReturn({
+            where: {
+              id: {
+                in: ticketsToCheckIn.map((ticket) => ticket.id)
+              },
+              eventId: event.id,
+              checkedIn: false
             },
-            eventId: event.id,
-            checkedIn: false
-          },
-          data: {
-            checkedIn: true,
-            checkedInAt
-          }
+            data: {
+              checkedIn: true,
+              checkedInAt: new Date()
+            }
+          })
+        : [];
+
+      if (newlyCheckedIn.length < ticketsToCheckIn.length) {
+        const updatedIds = new Set(newlyCheckedIn.map((ticket) => ticket.id));
+        const concurrentIds = ticketsToCheckIn.filter((ticket) => !updatedIds.has(ticket.id)).map((ticket) => ticket.id);
+        const concurrentCheckins = await prisma.ticket.findMany({
+          where: { eventId: event.id, id: { in: concurrentIds }, checkedIn: true }
         });
+        alreadyCheckedIn.push(...concurrentCheckins);
       }
 
-      const updatedTickets = tickets.map((ticket) => {
-        if (ticket.checkedIn) {
-          return this._mapTicketForCheckin(ticket);
-        }
+      const checkedIn = newlyCheckedIn.map((ticket) => this._mapTicketForCheckin(ticket));
+      const previousCheckins = alreadyCheckedIn.map((ticket) => this._mapTicketForCheckin(ticket));
+      const updatedTickets = [...checkedIn, ...previousCheckins]
+        .sort((a, b) => a.identificationNumber - b.identificationNumber);
 
-        return this._mapTicketForCheckin({
-          ...ticket,
-          checkedIn: true,
-          checkedInAt
-        });
-      });
+      if (updatedTickets.length !== tickets.length) {
+        throw new Error('Some selected tickets changed during check-in. Refresh and try again.');
+      }
 
       return {
         success: true,
-        message: `${ticketsToCheckIn.length} ticket(s) checked in successfully`,
+        message: `${checkedIn.length} ticket(s) checked in successfully`,
         event: this._mapEventForCheckin(event),
         tickets: updatedTickets,
-        checkedIn: updatedTickets.filter((ticket) => !alreadyCheckedIn.some((item) => item.id === ticket.id)),
-        alreadyCheckedIn,
-        checkedInCount: ticketsToCheckIn.length,
-        alreadyCheckedInCount: alreadyCheckedIn.length
+        checkedIn,
+        alreadyCheckedIn: previousCheckins,
+        checkedInCount: checkedIn.length,
+        alreadyCheckedInCount: previousCheckins.length
       };
     } catch (error) {
       console.error('Error processing selected ticket check-ins:', error);
@@ -447,10 +457,37 @@ class CheckinService {
    */
   async processCheckin(hash) {
     try {
-      const ticket = await this.findTicketByHash(hash);
+      let ticket = await this.findTicketByHash(hash);
+      let updatedTicket;
 
-      // Check if already checked in
-      if (ticket.checkedIn) {
+      if (!ticket.checkedIn) {
+        try {
+          updatedTicket = await prisma.ticket.update({
+            where: { id: ticket.id, checkedIn: false },
+            data: {
+              checkedIn: true,
+              checkedInAt: new Date()
+            },
+            include: {
+              event: {
+                select: {
+                  id: true,
+                  name: true,
+                  venue: true,
+                  opening_datetime: true,
+                  closing_datetime: true
+                }
+              }
+            }
+          });
+        } catch (error) {
+          if (error.code !== 'P2025') throw error;
+          ticket = await this.findTicketByHash(hash);
+          if (!ticket.checkedIn) throw error;
+        }
+      }
+
+      if (!updatedTicket) {
         return {
           success: false,
           alreadyCheckedIn: true,
@@ -472,27 +509,6 @@ class CheckinService {
           }
         };
       }
-
-      // Process the check-in
-      const checkedInAt = new Date();
-      const updatedTicket = await prisma.ticket.update({
-        where: { id: ticket.id },
-        data: {
-          checkedIn: true,
-          checkedInAt: checkedInAt
-        },
-        include: {
-          event: {
-            select: {
-              id: true,
-              name: true,
-              venue: true,
-              opening_datetime: true,
-              closing_datetime: true
-            }
-          }
-        }
-      });
 
       return {
         success: true,

@@ -8,17 +8,17 @@
             <span class="mx-2">/</span>
             <router-link :to="`/events/${eventId}`" class="hover:text-emerald-600">{{ event?.name || 'Event' }}</router-link>
             <span class="mx-2">/</span>
-            <span class="text-slate-900">Search Check-in</span>
+            <span class="text-slate-900">Manual check-in</span>
           </nav>
-          <h1 class="text-2xl font-semibold text-slate-900">Search Check-in</h1>
-          <p class="mt-1 text-sm text-slate-500">Find tickets manually when QR scanning is not available.</p>
+          <h1 class="text-2xl font-semibold text-slate-900">Manual check-in</h1>
+          <p class="mt-1 text-sm text-slate-600">Find an order and check in the tickets for people who have arrived.</p>
         </div>
         <div class="flex flex-wrap gap-3">
           <router-link
             to="/qr-checkin"
             class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
           >
-            <i class="fas fa-qrcode text-xs"></i> QR Scanner
+            <i class="fas fa-qrcode text-xs"></i> Scan QR
           </router-link>
           <router-link
             :to="`/events/${eventId}`"
@@ -38,7 +38,7 @@
               v-model="query"
               type="search"
               class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:border-emerald-500 focus:ring-emerald-500"
-              placeholder="Ticket number, buyer, document, table, or order"
+              placeholder="Buyer name, ticket #, or order #"
             >
           </div>
           <div>
@@ -60,7 +60,7 @@
           <div class="flex items-end">
             <button
               type="submit"
-              :disabled="isSearching || !query.trim()"
+              :disabled="isSearching || checkingInTicketIds.length > 0 || !query.trim()"
               class="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
             >
               <span v-if="isSearching" class="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
@@ -71,7 +71,7 @@
         </form>
       </section>
 
-      <div v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+      <div v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700" role="alert">
         {{ error }}
       </div>
 
@@ -88,76 +88,71 @@
           <button
             type="button"
             class="flex w-full flex-col gap-3 px-5 py-4 text-left transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+            :aria-expanded="isGroupOpen(group)"
             @click="toggleGroup(group)"
           >
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  {{ group.type === 'order' ? group.order : group.label }}
+                  {{ group.label }}
                 </span>
                 <span v-if="group.table" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                   Table {{ group.table }}
                 </span>
-                <span class="text-xs font-semibold text-slate-500">
-                  {{ group.checkedInCount }}/{{ group.ticketCount }} checked in
+                <span class="text-xs font-semibold text-slate-500" role="status">
+                  {{ group.checkedInCount }} of {{ group.ticketCount }} checked in
                 </span>
               </div>
-              <p class="mt-2 truncate text-base font-semibold text-slate-900">{{ group.buyer || 'Buyer not confirmed' }}</p>
-              <p class="truncate text-xs text-slate-500">{{ group.buyerEmail || 'No buyer email' }}</p>
+              <p v-if="group.buyer" class="mt-2 truncate text-base font-semibold text-slate-900">{{ group.buyer }}</p>
+              <p v-if="group.buyerEmail" class="truncate text-xs text-slate-500">{{ group.buyerEmail }}</p>
             </div>
             <i :class="['fas text-slate-400', isGroupOpen(group) ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
           </button>
 
-          <div v-if="isGroupOpen(group)" class="border-t border-slate-100 px-5 py-5">
-            <div class="overflow-x-auto">
-              <table class="w-full min-w-[760px] text-left text-sm">
-                <thead class="border-b border-slate-100 text-xs uppercase tracking-[0.2em] text-slate-400">
-                  <tr>
-                    <th class="w-12 py-3"></th>
-                    <th class="py-3">Ticket</th>
-                    <th class="py-3">Buyer</th>
-                    <th class="py-3">Document</th>
-                    <th class="py-3">Description</th>
-                    <th class="py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="ticket in group.tickets" :key="ticket.id">
-                    <td class="py-3">
-                      <input
-                        type="checkbox"
-                        class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
-                        :checked="isTicketSelected(ticket.id)"
-                        :disabled="ticket.checkedIn"
-                        @change="toggleTicket(ticket.id)"
-                      >
-                    </td>
-                    <td class="py-3 font-semibold text-slate-900">#{{ ticket.identificationNumber }}</td>
-                    <td class="py-3 text-slate-700">{{ ticket.buyer || '-' }}</td>
-                    <td class="py-3 text-slate-500">{{ ticket.buyerDocument || '-' }}</td>
-                    <td class="py-3 text-slate-600">
-                      {{ ticket.description }}
-                      <span v-if="ticket.table" class="ml-2 text-xs text-slate-400">Table {{ ticket.table }}</span>
-                    </td>
-                    <td class="py-3">
-                      <span v-if="ticket.checkedIn" class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        Checked in
-                      </span>
-                      <span v-else class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                        Pending
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <div v-if="isGroupOpen(group)" class="border-t border-slate-100 px-3 py-4 sm:px-5">
+            <ul class="divide-y divide-slate-100">
+              <li
+                v-for="ticket in group.tickets"
+                :key="ticket.id"
+                class="grid grid-cols-[auto_minmax(0,1fr)_minmax(6rem,auto)] items-start gap-3 rounded-lg px-2 py-3 sm:px-3"
+                :class="{ 'bg-emerald-50': isHighlighted(group, ticket) }"
+              >
+                <input
+                  type="checkbox"
+                  class="mt-2 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
+                  :aria-label="`Select ticket #${ticket.identificationNumber}`"
+                  :checked="isTicketSelected(ticket.id)"
+                  :disabled="ticket.checkedIn || checkingInTicketIds.length > 0"
+                  @change="toggleTicket(ticket.id)"
+                >
+                <div class="min-w-0 text-sm">
+                  <p class="break-words font-semibold text-slate-900">{{ ticket.buyer || 'No attendee name' }}</p>
+                  <p class="break-words text-slate-600">
+                    <span class="font-semibold">#{{ ticket.identificationNumber }}</span> · {{ ticket.description }}
+                  </p>
+                  <p v-if="ticket.table != null || ticket.location" class="break-words text-xs text-slate-500">
+                    <span v-if="ticket.table != null">Table {{ ticket.table }}</span>
+                    <span v-if="ticket.table != null && ticket.location"> · </span>{{ ticket.location }}
+                  </p>
+                  <p v-if="isHighlighted(group, ticket)" class="text-xs font-semibold text-emerald-800">Search match</p>
+                </div>
+                <TicketCheckinAction
+                  class="max-w-32"
+                  :ticket="ticket"
+                  :pending="checkingInTicketIds.includes(ticket.id)"
+                  :disabled="checkingInTicketIds.length > 0 || isSearching"
+                  :error="ticketCheckinErrors[ticket.id]"
+                  @check-in="checkInTickets(group, [ticket.id])"
+                />
+              </li>
+            </ul>
 
             <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p class="text-sm text-slate-500">{{ selectedCountForGroup(group) }} selected for check-in</p>
               <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <button
                   type="button"
-                  :disabled="isCheckingIn || pendingCountForGroup(group) === 0"
+                  :disabled="checkingInTicketIds.length > 0 || isSearching || pendingCountForGroup(group) === 0"
                   class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                   @click="toggleAllPendingTickets(group)"
                 >
@@ -165,15 +160,17 @@
                 </button>
                 <button
                   type="button"
-                  :disabled="isCheckingIn || selectedCountForGroup(group) === 0"
-                  class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="checkingInTicketIds.length > 0 || isSearching || selectedCountForGroup(group) === 0"
+                  class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                   @click="confirmGroupCheckin(group)"
                 >
-                  <span v-if="isCheckingIn" class="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
-                  Confirm Check-in
+                  Check in selected ({{ selectedCountForGroup(group) }})
                 </button>
               </div>
             </div>
+            <p v-if="groupCheckinErrors[group.key]" class="mt-2 text-sm text-rose-700" role="alert">
+              {{ groupCheckinErrors[group.key] }}
+            </p>
           </div>
         </article>
       </section>
@@ -185,6 +182,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import TicketCheckinAction from '@/components/TicketCheckinAction.vue'
 
 const route = useRoute()
 const { get, post } = useApi()
@@ -197,7 +195,9 @@ const groups = ref([])
 const openGroupKey = ref(null)
 const selectedTicketIds = ref([])
 const isSearching = ref(false)
-const isCheckingIn = ref(false)
+const checkingInTicketIds = ref([])
+const ticketCheckinErrors = ref({})
+const groupCheckinErrors = ref({})
 const hasSearched = ref(false)
 const error = ref(null)
 
@@ -213,11 +213,16 @@ const loadEvent = async () => {
 
 const searchTickets = async () => {
   const trimmedQuery = query.value.trim()
-  if (!trimmedQuery) return
+  if (!trimmedQuery || isSearching.value || checkingInTicketIds.value.length) return
 
   try {
     isSearching.value = true
     error.value = null
+    groups.value = []
+    hasSearched.value = false
+    selectedTicketIds.value = []
+    ticketCheckinErrors.value = {}
+    groupCheckinErrors.value = {}
     const params = new URLSearchParams({
       query: trimmedQuery,
       field: field.value
@@ -227,7 +232,6 @@ const searchTickets = async () => {
     event.value = response.event || event.value
     groups.value = response.groups || []
     openGroupKey.value = groups.value[0]?.key || null
-    selectedTicketIds.value = []
     hasSearched.value = true
   } catch (err) {
     console.error('Failed to search tickets for check-in:', err)
@@ -238,6 +242,8 @@ const searchTickets = async () => {
 }
 
 const isGroupOpen = (group) => openGroupKey.value === group.key
+const isHighlighted = (group, ticket) =>
+  group.matchedTicketIds.length < group.ticketCount && group.matchedTicketIds.includes(ticket.id)
 
 const toggleGroup = (group) => {
   openGroupKey.value = isGroupOpen(group) ? null : group.key
@@ -282,27 +288,30 @@ const toggleAllPendingTickets = (group) => {
   selectedTicketIds.value = [...nextSelection]
 }
 
-const confirmGroupCheckin = async (group) => {
-  const groupTicketIds = new Set(group.tickets.map((ticket) => ticket.id))
-  const ticketIds = selectedTicketIds.value.filter((id) => groupTicketIds.has(id))
-  if (ticketIds.length === 0) return
-
-  if (!confirm(`Confirm check-in for ${ticketIds.length} ticket(s)?`)) {
-    return
+const confirmGroupCheckin = (group) => {
+  const ticketIds = pendingTicketIdsForGroup(group).filter(isTicketSelected)
+  if (ticketIds.length && confirm(`Check in ${ticketIds.length} selected ticket(s)?`)) {
+    return checkInTickets(group, ticketIds, true)
   }
+}
 
+const checkInTickets = async (group, ticketIds, bulk = false) => {
+  if (isSearching.value || checkingInTicketIds.value.length) return
+
+  checkingInTicketIds.value = ticketIds
+  delete groupCheckinErrors.value[group.key]
+  ticketIds.forEach(id => delete ticketCheckinErrors.value[id])
   try {
-    isCheckingIn.value = true
-    error.value = null
     const response = await post(`/api/events/${eventId.value}/checkin/tickets`, { ticketIds })
-    applyUpdatedTickets(response.tickets || [])
-    selectedTicketIds.value = []
-    alert(`${response.checkedInCount || 0} ticket(s) checked in. ${response.alreadyCheckedInCount || 0} already checked in.`)
+    applyUpdatedTickets(response.tickets)
+    const updatedIds = new Set(response.tickets.map(ticket => ticket.id))
+    selectedTicketIds.value = selectedTicketIds.value.filter(id => !updatedIds.has(id))
   } catch (err) {
-    console.error('Failed to confirm check-in:', err)
-    error.value = err.message || 'Failed to confirm check-in'
+    const message = err.message || 'Check-in failed. Try again.'
+    if (bulk) groupCheckinErrors.value[group.key] = message
+    else ticketCheckinErrors.value[ticketIds[0]] = message
   } finally {
-    isCheckingIn.value = false
+    checkingInTicketIds.value = []
   }
 }
 

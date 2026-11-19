@@ -548,7 +548,9 @@ class TicketService {
               created_by: true,
               name: true,
               venue: true,
-              opening_datetime: true
+              opening_datetime: true,
+              event_image_url: true,
+              mobile_event_image_url: true
             }
           }
         }
